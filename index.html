@@ -109,8 +109,8 @@
 
     <div class="note">
       Trang này chỉ là giao diện mở công cụ. Dữ liệu bàn cược và kết nối Chrome CDP chạy ngay trên máy chủ —
-      vì vậy nó <b>chỉ hoạt động khi máy chủ đang bật</b> và bạn cùng mạng với máy chủ.
-      <b>Tên máy (hostname)</b> sẽ tự phân giải trong mạng nội bộ, không cần nhớ IP.
+      vì vậy nó <b>chỉ hoạt động khi máy chủ đang bật</b>.
+      Khi máy chủ bật chia sẻ Internet, link công khai sẽ được điền sẵn vào ô bên trên — bấm <b>MỞ TOOL</b> là dùng được, không cần cùng mạng.
     </div>
   </div>
 
@@ -122,6 +122,23 @@
     var KEY = "toolTxServerAddr";
     var input = document.getElementById("addr");
     var btn = document.getElementById("open");
+
+    function fetchOnlineUrl() {
+      try {
+        fetch("./tool-url.json?t=" + Date.now())
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (d && d.url) {
+              input.value = d.url;
+              input.style.borderColor = "#57f7a0";
+              btn.style.background = "#57f7a0";
+              btn.title = "Server đang trực tuyến";
+            }
+          })
+          .catch(function () {});
+      } catch (e) {}
+    }
+
     var saved = null;
     try { saved = localStorage.getItem(KEY) || ""; } catch (e) {}
     input.value = saved || "http://tool-tx:8787";
@@ -133,15 +150,12 @@
       if (!addr) { alert("Nhập địa chỉ máy chủ trước (launcher sẽ hiện link chia sẻ)."); return; }
       var url = addr;
       if (!/^https?:\/\//i.test(url)) url = "http://" + url;
-      if (!/:8787/.test(url)) {
-        url = url.replace(/\/+$/, "");
-        url = url + ":8787";
-      }
       window.open(url, "_blank");
     });
     input.addEventListener("keydown", function (e) {
       if (e.key === "Enter") btn.click();
     });
+    fetchOnlineUrl();
   })();
 </script>
 </body>

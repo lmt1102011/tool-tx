@@ -13,3 +13,6 @@ public/
 config.json
 package.json
 package-lock.json
+bin/
+github-token.txt
+launcher.mode
