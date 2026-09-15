@@ -97,19 +97,20 @@
   <div class="card">
     <h2>Địa chỉ máy chủ (server)</h2>
     <div class="row">
-      <input id="addr" type="text" placeholder="http://IP-may-chu:8787" spellcheck="false" autocomplete="off">
+      <input id="addr" type="text" placeholder="http://tool-tx:8787" spellcheck="false" autocomplete="off">
       <button id="open">MỞ TOOL</button>
     </div>
 
     <div class="steps">
       <div class="step"><b class="num">1</b>Máy chủ phải đang bật. Chủ máy mở launcher và bấm <b>RUN SERVER</b> — máy chủ tự hiện link chia sẻ.</div>
-      <div class="step"><b class="num">2</b>Dán link đó vào ô phía trên (thí&nbsp;dụ: <code>http://192.168.1.5:8787</code>).</div>
+      <div class="step"><b class="num">2</b>Nhập tên máy chủ vào ô phía trên (thí&nbsp;dụ: <code>http://tool-tx:8787</code>). Tên máy chính là hostname của máy chủ (xem trong launcher).</div>
       <div class="step"><b class="num">3</b>Bấm <b>MỞ TOOL</b>. Trang công cụ mở ra, máy chủ sẽ tự kết nối Chrome CDP và cập nhật dự đoán mỗi phiên.</div>
     </div>
 
     <div class="note">
       Trang này chỉ là giao diện mở công cụ. Dữ liệu bàn cược và kết nối Chrome CDP chạy ngay trên máy chủ —
       vì vậy nó <b>chỉ hoạt động khi máy chủ đang bật</b> và bạn cùng mạng với máy chủ.
+      <b>Tên máy (hostname)</b> sẽ tự phân giải trong mạng nội bộ, không cần nhớ IP.
     </div>
   </div>
 
@@ -123,7 +124,7 @@
     var btn = document.getElementById("open");
     var saved = null;
     try { saved = localStorage.getItem(KEY) || ""; } catch (e) {}
-    input.value = saved || "";
+    input.value = saved || "http://tool-tx:8787";
     input.addEventListener("input", function () {
       try { localStorage.setItem(KEY, input.value.trim()); } catch (e) {}
     });
