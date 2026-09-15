@@ -95,6 +95,9 @@
   <div class="logo">Tool TX By LMT<small>DỰ ĐOÁN TÀI XỈU · THỜI GIAN THỰC</small></div>
 
   <div class="card">
+    <div id="online" class="online" style="display:none">
+      Server đang trực tuyến — <b>tự chuyển sang công cụ trong 2 giây...</b>
+    </div>
     <h2>Địa chỉ máy chủ (server)</h2>
     <div class="row">
       <input id="addr" type="text" placeholder="http://tool-tx:8787" spellcheck="false" autocomplete="off">
@@ -102,26 +105,40 @@
     </div>
 
     <div class="steps">
-      <div class="step"><b class="num">1</b>Máy chủ phải đang bật. Chủ máy mở launcher và bấm <b>RUN SERVER</b> — máy chủ tự hiện link chia sẻ.</div>
-      <div class="step"><b class="num">2</b>Nhập tên máy chủ vào ô phía trên (thí&nbsp;dụ: <code>http://tool-tx:8787</code>). Tên máy chính là hostname của máy chủ (xem trong launcher).</div>
-      <div class="step"><b class="num">3</b>Bấm <b>MỞ TOOL</b>. Trang công cụ mở ra, máy chủ sẽ tự kết nối Chrome CDP và cập nhật dự đoán mỗi phiên.</div>
+      <div class="step"><b class="num">1</b>Máy chủ phải đang bật. Chủ máy mở launcher, tick <b>Mở qua Internet</b> và bấm <b>RUN SERVER</b>.</div>
+      <div class="step"><b class="num">2</b>Khi server online, link công khai được cập nhật tự động vào ô bên trên (có thể sửa tay).</div>
+      <div class="step"><b class="num">3</b>Bấm <b>MỞ TOOL</b> — hoặc trang tự chuyển ngay nếu server đang trực tuyến. Không cần cùng mạng, không cần IP.</div>
     </div>
 
     <div class="note">
-      Trang này chỉ là giao diện mở công cụ. Dữ liệu bàn cược và kết nối Chrome CDP chạy ngay trên máy chủ —
-      vì vậy nó <b>chỉ hoạt động khi máy chủ đang bật</b>.
-      Khi máy chủ bật chia sẻ Internet, link công khai sẽ được điền sẵn vào ô bên trên — bấm <b>MỞ TOOL</b> là dùng được, không cần cùng mạng.
+      Trang này chỉ là <b>cửa ngõ mở công cụ</b>. Dữ liệu bàn cược + kết nối Chrome CDP chạy ngay trên máy chủ —
+      nên công cụ <b>chỉ hoạt động khi máy chủ đang bật</b> (launcher của chủ máy). Mọi nơi đều mở được qua link công khai.
     </div>
   </div>
 
   <div class="foot">Công cụ nội bộ · dự đoán dựa trên thống kê phiên gần nhất, không đảm bảo thắng</div>
 </div>
 
+<style>
+  .online {
+    background: rgba(87, 247, 160, 0.10);
+    border: 1px solid rgba(87, 247, 160, 0.4);
+    color: #57f7a0;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+</style>
+
 <script>
   (function () {
     var KEY = "toolTxServerAddr";
     var input = document.getElementById("addr");
     var btn = document.getElementById("open");
+    var online = document.getElementById("online");
+    var stay = /[?&]stay=1/.test(window.location.search);
+    var redirected = false;
 
     function fetchOnlineUrl() {
       try {
@@ -133,6 +150,15 @@
               input.style.borderColor = "#57f7a0";
               btn.style.background = "#57f7a0";
               btn.title = "Server đang trực tuyến";
+              if (!stay) {
+                online.style.display = "block";
+                setTimeout(function () {
+                  if (!redirected) {
+                    redirected = true;
+                    window.location.replace(d.url);
+                  }
+                }, 2000);
+              }
             }
           })
           .catch(function () {});
