@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tool TX By LMT</title>
+<style>
+  :root {
+    --bg: #0f1720;
+    --panel: #111c29;
+    --border: #24344a;
+    --text: #e7eef7;
+    --muted: #8fb3d6;
+    --gold: #ffd24a;
+    --green: #57f7a0;
+    --blue: #1f7fd6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: radial-gradient(1200px 600px at 50% -10%, #1b2c40 0%, var(--bg) 55%);
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .wrap { width: 100%; max-width: 620px; }
+  .logo {
+    text-align: center;
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: var(--gold);
+    text-shadow: 0 0 24px rgba(255, 210, 74, 0.25);
+  }
+  .logo small { display: block; color: var(--muted); font-size: 15px; font-weight: 400; letter-spacing: 4px; margin-top: 4px; }
+  .card {
+    margin-top: 28px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 26px;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  }
+  h2 { font-size: 16px; color: var(--muted); font-weight: 600; margin-bottom: 12px; }
+  .row { display: flex; gap: 10px; }
+  input {
+    flex: 1;
+    background: #0a1420;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 15px;
+    padding: 13px 14px;
+    outline: none;
+  }
+  input:focus { border-color: var(--blue); }
+  button {
+    background: var(--gold);
+    color: #15140f;
+    font-size: 15px;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    padding: 0 22px;
+    cursor: pointer;
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+  }
+  button:hover { box-shadow: 0 0 0 3px rgba(255, 210, 74, 0.25); }
+  button:active { transform: scale(0.97); }
+  .steps { margin-top: 22px; border-top: 1px dashed var(--border); padding-top: 18px; }
+  .step { display: flex; gap: 12px; margin-bottom: 12px; color: var(--text); font-size: 14px; line-height: 1.55; }
+  .step b.num {
+    flex: 0 0 24px; height: 24px; border-radius: 50%;
+    background: var(--blue); color: #fff; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .note {
+    margin-top: 18px;
+    background: rgba(87, 247, 160, 0.07);
+    border: 1px solid rgba(87, 247, 160, 0.25);
+    color: var(--green);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .foot { margin-top: 18px; text-align: center; color: #5b7ba0; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">Tool TX By LMT<small>DỰ ĐOÁN TÀI XỈU · THỜI GIAN THỰC</small></div>
+
+  <div class="card">
+    <h2>Địa chỉ máy chủ (server)</h2>
+    <div class="row">
+      <input id="addr" type="text" placeholder="http://IP-may-chu:8787" spellcheck="false" autocomplete="off">
+      <button id="open">MỞ TOOL</button>
+    </div>
+
+    <div class="steps">
+      <div class="step"><b class="num">1</b>Máy chủ phải đang bật. Chủ máy mở launcher và bấm <b>RUN SERVER</b> — máy chủ tự hiện link chia sẻ.</div>
+      <div class="step"><b class="num">2</b>Dán link đó vào ô phía trên (thí&nbsp;dụ: <code>http://192.168.1.5:8787</code>).</div>
+      <div class="step"><b class="num">3</b>Bấm <b>MỞ TOOL</b>. Trang công cụ mở ra, máy chủ sẽ tự kết nối Chrome CDP và cập nhật dự đoán mỗi phiên.</div>
+    </div>
+
+    <div class="note">
+      Trang này chỉ là giao diện mở công cụ. Dữ liệu bàn cược và kết nối Chrome CDP chạy ngay trên máy chủ —
+      vì vậy nó <b>chỉ hoạt động khi máy chủ đang bật</b> và bạn cùng mạng với máy chủ.
+    </div>
+  </div>
+
+  <div class="foot">Công cụ nội bộ · dự đoán dựa trên thống kê phiên gần nhất, không đảm bảo thắng</div>
+</div>
+
+<script>
+  (function () {
+    var KEY = "toolTxServerAddr";
+    var input = document.getElementById("addr");
+    var btn = document.getElementById("open");
+    var saved = null;
+    try { saved = localStorage.getItem(KEY) || ""; } catch (e) {}
+    input.value = saved || "";
+    input.addEventListener("input", function () {
+      try { localStorage.setItem(KEY, input.value.trim()); } catch (e) {}
+    });
+    btn.addEventListener("click", function () {
+      var addr = input.value.trim();
+      if (!addr) { alert("Nhập địa chỉ máy chủ trước (launcher sẽ hiện link chia sẻ)."); return; }
+      var url = addr;
+      if (!/^https?:\/\//i.test(url)) url = "http://" + url;
+      if (!/:8787/.test(url)) {
+        url = url.replace(/\/+$/, "");
+        url = url + ":8787";
+      }
+      window.open(url, "_blank");
+    });
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") btn.click();
+    });
+  })();
+</script>
+</body>
+</html>

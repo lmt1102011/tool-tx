@@ -1,0 +1,15 @@
+node_modules/
+chrome-profile/
+logs/
+__pycache__/
+.cdp-headless
+*.log
+.DS_Store
+desktop.ini
+server.js
+launcher.py
+lib/
+public/
+config.json
+package.json
+package-lock.json
