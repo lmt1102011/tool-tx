@@ -1,15 +1,47 @@
 const $ = (id) => document.getElementById(id);
 let socket = null;
 
-// Địa chỉ server dự đoán: ưu tiên localStorage (người dùng đổi nhanh) → config.js → cùng nguồn
+// ── Auto-discovery: launcher tự push link tunnel → server-url.json ──────
+let discoUrl = "";
+let discoLoaded = false;
+async function loadDiscovery() {
+  try {
+    const r = await fetch("./server-url.json?v=" + Date.now(), { cache: "no-store" });
+    const j = await r.json();
+    if (j && typeof j.url === "string" && j.url.trim()) discoUrl = j.url.trim();
+  } catch (_) {}
+  discoLoaded = true;
+  updateServerHost();
+  // Nếu vừa tìm thấy URL mới mà chưa nối được → tự kết nối lại
+  if (discoUrl && !(socket && socket.connected)) setTimeout(retryConnect, 400);
+}
+loadDiscovery();
+setInterval(loadDiscovery, 30000);
+
+// ── Server URL: localStorage("tx_server") → auto-discovery → config.js → same-origin ──
 function serverUrl() {
   let v = "";
   try { v = localStorage.getItem("tx_server") || ""; } catch (_) {}
-  if (!v) v = window.__TX_SERVER || "";
-  return v.trim();
+  if (v) return v.trim();
+  if (discoUrl) return discoUrl;
+  return (window.__TX_SERVER || "").trim();
 }
 
-// Tải socket.io-client từ chính server dự đoán (GitHub Pages không phục vụ /socket.io)
+// Hiển thị lỗi kết nối trên statusLine (tool.html)
+function setSockStatus(msg) {
+  const el = $('statusLine');
+  if (el) { el.textContent = msg; el.className = 'status err'; }
+}
+
+// Cập nhật ô "Server" trên thanh feed-note
+function updateServerHost() {
+  const sh = $('serverHost');
+  if (!sh) return;
+  const u = serverUrl();
+  sh.textContent = (socket && socket.connected ? '' : '⚠ ') + (u || location.host);
+}
+
+// Tải socket.io-client từ server đã cấu hình (GitHub Pages không có /socket.io)
 let ioLoad = null;
 function ensureSocketIO() {
   if (window.io) return Promise.resolve();
@@ -25,18 +57,39 @@ function ensureSocketIO() {
   return ioLoad;
 }
 
+let lastToken = null;
+let lastAttemptUrl = "";
 async function initSocket(authToken) {
   if (socket) return socket;
-  await ensureSocketIO();
+  lastToken = authToken || lastToken;
+  // Đợi discovery server-url.json tối đa 1.5s (thường load xong trước auth)
+  if (!discoLoaded) await new Promise(r => setTimeout(r, 1500));
+  try {
+    await ensureSocketIO();
+  } catch (e) {
+    log('Lỗi nạp socket.io: ' + e.message, 'err');
+    setSockStatus('Lỗi kết nối — không đọc được socket.io từ "' + (serverUrl() || location.origin) + '". Bấm "đổi" ở feed-note hoặc kiểm tra server.');
+    return null;
+  }
   const url = serverUrl();
-  socket = io(url || undefined, { auth: { token: authToken } });
-  window.socket = socket; // expose globally for tool.html
+  lastAttemptUrl = url || "";
+  socket = io(url || undefined, { auth: { token: lastToken } });
+  window.socket = socket;
   bindSocketEvents();
   return socket;
 }
 
+// Tự nối lại khi URL server đổi (vd: launcher vừa push link tunnel mới)
+function retryConnect() {
+  if (!lastToken) return;
+  const want = serverUrl() || "";
+  if (want === lastAttemptUrl) return;
+  if (socket) { try { socket.disconnect(); } catch (_) {} socket = null; }
+  initSocket(lastToken);
+}
+
 function getSocket() { return socket; }
-window.initSocket = initSocket; // expose for tool.html
+window.initSocket = initSocket;
 window.getSocket = getSocket;
 
 const STRAT_NAMES = {
@@ -455,7 +508,23 @@ function renderChart(sums, hist) {
 // ===== Socket events =====
 function bindSocketEvents() {
   socket.on('snapshot', render);
-  socket.on('connect', () => log((serverUrl() ? 'Đã kết nối server: ' + serverUrl() : 'Đã kết nối server cùng nguồn')));
+  socket.on('connect', () => {
+    const u = serverUrl();
+    log('Đã kết nối server: ' + (u || 'cùng nguồn'));
+    updateServerHost();
+    setSockStatus('Đã kết nối — ' + (u || location.host));
+  });
+  socket.on('disconnect', (reason) => {
+    log('Mất kết nối: ' + reason, 'err');
+    updateServerHost();
+    setSockStatus('Mất kết nối server — ' + reason);
+  });
+  socket.on('connect_error', (err) => {
+    const u = serverUrl() || location.origin;
+    log('Lỗi kết nối: ' + (err.message || err), 'err');
+    updateServerHost();
+    setSockStatus('Lỗi kết nối "' + u + '" — ' + (err.message || 'kiểm tra server đã bật chưa') + '. Bấm "đổi" ở feed-note để sửa.');
+  });
   socket.on('screen', (b64) => {
     const now = Date.now();
     if (now - lastScreenT < 160) return;

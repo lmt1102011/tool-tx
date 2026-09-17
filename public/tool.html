@@ -369,7 +369,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   </div>
 </div>
 
-<script src="app.js?v=20260917c"></script>
+<script src="app.js?v=20260917d"></script>
 <script type="module">
 import { auth, db, doc, ref, get, getDoc, update, onValue, onAuthStateChanged, signOut, tryReauthSaved, formatPicks, migratePicks } from "./fbase.js?v=20260924";
 
@@ -431,7 +431,7 @@ onAuthStateChanged(auth, async (u) => {
   }
   const token = await u.getIdToken();
   if (typeof initSocket === 'function') await initSocket(token);
-  socket.on('charge', (data) => {
+  if (socket) socket.on('charge', (data) => {
     localPicks = data.picks;
     chip.innerHTML = fmt(localPicks);
     chip.classList.toggle('low', localPicks <= 0);
