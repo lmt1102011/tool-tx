@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tool TX by LMT</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+<link rel="stylesheet" href="style.css?v=20260917">
+<script src="./config.js?v=1"></script>
+</head>
+<body>
+<div id="skel" class="skl">
+  <div class="skl-topbar">
+    <div class="skl-logo"></div><div class="skl-spacer"></div>
+    <div class="skl-chip"></div><div class="skl-avatar"></div>
+  </div>
+  <div class="skl-body">
+    <div class="skl-split">
+      <div style="display:flex;flex-direction:column;gap:14px;padding-top:10px">
+        <div class="skl-bar skl-w25" style="height:12px"></div>
+        <div class="skl-bar skl-w80" style="height:32px"></div>
+        <div class="skl-bar skl-w55" style="height:14px"></div>
+        <div class="skl-bar skl-w100" style="height:10px;margin-top:8px"></div>
+        <div class="skl-bar skl-w100" style="height:10px"></div>
+        <div class="skl-bar skl-w70" style="height:10px"></div>
+        <div class="skl-stat-row" style="margin-top:20px">
+          <div class="skl-stat"><div class="skl-bar skl-w40" style="height:20px"></div><div class="skl-bar skl-w80" style="height:10px"></div></div>
+          <div class="skl-stat"><div class="skl-bar skl-w40" style="height:20px"></div><div class="skl-bar skl-w80" style="height:10px"></div></div>
+          <div class="skl-stat"><div class="skl-bar skl-w40" style="height:20px"></div><div class="skl-bar skl-w80" style="height:10px"></div></div>
+        </div>
+      </div>
+      <div class="skl-form">
+        <div class="skl-tabs"><div class="skl-tab on"></div><div class="skl-tab"></div></div>
+        <div class="skl-bar skl-w100" style="height:12px"></div>
+        <div class="skl-bar skl-h40"></div>
+        <div class="skl-bar skl-w100" style="height:12px"></div>
+        <div class="skl-bar skl-h40"></div>
+        <div class="skl-bar skl-h40" style="background:rgba(245,200,66,.15);border-radius:10px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>document.addEventListener("DOMContentLoaded",()=>{setTimeout(()=>{const s=document.getElementById("skel");if(s)s.classList.add("hide")},600)})</script>
+<div id="toast" class="toast"></div>
+
+<header class="topbar">
+  <a class="logo" href="./index.html"><small>LMT</small>TOOL TX</a>
+  <div class="tb-spacer"></div>
+  <div class="tb-user" id="topUser" style="display:none">
+    <div class="avatar" id="topAvatar"></div>
+    <span class="u" id="topName"></span>
+  </div>
+  <button class="btn btn-gold btn-sm hidden" id="btnGoAcc"><span class="iclabel">VÀO TÀI KHOẢN <span class="ms">arrow_forward</span></span></button>
+</header>
+
+<main class="wrap">
+  <div class="split">
+    <div class="split-main">
+      <section class="hero">
+        <div class="badge-soft"><span class="ms" style="font-size:15px">bolt</span> PHÂN TÍCH &amp; DỰ ĐOÁN BẰNG AI</div>
+        <h1>CÔNG CỤ <em>TIẾN ĐỀ</em><br>SUNWIN TX</h1>
+        <p>Dự đoán kết quả Tài Xỉu trực tuyến với độ chính xác cao, hiển thị trực tiếp trên giao diện game — phân tích dựa trên dòng tiền, thống kê đa lớp và nhiều chiến lược học máy.</p>
+      </section>
+
+      <div class="features">
+        <div class="feature"><div class="ic"><span class="ms">psychology</span></div><h4>Dự đoán thông minh</h4><p>Hợp nhất 15+ chiến lược tự học, nhận diện đám đông, đưa ra mức độ tin cậy chi tiết.</p></div>
+        <div class="feature"><div class="ic"><span class="ms">bolt</span></div><h4>Trực tiếp từng ván</h4><p>Cập nhật real-time, hiển thị ngay trong cửa sổ game — mỗi ván đều có dự đoán trước khi mở kết quả.</p></div>
+        <div class="feature"><div class="ic"><span class="ms">shield</span></div><h4>Dòng tiền cảm tính</h4><p>Theo dõi tâm lý đám đông (crowd sentiment) — chiến lược follow/anti không mù quáng, giúp bạn quyết định tự tin hơn.</p></div>
+      </div>
+    </div>
+
+    <div class="split-side">
+      <div class="auth-card">
+        <div class="auth-tabs">
+          <div class="tab on" id="tabLogin" data-tab="login">ĐĂNG NHẬP</div>
+          <div class="tab" id="tabReg" data-tab="register">ĐĂNG KÝ</div>
+        </div>
+
+        <form id="formLogin" class="stack">
+          <div><label>Tài khoản</label><input id="lUser" placeholder="username" autocomplete="username"></div>
+          <div><label>Mật khẩu</label><input id="lPass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+          <button class="btn btn-gold btn-block" type="submit"><span class="iclabel"><span class="ms">login</span> Đăng nhập</span></button>
+          <div class="err" id="errLogin"></div>
+          <div class="auth-foot">Chưa có tài khoản? Bấm <a href="javascript:void(0)" id="goReg" style="color:var(--gold);font-weight:700">ĐĂNG KÝ</a> ở trên.</div>
+        </form>
+
+        <form id="formReg" class="stack hidden">
+          <div><label>Chọn username</label><input id="rUser" placeholder="vd: tri123" autocomplete="username"></div>
+          <div><label>Mật khẩu</label><input id="rPass" type="password" placeholder="≥ 6 ký tự" autocomplete="new-password"></div>
+          <div class="hint" style="margin:-6px 0 8px">Đăng nhập sau này bằng username + mật khẩu này.</div>
+          <button class="btn btn-gold btn-block" type="submit"><span class="iclabel"><span class="ms">person_add</span> Tạo tài khoản</span></button>
+          <div class="err" id="errReg"></div>
+          <div class="auth-foot">Đã có tài khoản? Bấm <a href="javascript:void(0)" id="goLogin" style="color:var(--gold);font-weight:700">ĐĂNG NHẬP</a>.</div>
+        </form>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+import { auth, loginByUsername, registerUser, getRate, requireUser, onAuthStateChanged, signOut, showToast, msgFire, setAvatar } from "./fbase.js?v=20260924";
+
+const $ = (id) => document.getElementById(id);
+let currentTab = "login";
+
+function switchTab(t) {
+  currentTab = t;
+  $("tabLogin").classList.toggle("on", t === "login");
+  $("tabReg").classList.toggle("on", t === "register");
+  $("formLogin").classList.toggle("hidden", t !== "login");
+  $("formReg").classList.toggle("hidden", t !== "register");
+  $("errLogin").textContent = "";
+  $("errReg").textContent = "";
+}
+
+["tabLogin", "goLogin"].forEach((id) => $(id).addEventListener("click", () => switchTab("login")));
+["tabReg", "goReg"].forEach((id) => $(id).addEventListener("click", () => switchTab("register")));
+
+async function loadRateText() {
+  try {
+    const r = await getRate();
+    const promo = document.querySelector(".features p:nth-of-type(1)");
+  } catch (_) {}
+}
+loadRateText();
+
+onAuthStateChanged(auth, async (u) => {
+  const b = $("btnGoAcc");
+  if (!u) { $("topUser").style.display = "none"; b.classList.add("hidden"); return; }
+  try {
+    const { username, data } = await requireUser();
+    $("topUser").style.display = "flex";
+    $("topName").textContent = username;
+    setAvatar($("topAvatar"), username);
+    const dest = data.role === "admin" ? "/admin" : "/user";
+    b.classList.remove("hidden");
+    b.textContent = (data.role === "admin" ? "QUẢN TRỊ" : "VÀO TÀI KHOẢN") + " →";
+    b.onclick = () => { location.href = dest; };
+  } catch (_) {}
+});
+
+$("formLogin").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const u = $("lUser").value;
+  const p = $("lPass").value;
+  const err = $("errLogin");
+  err.textContent = "";
+  try {
+    const res = await loginByUsername(u, p);
+    $("topUser").style.display = "flex";
+    $("topName").textContent = res.username || u;
+    setAvatar($("topAvatar"), res.username || u);
+    window.location.href = res.data.role === "admin" ? "/admin" : "/user";
+  } catch (ex) {
+    err.textContent = msgFire(ex) || ex.message;
+  }
+});
+
+$("formReg").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const u = $("rUser").value;
+  const p = $("rPass").value;
+  const err = $("errReg");
+  err.textContent = "";
+  try {
+    await registerUser(u, p);
+    showToast("Đăng ký thành công!");
+    window.location.href = "./user.html";
+  } catch (ex) {
+    err.textContent = msgFire(ex) || ex.message;
+  }
+});
+</script>
+</body>
+</html>
