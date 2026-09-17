@@ -133,7 +133,7 @@ onAuthStateChanged(auth, async (u) => {
     $("topUser").style.display = "flex";
     $("topName").textContent = username;
     setAvatar($("topAvatar"), username);
-    const dest = data.role === "admin" ? "/admin" : "/user";
+    const dest = data.role === "admin" ? "./admin.html" : "./user.html";
     b.classList.remove("hidden");
     b.textContent = (data.role === "admin" ? "QUẢN TRỊ" : "VÀO TÀI KHOẢN") + " →";
     b.onclick = () => { location.href = dest; };
@@ -151,7 +151,7 @@ $("formLogin").addEventListener("submit", async (e) => {
     $("topUser").style.display = "flex";
     $("topName").textContent = res.username || u;
     setAvatar($("topAvatar"), res.username || u);
-    window.location.href = res.data.role === "admin" ? "/admin" : "/user";
+    window.location.href = res.data.role === "admin" ? "./admin.html" : "./user.html";
   } catch (ex) {
     err.textContent = msgFire(ex) || ex.message;
   }
