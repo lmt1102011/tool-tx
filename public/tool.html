@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>TX Predictor</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0f18;--card:#111827;--border:#1e293b;
+  --t:#ef4444;--x:#3b82f6;--go:#22c55e;--warn:#facc15;
+  --text:#e2e8f0;--dim:#64748b;--accent:#f5c842;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+.app{max-width:1200px;margin:0 auto;padding:12px 16px 40px}
+
+/* Local Material Symbols font */
+@font-face{font-family:'Material Symbols Outlined';font-style:normal;font-weight:100 700;font-display:swap;src:url(fonts/materialsymbols.woff2) format('woff2')}
+
+/* Material Symbols */
+.ms{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;display:inline-block;line-height:1;text-transform:none;letter-spacing:normal;word-wrap:normal;white-space:nowrap;direction:ltr;-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 500,'GRAD' 0,'opsz' 24;vertical-align:middle;font-size:1.25em}
+
+/* Header */
+.hdr{display:flex;align-items:center;gap:12px;padding:10px 0 14px;border-bottom:1px solid var(--border);margin-bottom:16px;flex-wrap:wrap}
+.hdr .logo{font-size:22px;font-weight:800;color:var(--accent);letter-spacing:.5px}
+.hdr .logo span{color:#60a5fa;font-weight:600;margin-left:4px;font-size:16px}
+.hdr .spacer{flex:1}
+.badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:700;letter-spacing:.3px}
+.badge.off{background:#7f1d1d;color:#fca5a5}.badge.on{background:#064e3b;color:#6ee7b7}.badge.mid{background:#78350f;color:#fde68a}
+
+/* Note bar */
+.note-bar{display:flex;align-items:center;gap:10px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);color:#7dd3fc;padding:10px 16px;border-radius:10px;font-size:12.5px;font-weight:600;margin-bottom:12px;line-height:1.5}
+.note-bar .ms{font-size:18px;flex-shrink:0}
+
+/* Grid */
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.card h2{font-size:13px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.card h2 .ms{font-size:16px;color:var(--accent)}
+
+/* Connect row */
+.conn-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.conn-row input{background:#0f172a;border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:13px;width:72px}
+.conn-row input.url{width:0;flex:1;min-width:120px}
+.btn{border:none;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;transition:opacity .15s;display:inline-flex;align-items:center;gap:5px}
+.btn:active{opacity:.8}
+.btn.primary{background:var(--accent);color:#1a1a1a}
+.btn.danger{background:#991b1b;color:#fecaca}
+.btn.ghost{background:transparent;color:var(--dim);border:1px solid var(--border)}
+.btn.ghost:hover{border-color:var(--dim)}
+.btn:disabled{opacity:.35;pointer-events:none}
+.feed-note{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--dim);padding:6px 2px 0;line-height:1.5}
+.feed-note .sep{opacity:.4}
+.share-url{color:#7dd3fc;font-weight:700;word-break:break-all}
+
+/* Status bar */
+.status{font-size:11px;padding:6px 0 0;color:var(--dim);min-height:20px;word-break:break-word}
+.status.err{color:#fca5a5}
+
+/* Prediction window — the star */
+.pred-wrap{position:relative;margin-top:8px}
+.pred-box{background:linear-gradient(135deg,#0f172a 0%,#111827 100%);border:2px solid var(--border);border-radius:14px;padding:18px 20px 14px;text-align:center;position:relative;overflow:hidden}
+.pred-box.ready{border-color:var(--accent)}
+.pred-box.win{border-color:var(--go)}.pred-box.lose{border-color:var(--t)}
+.pred-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pred-label{font-size:11px;color:var(--dim);letter-spacing:1px;margin-bottom:4px}
+.phase-badge{font-size:10px;font-weight:800;letter-spacing:.5px;padding:2px 9px;border-radius:20px;background:#1e293b;color:#64748b;white-space:nowrap}
+.phase-badge.wait{background:#78350f;color:#fde68a}
+.phase-badge.analyze{background:rgba(56,189,248,.14);color:#38bdf8}
+.phase-badge.ready{background:#064e3b;color:#6ee7b7}
+.phase-badge.ready.skips{background:#78350f;color:#fde68a}
+.phase-badge.get{background:#78350f;color:#fde68a}
+.phase-badge.reveal{background:#064e3b;color:#6ee7b7}
+.phase-badge.idle{background:#1e293b;color:#64748b}
+.phase-line{font-size:11px;color:#38bdf8;min-height:16px;margin:2px 0 6px}
+.phase-line.y{color:#facc15}.phase-line.g{color:#64748b}
+.phase-line .dot{animation:txpDots 1.2s steps(4) infinite;display:inline-block;min-width:10px}
+@keyframes txpDots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+
+/* Stock chart */
+.chart-head{display:flex;align-items:center;justify-content:space-between;margin:6px 0 4px}
+.chart-title{font-size:10px;color:var(--dim);font-weight:700;letter-spacing:.5px;display:flex;align-items:center;gap:4px}
+.chart-title .ms{font-size:14px;color:var(--accent)}
+.trend-tag{font-size:10px;font-weight:800;padding:2px 8px;border-radius:12px;background:#1e293b;color:#64748b;display:inline-flex;align-items:center;gap:3px}
+.trend-tag.up{background:rgba(239,68,68,.12);color:var(--t)}.trend-tag.down{background:rgba(59,130,246,.12);color:var(--x)}.trend-tag.flat{background:#1e293b;color:var(--dim)}
+.trend-tag .ms{font-size:13px}
+.chart-svg{width:100%;height:140px;display:block;margin:0}
+.chart-legend{display:flex;gap:10px;justify-content:center;margin:4px 0 8px}
+.chart-legend span{font-size:10px;color:var(--dim);display:flex;align-items:center;gap:4px}
+.chart-legend .lg{width:10px;height:10px;border-radius:2px;display:inline-block}
+.chart-legend .lg.t{background:var(--t)}.chart-legend .lg.x{background:var(--x)}.chart-legend .lg.ma{background:var(--accent);height:2px;border-radius:1px}
+.pred-main{display:flex;align-items:center;justify-content:center;gap:16px;margin:6px 0 8px}
+.pred-side{display:flex;flex-direction:column;align-items:center;gap:2px}
+.pred-side .pct{font-size:30px;font-weight:800;line-height:1}
+.pred-side.t .pct{color:var(--t)}.pred-side.x .pct{color:var(--x)}
+.pred-side .lbl{font-size:11px;color:var(--dim);font-weight:700}
+.pred-vs{font-size:13px;color:var(--dim);font-weight:700}
+.pred-pick{margin:4px 0}
+.pred-pick .side{display:inline-block;padding:4px 18px;border-radius:6px;font-size:22px;font-weight:900;transition:background .2s}
+.pred-pick .side.t{background:rgba(239,68,68,.18);color:var(--t)}
+.pred-pick .side.x{background:rgba(59,130,246,.18);color:var(--x)}
+.pred-conf{font-size:12px;color:var(--dim);margin-top:2px}
+.pred-conf b{color:var(--text)}
+.pred-bar{height:6px;border-radius:3px;background:#1e293b;overflow:hidden;margin:8px 0 6px;display:flex}
+.pred-bar .fill-t{background:var(--t);height:100%;transition:width .4s}
+.pred-bar .fill-x{background:var(--x);height:100%;transition:width .4s}
+.pred-advice{font-size:12px;padding:6px 0 0}
+.pred-advice.go{color:var(--go)}.pred-advice.warn{color:var(--warn)}.pred-advice.off{color:var(--dim);opacity:.7}
+.pred-last{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:13px}
+.pred-last .result{font-weight:800;font-size:16px}
+.pred-last .result.t{color:var(--t)}.pred-last .result.x{color:var(--x)}
+.pred-last .outcome{padding:2px 8px;border-radius:4px;font-weight:700;font-size:11px}
+.pred-last .outcome.win{background:#064e3b;color:#6ee7b7}.pred-last .outcome.lose{background:#7f1d1d;color:#fca5a5}
+.pred-votes{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;justify-content:center}
+.pred-votes .pill{font-size:10px;padding:2px 7px;border-radius:10px;background:#1e293b;color:var(--dim);display:flex;align-items:center;gap:3px}
+.pred-votes .pill b{font-weight:800}
+.pred-votes .pill .vt{color:var(--t)}.pred-votes .pill .vx{color:var(--x)}
+
+/* History chips */
+.hist-row{display:flex;gap:3px;flex-wrap:wrap;margin-top:8px;justify-content:center}
+.hist-row .chip{width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;transition:transform .12s}
+.hist-row .chip.t{background:var(--t)}.hist-row .chip.x{background:var(--x)}
+.hist-row .chip.last{outline:2px solid var(--accent);outline-offset:1px}
+
+/* Right column */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:600px){.stats-grid{grid-template-columns:1fr}}
+.stat-box{background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.stat-box h3{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.stat-box .row{display:flex;justify-content:space-between;font-size:13px;padding:2px 0}
+.stat-box .row .k{color:var(--dim)}.stat-box .row .v{font-weight:700}
+.stat-box .row .v.t{color:var(--t)}.stat-box .row .v.x{color:var(--x)}.stat-box .row .v.go{color:var(--go)}
+.acc-big{font-size:32px;font-weight:900;text-align:center;padding:4px 0}
+.acc-big.go{color:var(--go)}.acc-big.warn{color:var(--warn)}.acc-big.bad{color:var(--t)}
+.acc-sub{font-size:11px;color:var(--dim);text-align:center}
+.strat-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:3px 0;border-bottom:1px solid #1e293b}
+.strat-row:last-child{border:none}
+.strat-row .name{color:var(--dim)}
+.strat-row .rate{font-weight:800}
+.strat-row .rate.go{color:var(--go)}.strat-row .rate.bad{color:var(--t)}
+.consensus{display:flex;gap:3px;margin-top:6px}
+.consensus .bar{height:4px;border-radius:2px;flex:1;background:#1e293b}
+.consensus .bar.on{background:var(--accent)}
+
+/* Log */
+.log-toggle{font-size:11px;color:var(--dim);cursor:pointer;padding:6px 0 0;border:none;background:none;display:flex;align-items:center;gap:4px}
+.log-toggle:hover{color:var(--text)}
+.log-box{max-height:0;overflow:hidden;transition:max-height .3s}
+.log-box.open{max-height:300px;overflow-y:auto}
+.log{font-family:Consolas,monospace;font-size:11px;color:#94a3b8;padding:8px 0 0;max-height:260px;overflow-y:auto}
+.log div{padding:2px 0;border-bottom:1px solid #1e293b}
+.log .err{color:#fca5a5}
+
+/* Footer */
+.foot{margin-top:14px;font-size:10px;color:#334155;text-align:center}
+
+/* Auth toolbar + gate */
+.toolbar-auth{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap}
+.timer-chip-c{font-size:12px;font-weight:800;color:#6ee7b7;background:#064e3b;border:1px solid #10b981;padding:4px 11px;border-radius:20px;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;font-variant-numeric:tabular-nums}
+.timer-chip-c.low{color:#fca5a5;background:#7f1d1d;border-color:#ef4444}
+.timer-chip-c.live{box-shadow:0 0 14px rgba(34,197,94,.55);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.75}}
+.tb-who{font-size:11px;color:#94a3b8;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+.tb-who b{color:#e2e8f0}
+.gate-ov{position:fixed;inset:0;z-index:900;background:rgba(7,11,20,.96);display:flex;align-items:center;justify-content:center;text-align:center;padding:20px}
+.gate-ov .bx{max-width:430px}
+.gate-ov .big{width:70px;height:70px;margin:0 auto 16px;border-radius:20px;background:rgba(255,77,94,.14);border:1px solid rgba(255,77,94,.35);color:#fca5a5;display:flex;align-items:center;justify-content:center}
+.gate-ov h2{color:#fca5a5;font-size:22px;font-weight:900;margin-bottom:10px}
+.gate-ov p{color:#64748b;font-size:13px;margin-bottom:18px}
+@keyframes skShimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+.skl{position:fixed;inset:0;z-index:9999;background:#0a0f18;display:flex;flex-direction:column;transition:opacity .4s,visibility .4s}
+.skl.hide{opacity:0;visibility:hidden;pointer-events:none}
+.skl-topbar{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid #1e293b}
+.skl-logo{width:110px;height:20px;border-radius:6px;background:rgba(245,200,66,.15)}
+.skl-spacer{flex:1}
+.skl-badge{width:80px;height:24px;border-radius:20px;background:rgba(255,255,255,.04)}
+.skl-timer{width:100px;height:28px;border-radius:20px;background:rgba(255,255,255,.04)}
+.skl-body{flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:12px;max-width:1200px;width:100%;margin:0 auto}
+.skl-bar{border-radius:8px;background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.09) 50%,rgba(255,255,255,.04) 75%);background-size:800px 100%;animation:skShimmer 1.6s infinite linear}
+.skl-note{width:100%;height:42px;border-radius:10px;background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15)}
+.skl-card{background:#111827;border:1px solid #1e293b;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.skl-grid{display:grid;grid-template-columns:1fr 340px;gap:14px}
+@media(max-width:900px){.skl-grid{grid-template-columns:1fr}}
+.skl-conn{display:flex;gap:6px;align-items:center}
+.skl-conn input{height:32px;border-radius:6px;background:#0f172a;border:1px solid #1e293b}
+.skl-conn .skl-p{width:72px}.skl-conn .skl-u{flex:1;height:32px;border-radius:6px;background:#0f172a;border:1px solid #1e293b}
+.skl-pred{border:2px solid #1e293b;border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;gap:10px;align-items:center}
+</style>
+<script src="./config.js?v=1"></script>
+</head>
+<body>
+<div id="skel" class="skl">
+  <div class="skl-topbar">
+    <div class="skl-logo"></div><div class="skl-spacer"></div>
+    <div class="skl-badge"></div><div class="skl-timer"></div>
+  </div>
+  <div class="skl-body">
+    <div class="skl-note"></div>
+    <div class="skl-card">
+      <div class="skl-conn">
+        <div class="skl-bar skl-p" style="height:32px;border-radius:6px"></div>
+        <div class="skl-u"></div>
+        <div class="skl-bar" style="width:140px;height:32px;border-radius:6px;background:rgba(245,200,66,.15)"></div>
+        <div class="skl-bar" style="width:70px;height:32px;border-radius:6px"></div>
+        <div class="skl-bar" style="width:60px;height:32px;border-radius:6px"></div>
+      </div>
+    </div>
+    <div class="skl-grid">
+      <div class="skl-pred">
+        <div class="skl-bar" style="width:160px;height:12px"></div>
+        <div class="skl-bar" style="width:60px;height:20px;border-radius:20px;margin:4px 0"></div>
+        <div class="skl-bar" style="width:100%;height:10px"></div>
+        <div style="width:100%;height:80px;border-radius:6px;background:rgba(255,255,255,.03);margin:6px 0"></div>
+        <div style="display:flex;gap:20px;align-items:center">
+          <div class="skl-bar" style="width:40px;height:32px;border-radius:6px"></div>
+          <div class="skl-bar" style="width:30px;height:12px"></div>
+          <div class="skl-bar" style="width:40px;height:32px;border-radius:6px"></div>
+        </div>
+        <div class="skl-bar" style="width:80px;height:30px;border-radius:8px;margin:6px 0"></div>
+        <div class="skl-bar" style="width:100%;height:8px;border-radius:4px"></div>
+        <div class="skl-bar" style="width:60%;height:10px"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="skl-card"><div class="skl-bar" style="width:70%;height:12px"></div><div class="skl-bar" style="width:100%;height:10px"></div><div class="skl-bar" style="width:80%;height:10px"></div></div>
+        <div class="skl-card"><div class="skl-bar" style="width:70%;height:12px"></div><div class="skl-bar" style="width:100%;height:10px"></div><div class="skl-bar" style="width:80%;height:10px"></div></div>
+        <div class="skl-card"><div class="skl-bar" style="width:70%;height:12px"></div><div class="skl-bar" style="width:100%;height:10px"></div><div class="skl-bar" style="width:80%;height:10px"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>document.addEventListener("DOMContentLoaded",()=>{setTimeout(()=>{const s=document.getElementById("skel");if(s)s.classList.add("hide")},600)})</script>
+<div class="app">
+
+<header class="hdr">
+  <div class="logo">TX<span>Predictor</span></div>
+  <div class="spacer"></div>
+  <div id="statusLine" class="status"></div>
+  <div id="connBadge" class="badge off">OFFLINE</div>
+  <div class="toolbar-auth">
+    <span class="timer-chip-c" id="toolTimer"><span class="ms" style="font-size:15px">timer</span> --</span>
+    <span class="tb-who"><span class="ms" style="font-size:14px">person</span> <b id="toolUser">?</b></span>
+    <button class="btn ghost" id="toolLogout" title="Đăng xuất"><span class="ms" style="font-size:14px">logout</span> ĐĂNG XUẤT</button>
+  </div>
+</header>
+
+<div class="note-bar"><span class="ms">devices</span> <span>CHẾ ĐỘ TỰ SOI — Mỗi thiết bị tự mở web game trên trình duyệt riêng, tool đọc kết quả gửi về server để dự đoán. Không cần Chrome CDP máy chủ.</span></div>
+
+<section class="card" id="connCard">
+  <div class="conn-row">
+    <input id="portInput" type="number" value="9222" style="display:none" title="CDP Port">
+    <input id="urlInput" type="text" class="url" placeholder="URL web game" spellcheck="false">
+    <button id="btnOpenGame" class="btn primary" title="Mở web game trên chính trình duyệt thiết bị này — tự soi kết quả gửi về server"><span class="ms" style="font-size:15px">smartphone</span> MỞ WEB GAME (TỰ SOI)</button>
+    <button id="btnConnect" class="btn ghost" title="(Tùy chọn admin) Mở Chrome CDP riêng trên máy chủ"><span class="ms" style="font-size:15px">power_settings_new</span> CHROME CDP</button>
+    <button id="btnDisconnect" class="btn danger" disabled><span class="ms" style="font-size:15px">link_off</span> NGẮT</button>
+    <button id="btnReset" class="btn ghost" title="Xóa toàn bộ dữ liệu"><span class="ms" style="font-size:15px">restart_alt</span> RESET</button>
+  </div>
+  <div class="feed-note" id="feedNote">
+    <span class="ms" style="font-size:13px">share</span>
+    <span>Mở từ điện thoại: <b id="shareUrl" class="share-url">...</b></span>
+    <span class="sep">·</span>
+    <span>Server: <b id="serverHost">--</b> <a href="#" id="setServer" style="color:#7dd3fc">đổi</a></span>
+    <span class="sep">·</span>
+    <span>Nguồn soi: <b id="feedSrc">--</b></span>
+    <span class="sep">·</span>
+    <a href="#" id="copySnip" style="color:#f5c842">✂ Plugin soi cho tab game</a>
+  </div>
+</section>
+
+<div class="grid" id="mainGrid">
+
+  <div>
+    <section class="card pred-wrap">
+      <div id="predBox" class="pred-box">
+        <div class="pred-head">
+          <span class="pred-label">PHÂN TÍCH VÁN KẾ TIẾP</span>
+          <span class="phase-badge" id="phaseBadge">CHỜ</span>
+        </div>
+        <div class="phase-line" id="phaseLine">chờ kết nối...</div>
+        <div class="chart-head">
+          <span class="chart-title"><span class="ms">candlestick_chart</span> BIỂU ĐỒ TỔNG ĐIỂM</span>
+          <span class="trend-tag" id="trendTag"><span class="ms">trending_flat</span> --</span>
+        </div>
+        <svg id="chartSvg" class="chart-svg" viewBox="0 0 280 160" preserveAspectRatio="none"></svg>
+        <div class="chart-legend"><span><i class="lg t"></i>TÀI (&gt;10.5)</span><span><i class="lg x"></i>XỈU (&lt;10.5)</span><span><i class="lg ma"></i>MA5</span></div>
+        <div class="pred-main" style="display:none">
+          <div class="pred-side t">
+            <span class="pct" id="pctT">50%</span>
+            <span class="lbl">TÀI</span>
+          </div>
+          <div class="pred-vs">VS</div>
+          <div class="pred-side x">
+            <span class="pct" id="pctX">50%</span>
+            <span class="lbl">XỈU</span>
+          </div>
+        </div>
+        <div class="pred-pick" style="display:none"><span class="side" id="predPick">--</span></div>
+        <div class="pred-conf" id="predConf" style="display:none">đang phân tích...</div>
+        <div class="pred-bar" style="display:none"><div class="fill-t" id="barT" style="width:50%"></div><div class="fill-x" id="barX" style="width:50%"></div></div>
+        <div class="pred-advice" id="predAdvice" style="display:none">--</div>
+        <div class="pred-votes" id="predVotes" style="display:none"></div>
+        <div id="predLast" class="pred-last"></div>
+      </div>
+      <div class="hist-row" id="historyChips"></div>
+    </section>
+
+    <section class="card" style="margin-top:10px">
+      <h2><span class="ms">insights</span> Phân tích nhanh</h2>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <h3>Thống kê</h3>
+          <div id="statsList"></div>
+        </div>
+        <div class="stat-box">
+          <h3>Độ chính xác</h3>
+          <div id="accBig" class="acc-big">--</div>
+          <div id="accSub" class="acc-sub">0 dự đoán</div>
+          <div id="consensus" class="consensus"></div>
+          <div style="margin-top:6px" id="bestThresh"></div>
+        </div>
+      </div>
+      <div class="stat-box" style="margin-top:8px">
+        <h3>Hiệu suất chiến lược (10 ván gần)</h3>
+        <div id="stratTable"></div>
+      </div>
+      <div id="biasNote" style="font-size:11px;padding:8px 0 0;color:var(--warn)"></div>
+    </section>
+  </div>
+
+  <div>
+    <section class="card">
+      <h2><span class="ms">terminal</span> Nhật ký</h2>
+      <button class="log-toggle" id="logToggle"><span class="ms" style="font-size:15px">expand_more</span> Nhật ký WS / sự kiện (ẩn)</button>
+      <div class="log-box" id="logBox"><div class="log" id="log"></div></div>
+    </section>
+
+    <section class="card" style="margin-top:10px">
+      <h2><span class="ms">help</span> Cách dùng</h2>
+      <div style="font-size:12px;color:var(--dim);line-height:1.6">
+        <p><b style="color:var(--text)">1.</b> Nhấn <b style="color:var(--accent)">KẾT NỐI CHROME</b> để mở Chrome CDP riêng và mở game.</p>
+        <p style="margin-top:6px"><b style="color:var(--text)">2.</b> Bảng dự đoán xuất hiện góc phải dưới trong cửa sổ game.</p>
+        <p style="margin-top:6px"><b style="color:var(--text)">3.</b> Bảng phía trên đây hiển thị phân tích chi tiết từng ván.</p>
+        <p style="margin-top:12px;color:#facc15;font-weight:700;font-size:12.5px;line-height:1.5">⚠ Nên bỏ qua 1-2 phiên đầu để tool đọc và ổn định nguồn dữ liệu</p>
+      </div>
+    </section>
+  </div>
+
+</div>
+
+<footer class="foot">Công cụ phân tích thống kê — dự đoán mang tính tham khảo, không đảm bảo thắng.</footer>
+</div>
+
+<div style="display:none" aria-hidden="true">
+  <img id="liveView" alt="">
+  <div id="liveMask"></div>
+  <span id="liveBadge"></span>
+</div>
+
+<div id="gateOv" class="gate-ov" style="display:none">
+  <div class="bx">
+    <div class="big"><span class="ms" style="font-size:34px">hourglass_empty</span></div>
+    <h2 id="gateTitle">Hết lượt đoán</h2>
+    <p id="gateMsg">Bạn đã hết lượt đoán trong tài khoản. Vui lòng nạp thêm để tiếp tục sử dụng tool.</p>
+    <button class="btn primary" id="gateBtn" onclick="location.href='./user.html'"><span class="ms" style="font-size:15px">account_balance_wallet</span> NẠP THÊM / MỞ TRANG CÁ NHÂN</button>
+  </div>
+</div>
+
+<script src="app.js?v=20260917c"></script>
+<script type="module">
+import { auth, db, doc, ref, get, getDoc, update, onValue, onAuthStateChanged, signOut, tryReauthSaved, formatPicks, migratePicks } from "./fbase.js?v=20260924";
+
+const chip = document.getElementById("toolTimer");
+const who = document.getElementById("toolUser");
+const gate = document.getElementById("gateOv");
+const gateMsgEl = document.getElementById("gateMsg");
+let uid = null, isAdmin = false, localPicks = 0, locked = false;
+
+function fmt(picks) {
+  if (isAdmin) return '<span class="ms" style="font-size:15px">verified</span> ∞ ADMIN';
+  return '<span class="ms" style="font-size:15px">bolt</span> ' + formatPicks(picks);
+}
+function setGate(show) {
+  gate.style.display = show ? "flex" : "none";
+  chip.classList.toggle("low", show);
+  if (show) chip.innerHTML = '<span class="ms" style="font-size:15px">error</span> HẾT LƯỢT';
+}
+function setGateContent(title, msg, href, btn) {
+  document.getElementById("gateTitle").textContent = title;
+  gateMsgEl.textContent = msg;
+  document.getElementById("gateBtn").innerHTML = '<span class="ms" style="font-size:15px">account_balance_wallet</span> ' + btn;
+  document.getElementById("gateBtn").setAttribute("onclick", "location.href='" + href + "'");
+}
+function isToolRunning() {
+  const b = document.getElementById("connBadge");
+  return !!b && b.classList.contains("on");
+}
+function lockTool() {
+  if (locked) return;
+  locked = true;
+  try {
+    if (typeof socket !== "undefined" && socket && typeof socket.emit === "function") socket.emit("disconnect-chrome");
+  } catch (_) {}
+  ["btnConnect", "btnDisconnect", "btnReset", "btnOpenGame", "toolLogout", "gateBtn", "portInput", "urlInput"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) { el.disabled = true; el.style.pointerEvents = "none"; el.style.opacity = ".4"; }
+  });
+  gateMsgEl.textContent = "Bạn đã hết lượt đoán trong tài khoản. Chrome CDP đã đóng — tự chuyển về trang cá nhân sau 5 giây...";
+  let t = 5;
+  const iv = setInterval(() => {
+    t--;
+    if (t <= 0) { clearInterval(iv); location.href = "./user.html"; return; }
+    gateMsgEl.textContent = "Bạn đã hết lượt đoán trong tài khoản. Chrome CDP đã đóng — tự chuyển về trang cá nhân sau " + t + " giây...";
+  }, 1000);
+}
+const GATE_MSG = { t: "Không đủ lượt đoán", m: "Bạn đã hết lượt đoán trong tài khoản. Vui lòng nạp thêm để tiếp tục sử dụng tool.", h: "./user.html", b: "NẠP THÊM / MỞ TRANG CÁ NHÂN" };
+
+onAuthStateChanged(auth, async (u) => {
+  if (!u) {
+    setTimeout(async () => {
+      if (auth.currentUser) { location.reload(); return; }
+      await tryReauthSaved();
+      if (auth.currentUser) { location.reload(); return; }
+      setGateContent("Chưa đăng nhập", "Bạn cần đăng nhập để sử dụng tool.", "./index.html", "VỀ TRANG ĐĂNG NHẬP");
+      setGate(true);
+    }, 1200);
+    return;
+  }
+  const token = await u.getIdToken();
+  if (typeof initSocket === 'function') await initSocket(token);
+  socket.on('charge', (data) => {
+    localPicks = data.picks;
+    chip.innerHTML = fmt(localPicks);
+    chip.classList.toggle('low', localPicks <= 0);
+    try { if (typeof log === 'function') log(data.message); } catch (_) {}
+  });
+  socket.on('kick', (data) => {
+    if (!locked) { setGateContent(GATE_MSG.t, GATE_MSG.m, GATE_MSG.h, GATE_MSG.b); setGate(true); lockTool(); }
+    try { if (typeof log === 'function') log(data.message); } catch (_) {}
+  });
+  socket.on('connect', () => { /* server re-anchors on reconnect */ });
+
+  const s = await getDoc(doc(db, "users", u.uid));
+  if (!s.exists()) { location.href = "./index.html"; return; }
+  const data = s.data();
+  uid = u.uid;
+  isAdmin = data.role === "admin";
+  localPicks = migratePicks(data);
+  who.textContent = data.username;
+
+  chip.innerHTML = fmt(localPicks);
+  if (!isAdmin && localPicks <= 0) {
+    chip.classList.add("low");
+    setGateContent(GATE_MSG.t, GATE_MSG.m, GATE_MSG.h, GATE_MSG.b);
+    setGate(true);
+  }
+
+  document.getElementById("toolLogout").addEventListener("click", async () => {
+    await signOut(auth);
+    location.href = "./index.html";
+  });
+
+  if (!isAdmin) {
+    onValue(ref(db, "users/" + uid), (snap) => {
+      if (!snap.exists()) return;
+      const cur = migratePicks(snap.val());
+      localPicks = cur;
+      chip.innerHTML = fmt(cur);
+      // Đồng bộ lượt từ DB (admin cấp) — không tự trừ, không mất lượt vô cớ
+      chip.classList.toggle("low", cur <= 0);
+      // Chặn mềm khi hết lượt: dựa DB, không liên quan snapshot/rStart
+      if (!isAdmin && cur <= 0 && !locked) {
+        setGateContent(GATE_MSG.t, GATE_MSG.m, GATE_MSG.h, GATE_MSG.b);
+        setGate(true);
+      }
+    });
+  }
+});
+</script>
+</body>
+</html>

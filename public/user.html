@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bảng điều khiển – Tool TX</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+<link rel="stylesheet" href="style.css?v=20260917">
+<script src="./config.js?v=1"></script>
+</head>
+<body>
+<div id="skel" class="skl">
+  <div class="skl-topbar">
+    <div class="skl-logo"></div><div class="skl-spacer"></div>
+    <div class="skl-chip"></div><div class="skl-avatar"></div>
+  </div>
+  <div class="skl-body">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="skl-bar" style="width:220px;height:22px"></div>
+        <div class="skl-bar" style="width:140px;height:12px"></div>
+      </div>
+      <div class="skl-bar" style="width:130px;height:38px;border-radius:10px"></div>
+    </div>
+    <div class="skl-stat-row">
+      <div class="skl-stat">
+        <div class="skl-bar skl-w55" style="height:13px"></div>
+        <div class="skl-bar" style="width:120px;height:36px;margin-top:4px"></div>
+        <div class="skl-bar skl-w70" style="height:10px"></div>
+      </div>
+      <div class="skl-stat">
+        <div class="skl-bar skl-w55" style="height:13px"></div>
+        <div class="skl-bar" style="width:100px;height:22px;margin-top:12px"></div>
+        <div class="skl-bar skl-w70" style="height:10px"></div>
+      </div>
+      <div class="skl-stat">
+        <div class="skl-bar skl-w55" style="height:13px"></div>
+        <div class="skl-bar" style="width:140px;height:18px;margin-top:14px"></div>
+        <div class="skl-bar skl-w70" style="height:10px"></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1.65fr 1fr;gap:16px">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="skl-card"><div class="skl-bar skl-w55" style="height:16px"></div><div class="skl-bar skl-w100" style="height:10px"></div><div class="skl-bar skl-w80" style="height:10px"></div></div>
+        <div class="skl-card"><div class="skl-bar skl-w40" style="height:16px"></div><div class="skl-h60"></div></div>
+      </div>
+      <div class="skl-card">
+        <div class="skl-bar skl-w55" style="height:16px"></div>
+        <div class="skl-bar w80" style="height:10px"></div>
+        <div class="skl-bar w100" style="height:10px"></div>
+        <div class="skl-bar w70" style="height:10px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>document.addEventListener("DOMContentLoaded",()=>{setTimeout(()=>{const s=document.getElementById("skel");if(s)s.classList.add("hide")},600)})</script>
+<div id="toast" class="toast"></div>
+
+<header class="topbar">
+  <a class="logo" href="./index.html"><small>LMT</small>TOOL TX</a>
+  <div class="tb-spacer"></div>
+  <div class="toolbar-auth">
+    <div id="timerChip" class="timer-chip"><span class="ms" style="font-size:15px">timer</span> --</div>
+    <div class="tb-user">
+      <div class="avatar" id="topAvatar">?</div>
+      <span class="u" id="topName">...</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="btnLogout" title="Đăng xuất"><span class="iclabel"><span class="ms" style="font-size:16px">logout</span> Đăng xuất</span></button>
+  </div>
+</header>
+
+<div id="warn" class="warn-banner hidden">
+  <span class="ic"><span class="ms" style="font-size:26px">hourglass_bottom</span></span>
+  <div class="tx"><strong>Hết lượt đoán</strong> — Bạn không còn lượt đoán nào để mở tool. Hãy nạp thêm theo hướng dẫn bên dưới để tiếp tục.</div>
+</div>
+
+<main class="wrap hidden" id="dash">
+  <div class="row" style="gap:12px">
+    <div style="flex:1">
+      <div class="page-title">Xin chào, <span id="nameDisp"></span></div>
+      <div class="page-sub" id="subRole"></div>
+    </div>
+    <a href="./tool.html" id="btnOpenTool" class="btn btn-gold"><span class="iclabel"><span class="ms">bolt</span> MỞ TOOL</span></a>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat gold">
+      <div class="l"><span class="iclabel"><span class="ms" style="font-size:14px">timer</span> Lượt đoán còn lại</span></div>
+      <div class="v clock" id="statTime" style="font-size:30px">--</div>
+      <div class="sub" id="statMoney"></div>
+    </div>
+    <div class="stat">
+      <div class="l"><span class="iclabel"><span class="ms" style="font-size:14px">payments</span> Giá mỗi lượt đoán</span></div>
+      <div class="v" id="statRate" style="font-size:20px;margin-top:12px">--</div>
+      <div class="s">Giá do admin cài đặt</div>
+    </div>
+    <div class="stat">
+      <div class="l"><span class="iclabel"><span class="ms" style="font-size:14px">swap_horiz</span> Quy đổi</span></div>
+      <div class="v" style="font-size:16px;margin-top:14px">1 lượt ≈ <span id="vndH" class="gold">--</span></div>
+      <div class="s">10.000 VNĐ ≈ <span id="hVnd">--</span></div>
+    </div>
+  </div>
+
+  <div class="db-grid">
+    <div class="card">
+      <div class="card-head"><span class="ms">account_balance_wallet</span> Hướng dẫn nạp tiền</div>
+      <div style="font-size:14px;color:var(--dim)">
+        <p><strong style="color:var(--text)">1. Chuyển khoản:</strong> Gửi <strong id="bankAmt" class="gold">--</strong> đến tài khoản bên dưới.</p>
+        <p style="margin-top:8px"><strong style="color:var(--text)">2. Nhắn admin:</strong> Gửi nội dung chuyển khoản cho admin qua Telegram/Zalo (nếu có).</p>
+        <p style="margin-top:8px">Sau khi admin xác nhận, lượt đoán sẽ được cộng vào tài khoản của bạn.</p>
+      </div>
+      <div class="card" style="background:rgba(246,196,83,.08);border-color:rgba(245,200,66,.3);margin-top:14px">
+        <div class="hint" style="font-size:11px;letter-spacing:1px;font-weight:700;text-transform:uppercase;margin-bottom:6px;color:var(--gold)">Thông tin chuyển khoản</div>
+        <div style="font-size:16px;font-weight:800;color:var(--gold)">[SỐ TÀI KẢN ADMIN]</div>
+        <div class="hint" style="margin-top:4px">Ngân hàng: [Tên ngân hàng] — Chủ TK: [Tên]</div>
+        <div class="hint" style="margin-top:2px">Nội dung CK: <code style="color:var(--text);background:rgba(255,255,255,.08);padding:2px 6px;border-radius:5px">TOP [username] [số tiền]</code></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="ms">calculate</span> Bảng tính nhanh</div>
+      <div class="stack">
+        <div>
+          <label>Số tiền muốn nạp (VNĐ)</label>
+          <input id="inMoney" type="number" placeholder="vd: 30000" min="0">
+        </div>
+        <div class="stat" style="text-align:center;background:rgba(255,255,255,.02)">
+          <div class="l">Bạn sẽ nhận được</div>
+          <div class="v clock" id="calcTime" style="font-size:22px;margin-top:8px">--</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="notauth" class="wrap hidden" style="padding-top:60px;text-align:center">
+  <div style="width:64px;height:64px;margin:0 auto 18px;border-radius:18px;background:rgba(255,77,94,.12);border:1px solid rgba(255,77,94,.3);color:var(--red);display:flex;align-items:center;justify-content:center"><span class="ms" style="font-size:30px">lock</span></div>
+  <h2 style="margin-bottom:8px">Chưa đăng nhập</h2>
+  <p style="color:var(--dim);margin-bottom:18px">Bạn cần đăng nhập để xem tài khoản của mình.</p>
+  <p id="notauth_err" style="color:#e5534b;font-size:13px;margin-bottom:12px;min-height:16px"></p>
+  <p><a href="javascript:location.reload()" class="btn btn-ghost"><span class="iclabel"><span class="ms" style="font-size:16px">refresh</span> Thử lại</span></a> <a href="./index.html" class="btn btn-gold"><span class="iclabel"><span class="ms" style="font-size:16px">login</span> Về trang đăng nhập</span></a></p>
+</div>
+
+<script type="module">
+import { auth, db, doc, getDoc, signOut, onAuthStateChanged, onSnapshot, tryReauthSaved, formatMoney, formatPicks, picksForMoney, moneyForPicks, migratePicks, getRate, showToast, setAvatar } from "./fbase.js?v=20260924";
+
+const $ = (id) => document.getElementById(id);
+let timer = null;
+
+function showGate() {
+  $("warn").classList.remove("hidden");
+  $("btnOpenTool").style.pointerEvents = "none";
+  $("btnOpenTool").style.opacity = ".45";
+}
+function hideGate() {
+  $("warn").classList.add("hidden");
+  $("btnOpenTool").style.pointerEvents = "";
+  $("btnOpenTool").style.opacity = "";
+}
+
+let curRate = 5000;
+
+function paintPicks(picks) {
+  const p = Math.max(0, Math.floor(Number(picks) || 0));
+  $("statTime").textContent = formatPicks(p);
+  $("statMoney").textContent = "≈ " + formatMoney(moneyForPicks(p, curRate));
+  const chip = $("timerChip");
+  const low = p <= 0;
+  chip.classList.toggle("low", low);
+  if (low) {
+    chip.innerHTML = '<span class="ms" style="font-size:15px">error</span> HẾT LƯỢT';
+    showGate();
+  } else {
+    chip.innerHTML = '<span class="ms" style="font-size:15px">bolt</span> ' + formatPicks(p);
+    hideGate();
+  }
+}
+
+function updateDisplay(data, rate) {
+  $("topAvatar").textContent = (data.username || "?").charAt(0).toUpperCase();
+  $("topName").textContent = data.username;
+  setAvatar($("topAvatar"), data.username);
+  $("nameDisp").textContent = data.displayName || data.username;
+  $("subRole").textContent = "Tài khoản " + (data.role === "admin" ? "Admin" : "Thành viên");
+  $("statRate").textContent = formatMoney(rate) + " / lượt đoán";
+  $("vndH").textContent = formatMoney(rate);
+  $("hVnd").textContent = formatPicks(picksForMoney(10000, rate));
+  $("bankAmt").textContent = formatMoney(rate) + " (1 lượt đoán)";
+  paintPicks(migratePicks(data));
+
+  if (!$("inMoney").dataset.bound) {
+    $("inMoney").dataset.bound = "1";
+    $("inMoney").addEventListener("input", () => {
+      const v = Number($("inMoney").value || 0);
+      $("calcTime").textContent = v > 0 ? "≈ " + formatPicks(picksForMoney(v, rate)) : "--";
+    });
+  }
+}
+
+async function boot() {
+  const unsub = onAuthStateChanged(auth, async (u) => {
+    if (!u) {
+      setTimeout(async () => {
+        if (auth.currentUser) { location.reload(); return; }
+        await tryReauthSaved();
+        if (auth.currentUser) { location.reload(); return; }
+        $("dash").classList.add("hidden");
+        $("notauth").classList.remove("hidden");
+      }, 1200);
+      return;
+    }
+    try {
+      const s = await getDoc(doc(db, "users", u.uid));
+      if (!s.exists()) { await signOut(auth); unsub(); $("dash").classList.add("hidden"); $("notauth").classList.remove("hidden"); return; }
+      const data = s.data();
+      const rate = await getRate();
+      $("notauth").classList.add("hidden");
+      $("dash").classList.remove("hidden");
+      updateDisplay(data, rate);
+
+      onSnapshot(doc(db, "users", u.uid), (snap) => {
+        if (!snap.exists()) return;
+        updateDisplay(snap.data(), rate);
+      });
+
+      $("btnLogout").addEventListener("click", async () => {
+        await signOut(auth);
+        location.href = "./index.html";
+      });
+      unsub();
+    } catch (ex) {
+      $("dash").classList.add("hidden");
+      $("notauth").classList.remove("hidden");
+      const er = $("notauth_err");
+      if (er) er.textContent = (ex && ex.message) || String(ex);
+    }
+  });
+}
+
+boot();
+</script>
+</body>
+</html>

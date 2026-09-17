@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quản trị – Tool TX</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+<link rel="stylesheet" href="style.css?v=20260917">
+<script src="./config.js?v=1"></script>
+</head>
+<body>
+<div id="skel" class="skl">
+  <div class="skl-topbar">
+    <div class="skl-logo"></div><div class="skl-spacer"></div>
+    <div class="skl-avatar"></div>
+  </div>
+  <div class="skl-body">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="skl-bar" style="width:200px;height:22px"></div>
+        <div class="skl-bar" style="width:160px;height:12px"></div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div class="skl-bar" style="width:120px;height:38px;border-radius:10px"></div>
+        <div class="skl-bar" style="width:100px;height:38px;border-radius:10px"></div>
+      </div>
+    </div>
+    <div class="skl-stat-row">
+      <div class="skl-stat"><div class="skl-bar skl-w40" style="height:13px"></div><div class="skl-bar" style="width:60px;height:28px;margin-top:6px"></div><div class="skl-bar skl-w70" style="height:10px"></div></div>
+      <div class="skl-stat"><div class="skl-bar skl-w40" style="height:13px"></div><div class="skl-bar" style="width:100px;height:22px;margin-top:10px"></div><div class="skl-bar" style="width:130px;height:32px;margin-top:4px"></div></div>
+      <div class="skl-stat"><div class="skl-bar skl-w40" style="height:13px"></div><div class="skl-bar" style="width:80px;height:28px;margin-top:6px"></div><div class="skl-bar" style="width:110px;height:32px;margin-top:4px"></div></div>
+    </div>
+    <div class="skl-card" style="padding:0;overflow:hidden">
+      <div class="skl-row" style="background:rgba(255,255,255,.03)"><div class="skl-bar skl-w80"></div><div class="skl-bar skl-w80"></div><div class="skl-bar skl-w80"></div><div class="skl-bar skl-w80"></div><div class="skl-bar w100"></div></div>
+      <div class="skl-row"><div class="skl-bar skl-w70"></div><div class="skl-bar skl-w55"></div><div class="skl-bar skl-w40"></div><div class="skl-bar skl-w80"></div><div class="skl-bar w100"></div></div>
+      <div class="skl-row"><div class="skl-bar skl-w70"></div><div class="skl-bar skl-w55"></div><div class="skl-bar skl-w40"></div><div class="skl-bar skl-w80"></div><div class="skl-bar w100"></div></div>
+      <div class="skl-row"><div class="skl-bar skl-w70"></div><div class="skl-bar skl-w55"></div><div class="skl-bar skl-w40"></div><div class="skl-bar skl-w80"></div><div class="skl-bar w100"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>document.addEventListener("DOMContentLoaded",()=>{setTimeout(()=>{const s=document.getElementById("skel");if(s)s.classList.add("hide")},600)})</script>
+<div id="toast" class="toast"></div>
+
+<header class="topbar">
+  <a class="logo" href="./index.html"><small>ADMIN</small>TOOL TX <span>INTELLIGENCE</span></a>
+  <div class="tb-spacer"></div>
+  <div class="toolbar-auth">
+    <div class="tb-user">
+      <div class="avatar" id="topAvatar">A</div>
+      <span class="u" id="topName">...</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="btnLogout"><span class="iclabel"><span class="ms" style="font-size:16px">logout</span> Đăng xuất</span></button>
+  </div>
+</header>
+
+<main class="wrap hidden" id="dash">
+  <div class="row">
+    <div style="flex:1">
+      <div class="page-title">Bảng quản trị</div>
+      <div class="page-sub" id="subInfo">Đang tải dữ liệu...</div>
+    </div>
+    <div class="row">
+      <select id="rateOrig" class="hidden"></select>
+      <button class="btn btn-gold" id="btnAddUser"><span class="iclabel"><span class="ms">person_add</span> Thêm user</span></button>
+      <a href="./tool.html" class="btn btn-ghost"><span class="iclabel"><span class="ms">bolt</span> Mở tool</span></a>
+    </div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat gold">
+      <div class="l"><span class="iclabel"><span class="ms" style="font-size:14px">group</span> Tổng người dùng</span></div>
+      <div class="v" id="statUsers">--</div>
+      <div class="s">Chưa tính kho admin</div>
+    </div>
+    <div class="stat">
+      <div class="l"><span class="iclabel"><span class="ms" style="font-size:14px">payments</span> Giá mỗi lượt đoán</span></div>
+      <div class="v" style="font-size:21px;margin-top:10px"><span id="statRate">--</span> / lượt</div>
+      <div class="row" style="margin-top:8px">
+        <input id="rateInput" type="number" min="1" style="width:130px" placeholder="VNĐ/lượt">
+        <button class="btn btn-sm btn-green" id="btnSaveRate"><span class="iclabel"><span class="ms" style="font-size:15px">save</span> Lưu</span></button>
+      </div>
+    </div>
+    <div class="stat">
+      <div class="l"><span class="iclabel"><span class="ms" style="font-size:14px">schedule</span> Tổng lượt đoán cấp</span></div>
+      <div class="v" style="font-size:22px;margin-top:10px" id="statTotalTime">--</div>
+      <div class="s">Toàn bộ user</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:24px;padding:0;overflow:hidden">
+    <div style="display:flex;align-items:center;padding:18px 20px;flex-wrap:wrap;gap:10px">
+      <h2 style="font-size:15px;font-weight:800;flex:1"><span class="iclabel"><span class="ms" style="font-size:18px">list_alt</span> Danh sách tài khoản</span></h2>
+      <div style="position:relative;width:250px;max-width:100%">
+        <span class="ms" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:18px;color:var(--dim2);pointer-events:none">search</span>
+        <input id="searchBox" placeholder="Tìm theo username..." style="padding-left:38px">
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="table">
+        <thead>
+          <tr><th>Username</th><th>Vai trò</th><th>Lượt đoán còn</th><th>Quy tiền</th><th>Hoạt động</th><th style="text-align:right">Hành động</th></tr>
+        </thead>
+        <tbody id="userRows"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<div id="modalAdd" class="modal-back hidden">
+  <div class="modal">
+    <h3><span class="iclabel"><span class="ms" style="font-size:19px">person_add</span> Thêm user mới</span></h3>
+    <div class="stack">
+      <div><label>Username</label><input id="nu_user" placeholder="vd: tri123"></div>
+      <div><label>Mật khẩu (≥ 6 ký tự)</label><input id="nu_pass" type="password" placeholder="••••••••"></div>
+      <div class="two">
+        <div><label>Số lượt đoán cấp</label><input id="nu_hrs" type="number" value="10" min="0" step="1"></div>
+        <div><label>═ Tương đương</label><input id="nu_money" readonly></div>
+      </div>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" id="nu_cancel">Hủy</button>
+        <button class="btn btn-gold btn-sm" id="nu_ok"><span class="iclabel"><span class="ms" style="font-size:15px">check</span> Tạo tài khoản</span></button>
+      </div>
+      <div class="err" id="nu_err"></div>
+    </div>
+  </div>
+</div>
+
+<div id="modalTime" class="modal-back hidden">
+  <div class="modal">
+    <h3><span class="iclabel"><span class="ms" style="font-size:19px">edit_calendar</span> Cộng / trừ lượt đoán — <span id="mt_user">?</span></span></h3>
+    <div class="stack">
+      <div id="mtTabs" class="mt-tabs auth-tabs">
+        <div class="tab on" data-mt="money"><span class="iclabel"><span class="ms" style="font-size:15px">payments</span> Tiền</span></div>
+        <div class="tab" data-mt="time"><span class="iclabel"><span class="ms" style="font-size:15px">schedule</span> Số lượt</span></div>
+      </div>
+      <div class="mt-pane" id="mtPaneMoney">
+        <div><label>Cộng / trừ (VNĐ)</label><input id="mt_money" type="number" placeholder="vd: 5000, -5000" min="0"></div>
+        <div class="hint">Tự quy đổi sang lượt theo giá mỗi lượt (vd 5000đ = 1 lượt).</div>
+      </div>
+      <div class="mt-pane hidden" id="mtPaneTime">
+        <label>Số lượt đoán</label>
+        <input id="mt_pick" type="number" placeholder="vd: 10 hoặc -3" inputmode="numeric">
+        <div class="hint">Số nguyên (lượt đoán). Dùng dấu "-" để trừ.</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim)"><span class="ms" style="font-size:16px;color:var(--gold)">info</span> Mỗi lượt = 1 ván đoán. Giá hiện tại: <strong id="mt_price" style="color:var(--gold)">--</strong></div>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" id="mt_cancel">Hủy</button>
+        <button class="btn btn-gold btn-sm" id="mt_ok"><span class="iclabel"><span class="ms" style="font-size:15px">check</span> Áp dụng</span></button>
+      </div>
+      <div class="err" id="mt_err"></div>
+    </div>
+  </div>
+</div>
+
+<div id="notauth" class="wrap hidden" style="padding-top:60px;text-align:center">
+  <div style="width:64px;height:64px;margin:0 auto 18px;border-radius:18px;background:rgba(255,77,94,.12);border:1px solid rgba(255,77,94,.3);color:var(--red);display:flex;align-items:center;justify-content:center"><span class="ms" style="font-size:30px">admin_panel_settings</span></div>
+  <h2 style="margin-bottom:8px">Chưa đăng nhập</h2>
+  <p style="color:var(--dim);margin-bottom:18px">Bạn cần đăng nhập quyền admin để quản lý.</p>
+  <p><a href="./index.html" class="btn btn-gold"><span class="iclabel"><span class="ms" style="font-size:16px">login</span> Về trang đăng nhập</span></a></p>
+</div>
+
+<script type="module">
+import { auth, db, doc, ref, getDoc, setDoc, updateDoc, deleteDoc, onValue, signOut, onAuthStateChanged, tryReauthSaved, getRate, registerUser, formatMoney, formatPicks, moneyForPicks, picksForMoney, migratePicks, showToast, setAvatar } from "./fbase.js?v=20260924";
+
+const $ = (id) => document.getElementById(id);
+let state = { rate: 5000, users: [], uid: null, mtTab: "money" };
+
+function fmtDate(ts) {
+  if (!ts || !ts.seconds) return "—";
+  const d = new Date(ts.seconds * 1000);
+  const p = (x) => String(x).padStart(2, "0");
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+async function refresh() {
+  state.rate = await getRate();
+  $("statRate").textContent = formatMoney(state.rate).replace(/\sVNĐ$/, "");
+  $("rateInput").value = state.rate;
+  $("mt_price").textContent = formatMoney(state.rate) + " / lượt";
+  const nonAdmin = state.users.filter((u) => u.role !== "admin");
+  $("statTotalTime").textContent = formatPicks(nonAdmin.reduce((a, u) => a + migratePicks(u), 0));
+}
+
+function render() {
+  const q = ($("searchBox").value || "").toLowerCase();
+  const list = state.users.filter((u) => u.role !== "admin" && u.username.toLowerCase().includes(q));
+  $("statUsers").textContent = list.length;
+  const tb = $("userRows");
+  if (!list.length) { tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--dim2);padding:26px">Chưa có user nào.</td></tr>'; return; }
+  tb.innerHTML = list.map((u) => {
+    const pick = migratePicks(u);
+    const isGated = pick <= 0;
+    return `<tr>
+      <td><strong>${u.username}</strong>${u.displayName && u.displayName !== u.username ? `<div class="hint">${u.displayName}</div>` : ""}</td>
+      <td><span class="pill user">USER</span></td>
+      <td><span class="pill ${isGated ? "none" : "timer"}">${formatPicks(pick)}</span></td>
+      <td style="color:var(--gold)">${formatMoney(moneyForPicks(pick, state.rate))}</td>
+      <td class="hint">${fmtDate(u.lastSeen)}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn btn-sm btn-green" data-act="time" data-uid="${u._uid}"><span class="iclabel"><span class="ms" style="font-size:14px">edit_calendar</span> Cộng/trừ</span></button>
+        <button class="btn btn-sm btn-ghost" data-act="role" data-uid="${u._uid}"><span class="iclabel"><span class="ms" style="font-size:14px">manage_accounts</span> Quyền</span></button>
+        <button class="btn btn-sm btn-danger" data-act="del" data-uid="${u._uid}"><span class="iclabel"><span class="ms" style="font-size:14px">delete</span> Xóa</span></button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+function wireActions() {
+  $("userRows").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-act]");
+    if (!b) return;
+    const uid = b.dataset.uid;
+    const u = state.users.find((x) => x._uid === uid);
+    if (!u) return;
+    if (b.dataset.act === "time") {
+      state.uid = uid;
+      state.mtTab = "money";
+      $("mt_user").textContent = u.username;
+      $("mt_money").value = "";
+      $("mt_pick").value = "";
+      $("mt_err").textContent = "";
+      setMtTab("money");
+      $("modalTime").classList.remove("hidden");
+    } else if (b.dataset.act === "role") {
+      const next = u.role === "admin" ? "user" : "admin";
+      if (!confirm(`Nâng hạ quyền cho ${u.username} thành ${next.toUpperCase()}?`)) return;
+      updateDoc(doc(db, "users", uid), { role: next }).then(() => showToast("Đã đổi quyền"));
+    } else if (b.dataset.act === "del") {
+      if (!confirm(`Xóa tài khoản "${u.username}"? Người này sẽ không đăng nhập được nữa.`)) return;
+      deleteDoc(doc(db, "users", uid)).then(() => showToast("Đã xóa user"));
+    }
+  });
+
+$("modalTime").addEventListener("click", (e) => { if (e.target === $("modalTime")) closeTime(); });
+  $("mtTabs").addEventListener("click", (e) => {
+    const t = e.target.closest(".tab");
+    if (t) setMtTab(t.dataset.mt);
+  });
+  $("mt_cancel").onclick = closeTime;
+  $("mt_ok").onclick = async () => {
+    const uid = state.uid;
+    const mtTab = state.mtTab;
+    $("mt_err").textContent = "";
+    if (!uid) { $("mt_err").textContent = "User không chọn"; return; }
+    let addPick = 0;
+    if (mtTab === "money") {
+      const mvNum = Number($("mt_money").value);
+      if (!isFinite(mvNum) || mvNum === 0) { $("mt_err").textContent = "Nhập số tiền"; return; }
+      addPick = mvNum < 0 ? -picksForMoney(Math.abs(mvNum), state.rate) : picksForMoney(mvNum, state.rate);
+      if (addPick === 0) { $("mt_err").textContent = "Số tiền quá nhỏ (< 1 lượt)"; return; }
+    } else {
+      const pv = $("mt_pick").value === "" ? 0 : Number($("mt_pick").value);
+      if (!Number.isInteger(pv)) { $("mt_err").textContent = "Số lượt phải là số nguyên"; return; }
+      if (pv === 0) { $("mt_err").textContent = "Nhập số lượt"; return; }
+      addPick = pv;
+    }
+    const target = doc(db, "users", uid);
+    const snap = await getDoc(target);
+    if (!snap.exists()) { $("mt_err").textContent = "User không tồn tại"; return; }
+    await updateDoc(target, { balanceFields: Math.max(0, migratePicks(snap.data()) + addPick), lastSeen: new Date() });
+    showToast("Đã cập nhật lượt đoán", 2000);
+    closeTime();
+  };
+
+  $("btnAddUser").onclick = () => {
+    $("nu_user").value = ""; $("nu_pass").value = ""; $("nu_hrs").value = "10"; $("nu_err").textContent = "";
+    updNuMoney();
+    $("modalAdd").classList.remove("hidden");
+  };
+  $("nu_cancel").onclick = () => $("modalAdd").classList.add("hidden");
+  $("nu_hrs").addEventListener("input", updNuMoney);
+  $("modalAdd").addEventListener("click", (e) => { if (e.target === $("modalAdd")) $("modalAdd").classList.add("hidden"); });
+  $("nu_ok").onclick = async () => {
+    const un = $("nu_user").value.trim().toLowerCase();
+    const pw = $("nu_pass").value;
+    $("nu_err").textContent = "";
+    if (!/^[a-z0-9._-]{3,20}$/.test(un)) { $("nu_err").textContent = "Username 3–20 ký tự, chữ thường/số"; return; }
+    if (pw.length < 6) { $("nu_err").textContent = "Mật khẩu ≥ 6 ký tự"; return; }
+    const pks = Math.floor(Number($("nu_hrs").value) || 0);
+    try {
+      await registerUser(un, pw, "", pks);
+      showToast(`Đã tạo ${un} + ${formatPicks(pks)}`);
+      $("modalAdd").classList.add("hidden");
+    } catch (ex) { $("nu_err").textContent = (ex && ex.message) || "Lỗi"; }
+  };
+
+  $("btnSaveRate").onclick = async () => {
+    const v = Number($("rateInput").value);
+    if (!v || v < 1) return;
+    await setDoc(doc(db, "settings", "config"), { vndPerPick: v }, { merge: true });
+    showToast("Đã lưu giá " + formatMoney(v) + "/lượt");
+    state.rate = v;
+    $("mt_price").textContent = formatMoney(v) + " / lượt";
+  };
+  $("searchBox").addEventListener("input", render);
+  $("btnLogout").addEventListener("click", async () => { await signOut(auth); location.href = "./index.html"; });
+}
+
+function updNuMoney() {
+  $("nu_money").value = formatMoney(moneyForPicks(Math.floor(Number($("nu_hrs").value) || 0), state.rate));
+}
+function closeTime() { $("modalTime").classList.add("hidden"); state.uid = null; }
+
+function setMtTab(t) {
+  state.mtTab = t;
+  $("mtTabs").querySelectorAll(".tab").forEach((x) => x.classList.toggle("on", x.dataset.mt === t));
+  $("mtPaneMoney").classList.toggle("hidden", t !== "money");
+  $("mtPaneTime").classList.toggle("hidden", t !== "time");
+  // Clear irrelevant inputs when switching tab
+  if (t === "money") { $("mt_pick").value = ""; }
+  else { $("mt_money").value = ""; }
+}
+
+onAuthStateChanged(auth, async (u) => {
+  if (!u) {
+    setTimeout(async () => {
+      if (auth.currentUser) { location.reload(); return; }
+      await tryReauthSaved();
+      if (auth.currentUser) { location.reload(); return; }
+      $("dash").classList.add("hidden");
+      $("notauth").classList.remove("hidden");
+    }, 1200);
+    return;
+  }
+  const s = await getDoc(doc(db, "users", u.uid));
+  if (!s.exists() || s.data().role !== "admin") { location.href = "./index.html"; return; }
+  $("notauth").classList.add("hidden");
+  $("dash").classList.remove("hidden");
+  $("topName").textContent = s.data().username;
+  setAvatar($("topAvatar"), s.data().username);
+  $("subInfo").textContent = "Chào admin — quản lý tài khoản, lượt đoán và giá mỗi lượt.";
+
+  refresh();
+  onValue(ref(db, "users"), (snap) => {
+    state.users = Object.entries(snap.val() || {}).map(([id, data]) => ({ _uid: id, ...data }));
+    refresh().then(render);
+  });
+  wireActions();
+});
+</script>
+</body>
+</html>
