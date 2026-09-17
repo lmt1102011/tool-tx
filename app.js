@@ -143,15 +143,15 @@ function render(snap) {
   $('statusLine').textContent = status.msg || '';
   $('statusLine').className = 'status' + (status.msg && (status.msg.startsWith('Lỗi') || status.msg.includes('thất bại')) ? ' err' : '');
   if (mode === 'feed' && sockLive && !status.connected) {
-    $('statusLine').textContent = hasData ? 'Đang nhận kết quả từ trình duyệt thiết bị — ' + (history ? history.length : 0) + ' ván' : 'Server sẵn sàng — nhấn MỞ WEB GAME (TỰ SOI) để bắt đầu';
+    $('statusLine').textContent = hasData ? 'Đang nhận kết quả — ' + (history ? history.length : 0) + ' ván' : 'Server sẵn sàng — nhấn KẾT NỐI TOOL để mở phiên';
     $('statusLine').className = 'status';
   }
   $('btnDisconnect').disabled = !status.connected;
 
   // Grid luôn hiển thị; khi offline hiện placeholder thay vì ẩn hết
   $('mainGrid').style.display = '';
-  $('urlInput').value = (config && config.url) || '';
-  $('portInput').value = config ? config.cdpPort : 9222;
+  const ui = $('urlInput'); if (ui) ui.value = (config && config.url) || '';
+  const pi = $('portInput'); if (pi) pi.value = config ? config.cdpPort : 9222;
 
   const sh = $('shareUrl');
   if (sh) sh.textContent = location.href;
@@ -196,7 +196,7 @@ function render(snap) {
     $('pctT').textContent = '50%';
     $('pctX').textContent = '50%';
     $('predConf').textContent = 'chờ kết nối';
-    $('predAdvice').textContent = mode === 'feed' ? 'Nhấn MỞ WEB GAME (TỰ SOI) — tool tự đọc kết quả ngay trên trình duyệt thiết bị này' : 'Nhấn CHROME CDP (cửa sổ Chrome CDP riêng sẽ mở — đăng nhập Sunwin 1 lần, lần sau tự nhớ)';
+    $('predAdvice').textContent = 'Nhấn KẾT NỐI TOOL — server mở/giữ phiên Chrome CDP soi bàn chung, mọi thiết bị cùng xem dự đoán';
     $('predAdvice').className = 'pred-advice off';
     $('predVotes').innerHTML = '';
     $('predLast').style.display = 'none';
@@ -214,18 +214,22 @@ function render(snap) {
     $('liveView').style.display = '';
     renderChart([], []);
     if ($('liveMask')) $('liveMask').style.display = '';
-    if ($('liveMask')) $('liveMask').innerHTML = mode === 'feed' ? 'CHƯA CÓ HÌNH<br>' + (sockLive ? 'Chế độ tự soi — mở web game trên thiết bị này' : 'Chưa kết nối server') : 'CHƯA CÓ HÌNH<br>Chưa kết nối — bấm CHROME CDP';
+    if ($('liveMask')) $('liveMask').innerHTML = 'CHƯA CÓ HÌNH<br>' + (sockLive ? 'Đang chờ khung hình từ máy chủ' : 'Chưa kết nối server');
     return;
   }
 
-  // Live view mode
+  // Live view mode (admin-only)
+  const lc = $('liveCard');
+  const adminViewer = window.__TX_ROLE === 'admin';
   if (config && config.stream) {
-    if ($('liveView')) $('liveView').style.display = '';
+    if (lc) lc.style.display = adminViewer ? '' : 'none';
+    if ($('liveView')) $('liveView').style.display = adminViewer ? '' : 'none';
   } else {
+    if (lc) lc.style.display = 'none';
     if ($('liveView')) $('liveView').style.display = 'none';
     const m2 = $('liveMask');
     if (m2) {
-      m2.innerHTML = mode === 'feed' ? 'XEM TRỰC TIẾP ĐÃ TẮT<br>Game chạy trên trình duyệt thiết bị của bạn —<br>bảng dự đoán hiển thị ngay tại đây' : 'XEM TRỰC TIẾP ĐÃ TẮT<br>Game chạy trong cửa sổ Chrome CDP riêng cạnh đây —<br>UI dự đoán đã tiêm sẵn góc phải dưới trong game';
+      m2.innerHTML = 'XEM TRỰC TIẾP ĐÃ TẮT<br>Chưa có khung hình từ máy chủ — nhấn KẾT NỐI TOOL (admin)<br>mọi thiết bị vẫn xem bảng dự đoán';
       m2.style.display = '';
     }
   }
@@ -537,10 +541,14 @@ function bindSocketEvents() {
   });
 }
 
-$('btnConnect').onclick = () => getSocket().emit('launch-profile', {
-  port: parseInt($('portInput').value, 10) || 9222,
-  url: $('urlInput').value,
-});
+$('btnConnect').onclick = () => {
+  const s = getSocket();
+  if (s && s.connected) {
+    if (window.__TX_ROLE === 'admin') s.emit('launch-profile', {});
+    return;
+  }
+  if (!s && window.__TX_TOKEN && typeof initSocket === 'function') initSocket(window.__TX_TOKEN);
+};
 $('btnDisconnect').onclick = () => getSocket().emit('disconnect-chrome');
 $('btnReset').onclick = () => { if (confirm('Xóa toàn bộ dữ liệu?')) getSocket().emit('reset'); };
 

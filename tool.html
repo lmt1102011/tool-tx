@@ -190,6 +190,11 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .skl-conn input{height:32px;border-radius:6px;background:#0f172a;border:1px solid #1e293b}
 .skl-conn .skl-p{width:72px}.skl-conn .skl-u{flex:1;height:32px;border-radius:6px;background:#0f172a;border:1px solid #1e293b}
 .skl-pred{border:2px solid #1e293b;border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;gap:10px;align-items:center}
+/* Live view sàn (admin) */
+.live-wrap{position:relative;width:100%;background:#000;border:1px solid #1e293b;border-radius:14px;overflow:hidden}
+.live-wrap img{display:block;width:100%;height:auto;max-height:480px;object-fit:contain}
+#liveMask{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;color:var(--dim);font-size:12.5px;background:rgba(10,15,24,.88);padding:16px;line-height:1.5}
+#liveView{touch-action:none;cursor:crosshair}
 </style>
 <script src="./config.js?v=1"></script>
 </head>
@@ -248,14 +253,11 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   </div>
 </header>
 
-<div class="note-bar"><span class="ms">devices</span> <span>CHẾ ĐỘ TỰ SOI — Mỗi thiết bị tự mở web game trên trình duyệt riêng, tool đọc kết quả gửi về server để dự đoán. Không cần Chrome CDP máy chủ.</span></div>
+<div class="note-bar"><span class="ms">devices</span> <span>CHẾ ĐỘ TRỰC TIẾP — Máy chủ chạy 1 phiên Chrome CDP soi bàn chung, mọi thiết bị (PC/điện thoại) đều xem dự đoán. Admin được xem &amp; điều khiển màn hình sàn từ xa.</span></div>
 
 <section class="card" id="connCard">
   <div class="conn-row">
-    <input id="portInput" type="number" value="9222" style="display:none" title="CDP Port">
-    <input id="urlInput" type="text" class="url" placeholder="URL web game" spellcheck="false">
-    <button id="btnOpenGame" class="btn primary" title="Mở web game trên chính trình duyệt thiết bị này — tự soi kết quả gửi về server"><span class="ms" style="font-size:15px">smartphone</span> MỞ WEB GAME (TỰ SOI)</button>
-    <button id="btnConnect" class="btn ghost" title="(Tùy chọn admin) Mở Chrome CDP riêng trên máy chủ"><span class="ms" style="font-size:15px">power_settings_new</span> CHROME CDP</button>
+    <button id="btnConnect" class="btn primary" title="Kết nối tool tới server dự đoán — server tự mở/kết nối lại Chrome CDP"><span class="ms" style="font-size:15px">power_settings_new</span> KẾT NỐI TOOL</button>
     <button id="btnDisconnect" class="btn danger" disabled><span class="ms" style="font-size:15px">link_off</span> NGẮT</button>
     <button id="btnReset" class="btn ghost" title="Xóa toàn bộ dữ liệu"><span class="ms" style="font-size:15px">restart_alt</span> RESET</button>
   </div>
@@ -264,10 +266,6 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
     <span>Mở từ điện thoại: <b id="shareUrl" class="share-url">...</b></span>
     <span class="sep">·</span>
     <span>Server: <b id="serverHost">--</b> <a href="#" id="setServer" style="color:#7dd3fc">đổi</a></span>
-    <span class="sep">·</span>
-    <span>Nguồn soi: <b id="feedSrc">--</b></span>
-    <span class="sep">·</span>
-    <a href="#" id="copySnip" style="color:#f5c842">✂ Plugin soi cho tab game</a>
   </div>
 </section>
 
@@ -332,6 +330,14 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   </div>
 
   <div>
+    <section class="card" id="liveCard" style="display:none">
+      <h2><span class="ms">screenshare</span> MÀN HÌNH SÀN (ADMIN)</h2>
+      <div class="live-wrap">
+        <img id="liveView" alt="">
+        <div id="liveMask"></div>
+      </div>
+    </section>
+
     <section class="card">
       <h2><span class="ms">terminal</span> Nhật ký</h2>
       <button class="log-toggle" id="logToggle"><span class="ms" style="font-size:15px">expand_more</span> Nhật ký WS / sự kiện (ẩn)</button>
@@ -341,9 +347,10 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
     <section class="card" style="margin-top:10px">
       <h2><span class="ms">help</span> Cách dùng</h2>
       <div style="font-size:12px;color:var(--dim);line-height:1.6">
-        <p><b style="color:var(--text)">1.</b> Nhấn <b style="color:var(--accent)">KẾT NỐI CHROME</b> để mở Chrome CDP riêng và mở game.</p>
-        <p style="margin-top:6px"><b style="color:var(--text)">2.</b> Bảng dự đoán xuất hiện góc phải dưới trong cửa sổ game.</p>
-        <p style="margin-top:6px"><b style="color:var(--text)">3.</b> Bảng phía trên đây hiển thị phân tích chi tiết từng ván.</p>
+        <p><b style="color:var(--text)">1.</b> Nhấn <b style="color:var(--accent)">KẾT NỐI TOOL</b> để kết nối server dự đoán (<b>điện thoại mở y hệt PC</b>, chỉ cần trang này).</p>
+        <p style="margin-top:6px"><b style="color:var(--text)">2.</b> Server tự mở/giữ 1 phiên Chrome CDP soi bàn chung — mọi thiết bị cùng xem bảng dự đoán.</p>
+        <p style="margin-top:6px"><b style="color:var(--text)">3.</b> <b style="color:var(--accent)">Admin</b>: màn hình sàn hiện ra — <b>chạm/kéo</b> trên màn hình = đặt cược &amp; điều khiển Chrome máy chủ từ xa.</p>
+        <p style="margin-top:6px"><b style="color:var(--text)">4.</b> Bảng phía trên hiển thị phân tích chi tiết từng ván.</p>
         <p style="margin-top:12px;color:#facc15;font-weight:700;font-size:12.5px;line-height:1.5">⚠ Nên bỏ qua 1-2 phiên đầu để tool đọc và ổn định nguồn dữ liệu</p>
       </div>
     </section>
@@ -352,12 +359,6 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 </div>
 
 <footer class="foot">Công cụ phân tích thống kê — dự đoán mang tính tham khảo, không đảm bảo thắng.</footer>
-</div>
-
-<div style="display:none" aria-hidden="true">
-  <img id="liveView" alt="">
-  <div id="liveMask"></div>
-  <span id="liveBadge"></span>
 </div>
 
 <div id="gateOv" class="gate-ov" style="display:none">
@@ -369,7 +370,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   </div>
 </div>
 
-<script src="app.js?v=20260917d"></script>
+<script src="app.js?v=20260918a"></script>
 <script type="module">
 import { auth, db, doc, ref, get, getDoc, update, onValue, onAuthStateChanged, signOut, tryReauthSaved, formatPicks, migratePicks } from "./fbase.js?v=20260927";
 
@@ -430,6 +431,7 @@ onAuthStateChanged(auth, async (u) => {
     return;
   }
   const token = await u.getIdToken();
+  window.__TX_TOKEN = token;
   if (typeof initSocket === 'function') await initSocket(token);
   if (socket) socket.on('charge', (data) => {
     localPicks = data.picks;
@@ -448,6 +450,7 @@ onAuthStateChanged(auth, async (u) => {
   const data = s.data();
   uid = u.uid;
   isAdmin = data.role === "admin";
+  window.__TX_ROLE = data.role;
   localPicks = migratePicks(data);
   who.textContent = data.username;
 
