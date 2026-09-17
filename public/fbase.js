@@ -135,19 +135,27 @@ export async function registerUser(username, password, displayName, balanceField
     throw new Error(msgFire(j.error));
   }
   const uid = j.localId;
+  let isAdmin = false;
+  try {
+    if (prevUser) {
+      const s = await getDoc(doc(db, "users/" + prevUser.uid));
+      isAdmin = !!s.exists() && s.data().role === "admin";
+    }
+  } catch (_) {}
   const now = Date.now();
   const data = {
     username: uname,
     email,
     displayName: (displayName || "").trim() || uname,
     role: "user",
-    balanceFields: Math.max(0, Math.floor(Number(balanceFields) || 0)),
+    balanceFields: isAdmin ? Math.max(0, Math.floor(Number(balanceFields) || 0)) : 0,
     createdAt: now,
     lastSeen: now,
   };
   try {
+    const authQ = isAdmin ? (await prevUser.getIdToken()) : j.idToken;
     const r = await fetch(
-      firebaseConfig.databaseURL + "/users/" + uid + ".json?auth=" + j.idToken,
+      firebaseConfig.databaseURL + "/users/" + uid + ".json?auth=" + authQ,
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -160,7 +168,7 @@ export async function registerUser(username, password, displayName, balanceField
     }
   } catch (e) {
     if (/(Ghi dữ liệu)/.test(e.message || "")) throw e;
-    throw new Error("Ghi dữ liệu thất bại");
+    throw new Error("Ghi dữ liệu thất bại (kiểm tra rules Realtime Database)");
   }
   if (!prevUser) {
     try { await signInWithEmailAndPassword(auth, email, password); } catch (_) {}
