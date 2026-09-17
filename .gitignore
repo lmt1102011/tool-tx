@@ -18,3 +18,7 @@ database.rules.json
 firestore.rules
 github-token.txt
 seed-admin.mjs
+*-adminsdk-*.json
+*service*account*.json
+firebase*.json
+*.pem
