@@ -30,6 +30,15 @@ jobs:
             ghcr.io/kivy/buildozer:latest \
             -v android debug 2>&1 | tee build.log
 
+      - name: Dump build error (annotations)
+        if: failure()
+        shell: bash
+        run: |
+          echo "::error::==== TAIL build.log ===="
+          tail -n 50 build.log | sed 's/^/::error::/'
+          echo "::error::==== relevant lines ===="
+          grep -nE "ERROR|Error|Traceback|Exception|FAILED|Could not|Unable to|No such|cannot|fatal" build.log | tail -n 40 | sed 's/^/::error::/'
+
       - name: Upload build log (on failure)
         if: failure()
         uses: actions/upload-artifact@v4
