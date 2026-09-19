@@ -26,6 +26,9 @@ function serverUrl() {
   if (discoUrl) return discoUrl;
   return (window.__TX_SERVER || "").trim();
 }
+function getServerOverride() {
+  try { return (localStorage.getItem("tx_server") || "").trim(); } catch (_) { return ""; }
+}
 
 // Hiển thị lỗi kết nối trên statusLine (tool.html)
 function setSockStatus(msg) {
@@ -523,12 +526,23 @@ function bindSocketEvents() {
     log('Mất kết nối: ' + reason, 'err');
     updateServerHost();
     setSockStatus('Mất kết nối server — ' + reason);
+    loadDiscovery(); // tunnel có thể vừa restart → lấy URL mới ngay
   });
   socket.on('connect_error', (err) => {
     const u = serverUrl() || location.origin;
     log('Lỗi kết nối: ' + (err.message || err), 'err');
     updateServerHost();
-    setSockStatus('Lỗi kết nối "' + u + '" — ' + (err.message || 'kiểm tra server đã bật chưa') + '. Bấm "đổi" ở feed-note để sửa.');
+    // Override tay đang trỏ URL chết mà auto-discovery có URL khác → tự quên override và thử lại
+    const ov = getServerOverride();
+    if (ov && discoUrl && ov !== discoUrl) {
+      setSockStatus('Lỗi kết nối "' + u + '" — đang chuyển về server tự động "' + discoUrl + '"...');
+      try { localStorage.removeItem('tx_server'); } catch (_) {}
+      if (socket) { try { socket.disconnect(); } catch (_) {} socket = null; }
+      initSocket(lastToken);
+      return;
+    }
+    setSockStatus('Lỗi kết nối "' + u + '" — ' + (err.message || 'kiểm tra server đã bật chưa') + '. Đang tự tìm server...');
+    loadDiscovery(); // lấy ngay URL tunnel mới nhất nếu server-url.json vừa đổi
   });
   socket.on('screen', (b64) => {
     const now = Date.now();
