@@ -190,7 +190,8 @@ function render(snap) {
   if (!active) {
     const pb = $('predBox');
     pb.className = 'pred-box';
-    setPhase('idle', 'chờ kết nối');
+    const pbBadge = $('phaseBadge'); if (pbBadge) { pbBadge.textContent = 'CHỜ DỮ LIỆU'; pbBadge.className = 'phase-badge idle'; }
+    const pbLine = $('phaseLine'); if (pbLine) { pbLine.textContent = 'chờ kết nối'; pbLine.className = 'phase-line g'; }
     $('predPick').textContent = '--';
     $('predPick').className = 'side';
     $('pctT').textContent = '50%';
