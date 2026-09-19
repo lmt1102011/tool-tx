@@ -21,10 +21,10 @@ jobs:
           java-version: '17'
 
       - name: Build debug APK (buildozer)
-        uses: Kivy/buildozer-action@v2
+        uses: ArtemSBulgakov/buildozer-action@v1
         with:
-          working-directory: tool-tx-kivy
-          buildozer-command: buildozer -v android debug
+          workdir: tool-tx-kivy
+          command: buildozer -v android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
