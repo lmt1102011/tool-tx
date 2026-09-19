@@ -105,6 +105,7 @@ const STRAT_NAMES = {
 };
 
 const state = { snapshot: null, lastNoteTs: 0 };
+let launchOnReady = false;
 
 function log(msg, kind) {
   const box = $('log');
@@ -145,7 +146,7 @@ function render(snap) {
 
   $('statusLine').textContent = status.msg || '';
   $('statusLine').className = 'status' + (status.msg && (status.msg.startsWith('Lỗi') || status.msg.includes('thất bại')) ? ' err' : '');
-  if (mode === 'feed' && sockLive && !status.connected) {
+  if (mode === 'feed' && sockLive && !status.connected && !status.msg) {
     $('statusLine').textContent = hasData ? 'Đang nhận kết quả — ' + (history ? history.length : 0) + ' ván' : 'Server sẵn sàng — nhấn KẾT NỐI TOOL để mở phiên';
     $('statusLine').className = 'status';
   }
@@ -521,6 +522,7 @@ function bindSocketEvents() {
     log('Đã kết nối server: ' + (u || 'cùng nguồn'));
     updateServerHost();
     setSockStatus('Đã kết nối — ' + (u || location.host));
+    if (window.__TX_ROLE === 'admin' && launchOnReady) { launchOnReady = false; socket.emit('launch-profile', {}); }
   });
   socket.on('disconnect', (reason) => {
     log('Mất kết nối: ' + reason, 'err');
@@ -558,11 +560,24 @@ function bindSocketEvents() {
 
 $('btnConnect').onclick = () => {
   const s = getSocket();
+  const role = window.__TX_ROLE;
   if (s && s.connected) {
-    if (window.__TX_ROLE === 'admin') s.emit('launch-profile', {});
+    if (role === 'admin') {
+      log('Đang mở phiên Chrome CDP bàn chung...');
+      setSockStatus('Đang mở Chrome CDP bàn chung...');
+      s.emit('launch-profile', {});
+    } else {
+      log('Chỉ quản trị mới kích hoạt được phiên soi — bạn đang vào với quyền ' + (role || 'chưa đăng nhập') + '.', 'err');
+      setSockStatus('Bạn không có quyền admin — phiên do quản trị bật.');
+    }
     return;
   }
-  if (!s && window.__TX_TOKEN && typeof initSocket === 'function') initSocket(window.__TX_TOKEN);
+  if (!s && window.__TX_TOKEN && typeof initSocket === 'function') {
+    launchOnReady = role === 'admin';
+    log(launchOnReady ? 'Đang kết nối server, sẽ tự mở phiên khi sẵn sàng...' : 'Đang kết nối server...');
+    setSockStatus('Đang kết nối server...');
+    initSocket(window.__TX_TOKEN);
+  }
 };
 $('btnDisconnect').onclick = () => getSocket().emit('disconnect-chrome');
 $('btnReset').onclick = () => { if (confirm('Xóa toàn bộ dữ liệu?')) getSocket().emit('reset'); };
