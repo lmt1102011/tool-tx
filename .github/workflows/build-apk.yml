@@ -37,14 +37,11 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          echo "::error::==== vung kivy compile (16430-16500) ===="
-          sed -n '16430,16500p' build.log | sed 's/^/::error::/'
-          echo "::error::==== vung pip subprocess (18590-19090) ===="
-          sed -n '18590,19090p' build.log | grep -nE "subprocess|error|ERROR|pip|Building |Collecting |Cythonize|Traceback|Warning|WARNING" | sed 's/^/::error::/' | tail -n 60
-          echo "::error::==== Cythonize quanh kivy ===="
-          grep -nE "Cythonize|Building kivy|KivyRecipe|cython" build.log | tail -n 25 | sed 's/^/::error::/'
-          echo "::error::==== tail 12 ===="
-          tail -n 12 build.log | sed 's/^/::error::/'
+          FIRST=$(grep -n "no such file or directory" build.log | head -n1 | cut -d: -f1)
+          S=$(grep -n "Running cython where appropriate" build.log | head -n1 | cut -d: -f1)
+          echo "::error::FIRST_MISSING=$FIRST CY_START=$S N_CYTH=$(grep -c Cythonize build.log) CTX=$(sed -n $((FIRST-6)),$((FIRST+1))p build.log | tr ';' ' ' | tr '\n' ';')"
+          echo "::error::ERR_BETW=$(grep -nE 'Cythonize|Traceback|Error|Exception|error:|illegal|fatal' build.log | awk -F: -v S=$S -v F=$FIRST '$1>S && $1<F' | tail -n 14 | tr '\n' ';')"
+          echo "::error::CYTH_MISSING=$(for f in _clipboard_sdl2 audio_sdl2 cgl_gl cgl_mock text_layout; do grep -n Cythonize build.log | grep $f | tr '\n' ';'; done) TAIL=$(tail -n 4 build.log | tr '\n' ';')"
 
       - name: Upload build log (on failure)
         if: failure()
