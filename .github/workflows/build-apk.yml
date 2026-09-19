@@ -37,10 +37,12 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          echo "::error::==== 'error:' lines ===="
-          grep -nE "error:" build.log | tail -n 8 | sed 's/^/::error::/'
-          echo "::error::==== context before loi ===="
-          grep -nE "Building |Compiling |longobject|PyLong_AsByteArray|Traceback|ERROR:|raise|Error " build.log | tail -n 12 | sed 's/^/::error::/'
+          echo "::error::==== vung kivy compile (16430-16500) ===="
+          sed -n '16430,16500p' build.log | sed 's/^/::error::/'
+          echo "::error::==== vung pip subprocess (18590-19090) ===="
+          sed -n '18590,19090p' build.log | grep -nE "subprocess|error|ERROR|pip|Building |Collecting |Cythonize|Traceback|Warning|WARNING" | sed 's/^/::error::/' | tail -n 60
+          echo "::error::==== Cythonize quanh kivy ===="
+          grep -nE "Cythonize|Building kivy|KivyRecipe|cython" build.log | tail -n 25 | sed 's/^/::error::/'
           echo "::error::==== tail 12 ===="
           tail -n 12 build.log | sed 's/^/::error::/'
 
