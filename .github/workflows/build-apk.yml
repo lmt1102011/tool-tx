@@ -23,11 +23,20 @@ jobs:
 
       - name: Build debug APK (ghcr.io/kivy/buildozer)
         run: |
+          set -o pipefail
           docker run --rm \
             -v "$HOME/.buildozer":/home/user/.buildozer \
             -v "$GITHUB_WORKSPACE/tool-tx-kivy":/home/user/hostcwd \
             ghcr.io/kivy/buildozer:latest \
-            -v android debug
+            -v android debug 2>&1 | tee build.log
+
+      - name: Upload build log (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          retention-days: 7
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
