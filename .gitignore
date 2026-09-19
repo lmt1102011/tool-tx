@@ -22,3 +22,4 @@ server.js
 lib/
 package.json
 package-lock.json
+chrome-profile-*/
