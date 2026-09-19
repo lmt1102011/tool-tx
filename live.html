@@ -32,7 +32,7 @@ html,body{margin:0;padding:0;height:100%;background:#000;color:#e2e8f0;font-fami
   const $ = (id) => document.getElementById(id);
   const st = $('st'), scr = $('scr'), wait = $('wait');
   let socket = null, token = '';
-  try { token = sessionStorage.getItem('tx_token') || ''; } catch (_) {}
+  try { token = localStorage.getItem('tx_token') || sessionStorage.getItem('tx_token') || ''; } catch (_) {}
   if (!token) { st.textContent = 'Chưa đăng nhập — mở từ trang tool sau khi đăng nhập.'; st.className = 'err'; return; }
 
   function setMsg(t, cls) { st.textContent = t; st.className = cls || ''; }
