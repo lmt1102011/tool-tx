@@ -24,8 +24,6 @@ android.ndk = 25b
 android.accept_sdk_license = True
 p4a.branch = v2024.01.21
 android.permissions = INTERNET,ACCESS_NETWORK_STATE
-# Cho HTTP loopback 127.0.0.1:9222 (Chromium Fork) — giai đoạn sau. An toàn khi build.
-android.extra_manifest_application_arguments = android:usesCleartextTraffic="true"
 
 # iOS (chưa dùng)
 ios.kivy_ios_url = https://github.com/kivy/kivy-ios
