@@ -37,11 +37,13 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          FIRST=$(grep -n "no such file or directory" build.log | head -n1 | cut -d: -f1)
-          S=$(grep -n "Running cython where appropriate" build.log | head -n1 | cut -d: -f1)
-          echo "::error::FIRST_MISSING=$FIRST CY_START=$S N_CYTH=$(grep -c Cythonize build.log) CTX=$(sed -n $((FIRST-6)),$((FIRST+1))p build.log | tr ';' ' ' | tr '\n' ';')"
-          echo "::error::ERR_BETW=$(grep -nE 'Cythonize|Traceback|Error|Exception|error:|illegal|fatal' build.log | awk -F: -v S=$S -v F=$FIRST '$1>S && $1<F' | tail -n 14 | tr '\n' ';')"
-          echo "::error::CYTH_MISSING=$(for f in _clipboard_sdl2 audio_sdl2 cgl_gl cgl_mock text_layout; do grep -n Cythonize build.log | grep $f | tr '\n' ';'; done) TAIL=$(tail -n 4 build.log | tr '\n' ';')"
+          STAGE=$(grep -nE 'Building .+|Running cython' build.log | tail -n 2 | tr '\n' ';')
+          echo "::error::STAGE=$STAGE"
+          ERR=$(grep -nE 'error:|Error|ERROR|Traceback|Exception|failed|no such file' build.log | tail -n 10 | tr '\n' ';' || true)
+          echo "::error::ERRS=$ERR"
+          echo "::error::TAIL=$(tail -n 5 build.log | tr '\n' ';' || true)"
+          APKDIR=$(find .buildozer -name '*.apk' 2>/dev/null | head -n1 || true)
+          echo "::error::APK=$APKDIR"
 
       - name: Upload build log (on failure)
         if: failure()
