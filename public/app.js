@@ -4,8 +4,14 @@ let ownStatus = { connected: false, msg: '' };
 
 // Giữ token/role trong sessionStorage để trang live.html mở từ popup dùng được (cùng origin Pages)
 function syncAuthStorage() {
-  if (window.__TX_TOKEN) { try { sessionStorage.setItem('tx_token', window.__TX_TOKEN); } catch (_) {} }
-  if (window.__TX_ROLE) { try { sessionStorage.setItem('tx_role', window.__TX_ROLE); } catch (_) {} }
+  if (window.__TX_TOKEN) {
+    try { sessionStorage.setItem('tx_token', window.__TX_TOKEN); } catch (_) {}
+    try { localStorage.setItem('tx_token', window.__TX_TOKEN); } catch (_) {}
+  }
+  if (window.__TX_ROLE) {
+    try { sessionStorage.setItem('tx_role', window.__TX_ROLE); } catch (_) {}
+    try { localStorage.setItem('tx_role', window.__TX_ROLE); } catch (_) {}
+  }
 }
 setInterval(syncAuthStorage, 2000);
 
@@ -55,8 +61,14 @@ function updateOwnUi() {
 
 // Mở màn hình 1:1 của chính mình trong tab/popup riêng
 function openLivePopup() {
-  const u = serverUrl() || location.origin;
-  const pop = window.open(u + '/live.html', 'txlive' + Date.now(), 'width=1310,height=780,resizable=yes,scrollbars=no,status=no');
+  if (window.__TX_TOKEN) {
+    try { localStorage.setItem('tx_token', window.__TX_TOKEN); } catch (_) {}
+    try { sessionStorage.setItem('tx_token', window.__TX_TOKEN); } catch (_) {}
+  }
+  if (window.__TX_ROLE) {
+    try { localStorage.setItem('tx_role', window.__TX_ROLE); } catch (_) {}
+  }
+  const pop = window.open('live.html', 'txlive' + Date.now(), 'width=1310,height=780,resizable=yes,scrollbars=no,status=no');
   if (pop) pop.focus();
 }
 
