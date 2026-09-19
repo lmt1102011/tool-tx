@@ -20,6 +20,9 @@ jobs:
         with:
           path: ~/.buildozer
           key: buildozer-${{ hashFiles('tool-tx-kivy/buildozer.spec') }}
+          restore-keys: |
+            buildozer-
+          save-always: true
 
       - name: Build debug APK (ghcr.io/kivy/buildozer)
         run: |
@@ -34,10 +37,12 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          echo "::error::==== TAIL build.log ===="
-          tail -n 50 build.log | sed 's/^/::error::/'
-          echo "::error::==== relevant lines ===="
-          grep -nE "ERROR|Error|Traceback|Exception|FAILED|Could not|Unable to|No such|cannot|fatal" build.log | tail -n 40 | sed 's/^/::error::/'
+          echo "::error::==== 'error:' lines ===="
+          grep -nE "error:" build.log | tail -n 8 | sed 's/^/::error::/'
+          echo "::error::==== context before loi ===="
+          grep -nE "Building |Compiling |longobject|PyLong_AsByteArray|Traceback|ERROR:|raise|Error " build.log | tail -n 12 | sed 's/^/::error::/'
+          echo "::error::==== tail 12 ===="
+          tail -n 12 build.log | sed 's/^/::error::/'
 
       - name: Upload build log (on failure)
         if: failure()

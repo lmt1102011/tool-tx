@@ -13,6 +13,10 @@ else:
 SESSION_PATH = os.path.join(BASE_DIR, "session.json")
 CFG_PATH = os.path.join(BASE_DIR, "config.txt")
 
+# nơi chứa file dữ liệu đóng gói trong APK (p4a đặt cúng chỗ với source).
+ASSET_ROOT = os.getcwd()
+LOGO = os.path.join(ASSET_ROOT, "logo.png")
+
 # Chromium Fork APK (build riêng theo fork/build.sh) — UI riêng, "1 tab riêng trên đth".
 FORK_PACKAGE = "org.lmt1102011.chromefork"
 FORK_ACTIVITY = "org.chromium.chrome.browser.ChromeLauncherActivity"

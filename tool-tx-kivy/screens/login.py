@@ -1,11 +1,13 @@
 # screens/login.py — đăng nhập / đăng ký (Firebase Auth REST qua AuthManager).
+import os
 from kivy.metrics import dp, sp
+from kivy.uix.image import Image
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.button import MDFillRoundFlatButton, MDTextButton
 from kivymd.uix.scrollview import MDScrollView
 from kivymd.uix.screen import MDScreen
 
-from core.config import GOLD, DIM, NIGHT, TXT, RED_T
+from core.config import GOLD, DIM, NIGHT, TXT, RED_T, LOGO
 from screens.uikit import label, GlassCard, Column
 
 
@@ -22,6 +24,9 @@ class LoginScreen(MDScreen):
         sc.add_widget(col)
         self.add_widget(sc)
 
+        if os.path.exists(LOGO):
+            col.add_widget(Image(source=LOGO, size_hint=(None, None), size=(dp(110), dp(110)),
+                                 pos_hint={"center_x": 0.5}, keep_ratio=True, allow_stretch=True))
         col.add_widget(label("TOOLTX", style="H4", color=GOLD, size=34,
                              halign="center", bold=True))
         col.add_widget(label("Dự đoán Tài/Xỉu tự động · Gold edition",
