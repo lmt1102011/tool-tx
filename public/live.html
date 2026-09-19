@@ -11,7 +11,17 @@ html,body{margin:0;padding:0;height:100%;background:#000;color:#e2e8f0;font-fami
 #st.on{color:#6ee7b7}#st.err{color:#fca5a5}
 #bar button{pointer-events:auto;background:rgba(245,200,66,.14);border:1px solid rgba(245,200,66,.4);color:#fde68a;font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;cursor:pointer}
 #fr{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;touch-action:none}
-#scr{display:block;background:#000;box-shadow:0 0 0 1px #1e293b;touch-action:none;cursor:crosshair;user-select:none;-webkit-user-drag:none}
+#fv{position:relative;line-height:0}
+#scr{display:block;width:100%;height:100%;background:#000;box-shadow:0 0 0 1px #1e293b;touch-action:none;cursor:crosshair;user-select:none;-webkit-user-drag:none}
+#panel{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);display:flex;flex-direction:column;gap:3px;align-items:center;background:rgba(10,15,24,.72);border:1px solid rgba(148,163,184,.25);border-radius:8px;padding:4px 9px;font-size:11px;line-height:1.3;pointer-events:none;color:#e2e8f0;backdrop-filter:blur(2px);max-width:96%;z-index:5}
+#panel.hide{display:none}
+#panel .pk{font-weight:800;font-size:12px}
+#panel .pk.tai{color:#fca5a5}
+#panel .pk.xiu{color:#93c5fd}
+#panel .chips{display:flex;gap:3px;flex-wrap:wrap;justify-content:center}
+#panel .chip{min-width:15px;height:16px;line-height:16px;text-align:center;border-radius:4px;font-size:10px;font-weight:700;padding:0 3px}
+#panel .chip.T{background:rgba(252,165,165,.18);color:#fca5a5}
+#panel .chip.X{background:rgba(147,197,253,.18);color:#93c5fd}
 #wait{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;color:#64748b;font-size:13px;line-height:1.6;padding:20px}
 #wait.hide{display:none}
 </style>
@@ -24,13 +34,16 @@ html,body{margin:0;padding:0;height:100%;background:#000;color:#e2e8f0;font-fami
   <button id="fs" title="F11">⛶ Fullscreen</button>
 </div>
 <div id="fr">
-  <img id="scr" alt="">
+  <div id="fv">
+    <img id="scr" alt="">
+    <div id="panel" class="hide"></div>
+  </div>
   <div id="wait">Đang kết nối màn hình...<br>Đảm bảo bạn đã bấm <b>KẾT NỐI TOOL</b> ở trang chính.</div>
 </div>
 <script>
 (function(){
   const $ = (id) => document.getElementById(id);
-  const st = $('st'), scr = $('scr'), wait = $('wait');
+  const st = $('st'), scr = $('scr'), fv = $('fv'), wait = $('wait');
   let socket = null, token = '';
   try { token = localStorage.getItem('tx_token') || sessionStorage.getItem('tx_token') || ''; } catch (_) {}
   if (!token) { st.textContent = 'Chưa đăng nhập — mở từ trang tool sau khi đăng nhập.'; st.className = 'err'; return; }
@@ -75,17 +88,45 @@ html,body{margin:0;padding:0;height:100%;background:#000;color:#e2e8f0;font-fami
     });
     socket.on('disconnect', (r) => { setMsg('Mất kết nối: ' + r, 'err'); wait.classList.remove('hide'); });
     socket.on('connect_error', (e) => { setMsg('Lỗi kết nối ' + (e.message || e), 'err'); wait.classList.remove('hide'); });
+    socket.on('panel-push', renderPanel);
     bindInput();
+  }
+
+  let lastPk = '';
+  function chipOf(h) {
+    const raw = (h && h.r !== undefined) ? h.r : (h && h.pick !== undefined ? h.pick : h);
+    const s = String(raw).toUpperCase().trim();
+    if (s === 'T' || s === 'TÀI' || s === 'TAI') return 'T';
+    if (s === 'X' || s === 'XỈU' || s === 'XIU') return 'X';
+    return '';
+  }
+  function renderPanel(p) {
+    if (!p) return;
+    const n = $('panel');
+    const chips = (Array.isArray(p.hist) ? p.hist : []).map(chipOf).filter(Boolean).slice(-14);
+    const pk = p.pick;
+    const key = (pk || '') + ':' + (p.conf || '') + ':' + chips.length + ':' + (p.lastResult || '') + ':' + (p.acc || '');
+    if (key === lastPk) return;
+    lastPk = key;
+    if (!pk && !chips.length) { n.classList.add('hide'); return; }
+    let html = '';
+    if (pk) {
+      const isT = String(pk).toUpperCase().indexOf('T') === 0;
+      html += '<div class="pk ' + (isT ? 'tai' : 'xiu') + '">' + pk + (p.conf != null ? ' · ' + Math.round(p.conf) + '%' : '') + '</div>';
+    }
+    if (chips.length) html += '<div class="chips">' + chips.map(c => '<span class="chip ' + c + '">' + (c === 'T' ? 'TÀI' : 'XỈU') + '</span>').join('') + '</div>';
+    n.innerHTML = html;
+    n.classList.remove('hide');
   }
 
   function scale() {
     const nw = scr.naturalWidth, nh = scr.naturalHeight;
     if (!nw) return;
     scr.dataset.w = nw;
-    const fw = window.innerWidth, fh = window.innerHeight - 0;
+    const fw = window.innerWidth, fh = window.innerHeight;
     const s = Math.min(fw / nw, fh / nh, 1);
-    scr.style.width = Math.max(1, Math.floor(nw * s)) + 'px';
-    scr.style.height = Math.max(1, Math.floor(nh * s)) + 'px';
+    fv.style.width = Math.max(1, Math.floor(nw * s)) + 'px';
+    fv.style.height = Math.max(1, Math.floor(nh * s)) + 'px';
   }
 
   function toNative(e) {

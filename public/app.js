@@ -68,7 +68,7 @@ function openLivePopup() {
   if (window.__TX_ROLE) {
     try { localStorage.setItem('tx_role', window.__TX_ROLE); } catch (_) {}
   }
-  const pop = window.open('live.html', 'txlive' + Date.now(), 'width=1310,height=780,resizable=yes,scrollbars=no,status=no');
+  const pop = window.open('live.html?v=20260919b', 'txlive' + Date.now(), 'width=1310,height=780,resizable=yes,scrollbars=no,status=no');
   if (pop) pop.focus();
 }
 
