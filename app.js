@@ -1,5 +1,13 @@
 const $ = (id) => document.getElementById(id);
 let socket = null;
+let ownStatus = { connected: false, msg: '' };
+
+// Giữ token/role trong sessionStorage để trang live.html mở từ popup dùng được (cùng origin Pages)
+function syncAuthStorage() {
+  if (window.__TX_TOKEN) { try { sessionStorage.setItem('tx_token', window.__TX_TOKEN); } catch (_) {} }
+  if (window.__TX_ROLE) { try { sessionStorage.setItem('tx_role', window.__TX_ROLE); } catch (_) {} }
+}
+setInterval(syncAuthStorage, 2000);
 
 // ── Auto-discovery: launcher tự push link tunnel → server-url.json ──────
 let discoUrl = "";
@@ -34,6 +42,22 @@ function getServerOverride() {
 function setSockStatus(msg) {
   const el = $('statusLine');
   if (el) { el.textContent = msg; el.className = 'status err'; }
+}
+
+// Trạng thái phiên Chrome CDP RIÊNG của user (server gửi qua user-status)
+function updateOwnUi() {
+  const el = $('ownLine');
+  if (el) {
+    el.textContent = ownStatus.connected ? '✓ Chrome CDP của bạn đã sẵn sàng' : (ownStatus.msg || 'Chưa có phiên — nhấn KẾT NỐI TOOL');
+    el.className = 'own-line' + (ownStatus.connected ? ' on' : '');
+  }
+}
+
+// Mở màn hình 1:1 của chính mình trong tab/popup riêng
+function openLivePopup() {
+  const u = serverUrl() || location.origin;
+  const pop = window.open(u + '/live.html', 'txlive' + Date.now(), 'width=1310,height=780,resizable=yes,scrollbars=no,status=no');
+  if (pop) pop.focus();
 }
 
 // Cập nhật ô "Server" trên thanh feed-note
@@ -76,7 +100,7 @@ async function initSocket(authToken) {
   }
   const url = serverUrl();
   lastAttemptUrl = url || "";
-  socket = io(url || undefined, { auth: { token: lastToken } });
+  socket = io(url || undefined, { auth: { token: lastToken }, transports: ['websocket', 'polling'] });
   window.socket = socket;
   bindSocketEvents();
   return socket;
@@ -223,21 +247,10 @@ function render(snap) {
     return;
   }
 
-  // Live view mode (admin-only)
+  // Live view của bạn (Chrome CDP riêng theo user)
   const lc = $('liveCard');
-  const adminViewer = window.__TX_ROLE === 'admin';
-  if (config && config.stream) {
-    if (lc) lc.style.display = adminViewer ? '' : 'none';
-    if ($('liveView')) $('liveView').style.display = adminViewer ? '' : 'none';
-  } else {
-    if (lc) lc.style.display = 'none';
-    if ($('liveView')) $('liveView').style.display = 'none';
-    const m2 = $('liveMask');
-    if (m2) {
-      m2.innerHTML = 'XEM TRỰC TIẾP ĐÃ TẮT<br>Chưa có khung hình từ máy chủ — nhấn KẾT NỐI TOOL (admin)<br>mọi thiết bị vẫn xem bảng dự đoán';
-      m2.style.display = '';
-    }
-  }
+  if (lc) lc.style.display = window.__TX_ROLE ? '' : 'none';
+  updateOwnUi();
 
   // Live view diagnostics badge
   const sc = snap.screen || {};
@@ -522,7 +535,7 @@ function bindSocketEvents() {
     log('Đã kết nối server: ' + (u || 'cùng nguồn'));
     updateServerHost();
     setSockStatus('Đã kết nối — ' + (u || location.host));
-    if (window.__TX_ROLE === 'admin' && launchOnReady) { launchOnReady = false; socket.emit('launch-profile', {}); }
+    if (window.__TX_ROLE && launchOnReady) { launchOnReady = false; socket.emit('launch-profile', {}); }
   });
   socket.on('disconnect', (reason) => {
     log('Mất kết nối: ' + reason, 'err');
@@ -546,13 +559,20 @@ function bindSocketEvents() {
     setSockStatus('Lỗi kết nối "' + u + '" — ' + (err.message || 'kiểm tra server đã bật chưa') + '. Đang tự tìm server...');
     loadDiscovery(); // lấy ngay URL tunnel mới nhất nếu server-url.json vừa đổi
   });
-  socket.on('screen', (b64) => {
+  socket.on('user-status', (d) => {
+    ownStatus = (d && typeof d === 'object') ? d : { connected: false, msg: '' };
+    updateOwnUi();
+  });
+  socket.on('screen', (buf) => {
     const now = Date.now();
-    if (now - lastScreenT < 160) return;
+    if (now - lastScreenT < 50) return;
     lastScreenT = now;
     const img = $('liveView');
     const mask = $('liveMask');
-    img.src = 'data:image/jpeg;base64,' + b64;
+    if (!img) return;
+    try { if (img.__url) URL.revokeObjectURL(img.__url); } catch (_) {}
+    img.__url = URL.createObjectURL(new Blob([buf], { type: 'image/jpeg' }));
+    img.src = img.__url;
     img.dataset.ready = '1';
     if (mask) mask.style.display = 'none';
   });
@@ -562,23 +582,25 @@ $('btnConnect').onclick = () => {
   const s = getSocket();
   const role = window.__TX_ROLE;
   if (s && s.connected) {
-    if (role === 'admin') {
-      log('Đang mở phiên Chrome CDP bàn chung...');
-      setSockStatus('Đang mở Chrome CDP bàn chung...');
+    if (role) {
+      log('Đang mở Chrome CDP riêng của bạn...');
+      setSockStatus('Đang mở Chrome CDP của bạn...');
       s.emit('launch-profile', {});
     } else {
-      log('Chỉ quản trị mới kích hoạt được phiên soi — bạn đang vào với quyền ' + (role || 'chưa đăng nhập') + '.', 'err');
-      setSockStatus('Bạn không có quyền admin — phiên do quản trị bật.');
+      log('Chưa đăng nhập — đăng nhập để tạo phiên Chrome CDP riêng.', 'err');
+      setSockStatus('Đăng nhập trước khi dùng KẾT NỐI.');
     }
     return;
   }
   if (!s && window.__TX_TOKEN && typeof initSocket === 'function') {
-    launchOnReady = role === 'admin';
-    log(launchOnReady ? 'Đang kết nối server, sẽ tự mở phiên khi sẵn sàng...' : 'Đang kết nối server...');
+    launchOnReady = !!role;
+    log(launchOnReady ? 'Đang kết nối server — sẽ tự mở phiên Chrome CDP của bạn...' : 'Đang kết nối server...');
     setSockStatus('Đang kết nối server...');
     initSocket(window.__TX_TOKEN);
   }
 };
+const bol = $('btnOpenLive');
+if (bol) bol.onclick = () => openLivePopup();
 $('btnDisconnect').onclick = () => getSocket().emit('disconnect-chrome');
 $('btnReset').onclick = () => { if (confirm('Xóa toàn bộ dữ liệu?')) getSocket().emit('reset'); };
 

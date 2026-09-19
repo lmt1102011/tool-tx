@@ -195,6 +195,8 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .live-wrap img{display:block;width:100%;height:auto;max-height:480px;object-fit:contain}
 #liveMask{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;color:var(--dim);font-size:12.5px;background:rgba(10,15,24,.88);padding:16px;line-height:1.5}
 #liveView{touch-action:none;cursor:crosshair}
+.own-line{font-size:11px;color:var(--dim);padding:6px 2px 0;line-height:1.5}
+.own-line.on{color:#6ee7b7;font-weight:700}
 </style>
 <script src="./config.js?v=1"></script>
 </head>
@@ -253,7 +255,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   </div>
 </header>
 
-<div class="note-bar"><span class="ms">devices</span> <span>CHẾ ĐỘ TRỰC TIẾP — Máy chủ chạy 1 phiên Chrome CDP soi bàn chung, mọi thiết bị (PC/điện thoại) đều xem dự đoán. Admin được xem &amp; điều khiển màn hình sàn từ xa.</span></div>
+<div class="note-bar"><span class="ms">devices</span> <span>CHẾ ĐỘ TRỰC TIẾP — Bấm <b>KẾT NỐI TOOL</b> server sẽ mở cho bạn <b>1 Chrome CDP RIÊNG</b> trên máy chủ (tắt tiếng, giữ phiên đăng nhập). Mở <b>MÀN HÌNH CỦA BẠN</b> để xem &amp; thao tác tỉ lệ 1:1 với độ trễ thấp.</span></div>
 
 <section class="card" id="connCard">
   <div class="conn-row">
@@ -331,8 +333,10 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 
   <div>
     <section class="card" id="liveCard" style="display:none">
-      <h2><span class="ms">screenshare</span> MÀN HÌNH SÀN (ADMIN)</h2>
-      <div class="live-wrap">
+      <h2><span class="ms">screenshare</span> MÀN HÌNH CỦA BẠN (CHROME RIÊNG)</h2>
+      <button id="btnOpenLive" class="btn primary" style="width:100%;justify-content:center;padding:10px"><span class="ms" style="font-size:16px">fullscreen</span> MỞ MÀN HÌNH 1:1 TRONG TAB RIÊNG</button>
+      <div id="ownLine" class="own-line">Chưa có phiên — nhấn KẾT NỐI TOOL</div>
+      <div class="live-wrap" style="margin-top:8px">
         <img id="liveView" alt="">
         <div id="liveMask"></div>
       </div>
@@ -347,11 +351,11 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
     <section class="card" style="margin-top:10px">
       <h2><span class="ms">help</span> Cách dùng</h2>
       <div style="font-size:12px;color:var(--dim);line-height:1.6">
-        <p><b style="color:var(--text)">1.</b> Nhấn <b style="color:var(--accent)">KẾT NỐI TOOL</b> để kết nối server dự đoán (<b>điện thoại mở y hệt PC</b>, chỉ cần trang này).</p>
-        <p style="margin-top:6px"><b style="color:var(--text)">2.</b> Server tự mở/giữ 1 phiên Chrome CDP soi bàn chung — mọi thiết bị cùng xem bảng dự đoán.</p>
-        <p style="margin-top:6px"><b style="color:var(--text)">3.</b> <b style="color:var(--accent)">Admin</b>: màn hình sàn hiện ra — <b>chạm/kéo</b> trên màn hình = đặt cược &amp; điều khiển Chrome máy chủ từ xa.</p>
-        <p style="margin-top:6px"><b style="color:var(--text)">4.</b> Bảng phía trên hiển thị phân tích chi tiết từng ván.</p>
-        <p style="margin-top:12px;color:#facc15;font-weight:700;font-size:12.5px;line-height:1.5">⚠ Nên bỏ qua 1-2 phiên đầu để tool đọc và ổn định nguồn dữ liệu</p>
+        <p><b style="color:var(--text)">1.</b> Nhấn <b style="color:var(--accent)">KẾT NỐI TOOL</b> — server tự mở <b>Chrome CDP riêng của bạn</b> (tắt âm thanh), giữ nguyên đăng nhập Sunwin của bạn.</p>
+        <p style="margin-top:6px"><b style="color:var(--text)">2.</b> Bấm <b style="color:var(--accent)">MỞ MÀN HÌNH 1:1 TRONG TAB RIÊNG</b> để xem màn hình chính xác từng pixel.</p>
+        <p style="margin-top:6px"><b style="color:var(--text)">3.</b> <b style="color:var(--accent)">Chạm/kéo/click</b> trên màn hình = thao tác ngay trên Chrome của bạn (đặt cược, mở bàn...).</p>
+        <p style="margin-top:6px"><b style="color:var(--text)">4.</b> Bảng phía trên hiển thị phân tích chi tiết từng ván (dữ liệu bàn chung).</p>
+        <p style="margin-top:12px;color:#facc15;font-weight:700;font-size:12.5px;line-height:1.5">⚠ Lần đầu cần đăng nhập Sunwin ngay trong màn hình Chrome riêng của bạn — sau đó phiên được giữ tự động.</p>
       </div>
     </section>
   </div>
@@ -370,7 +374,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   </div>
 </div>
 
-<script src="app.js?v=20260918d"></script>
+<script src="app.js?v=20260918e"></script>
 <script type="module">
 import { auth, db, doc, ref, get, getDoc, update, onValue, onAuthStateChanged, signOut, tryReauthSaved, formatPicks, migratePicks } from "./fbase.js?v=20260927";
 
