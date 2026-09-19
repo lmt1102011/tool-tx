@@ -23,3 +23,10 @@ lib/
 package.json
 package-lock.json
 chrome-profile-*/
+
+# App KivyMD (tool-tx-kivy)
+tool-tx-kivy/.buildozer/
+tool-tx-kivy/bin/
+tool-tx-kivy/session.json
+tool-tx-kivy/**/__pycache__/
+tool-tx-kivy/.venv/

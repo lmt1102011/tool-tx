@@ -1,0 +1,27 @@
+[app]
+# Tên package + tên hiển thị
+title = Tool TX
+package.name = tooltx
+package.domain = org.lmt1102011
+
+source.dir = .
+source.include_exts = py,kv,txt
+version = 1.0.0
+
+# Android
+requirements = python3,kivy==2.3.0,kivymd==1.2.0,python-socketio==5.13.0,websocket-client==1.8.0,requests==2.32.3,pyjnius,android,ssl
+
+orientation = portrait
+fullscreen = 0
+
+android.archs = arm64-v8a
+android.api = 33
+android.minapi = 21
+android.ndk_api = 21
+android.accept_sdk_license = True
+android.permissions = INTERNET,ACCESS_NETWORK_STATE
+# Cho HTTP loopback 127.0.0.1:9222 (Chromium Fork) — giai đoạn sau. An toàn khi build.
+android.extra_manifest_application_arguments = android:usesCleartextTraffic="true"
+
+# iOS (chưa dùng)
+ios.kivy_ios_url = https://github.com/kivy/kivy-ios

@@ -1,0 +1,267 @@
+MDScreenManager:
+    id: sm
+
+    MDScreen:
+        name: "login"
+
+        MDBoxLayout:
+            orientation: "vertical"
+            size_hint: (0.88, 0.78)
+            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+            spacing: "10dp"
+
+            MDLabel:
+                text: "TOOL TX — ĐĂNG NHẬP"
+                font_style: "H5"
+                halign: "center"
+                theme_text_color: "Primary"
+                size_hint_y: None
+                height: "56dp"
+
+            MDTextField:
+                id: l_uname
+                hint_text: "Username"
+                helper_text: "Tên đăng nhập (vd: tinhyeu)"
+                helper_text_mode: "on_focus"
+                mode: "rectangle"
+                size_hint_y: None
+                height: "64dp"
+
+            MDTextField:
+                id: l_pass
+                hint_text: "Mật khẩu"
+                mode: "rectangle"
+                password: True
+                size_hint_y: None
+                height: "64dp"
+
+            MDFillRoundFlatButton:
+                text: "ĐĂNG NHẬP"
+                md_bg_color: app.theme_cls.primary_color
+                on_release: app.do_login()
+
+            MDTextButton:
+                text: "Chưa có tài khoản? ĐĂNG KÝ"
+                halign: "right"
+                on_release: app.goto("register")
+
+            MDFlatButton:
+                text: "Bỏ qua — XEM DEMO (chưa đăng nhập)"
+                md_bg_color: (0.15, 0.16, 0.19, 1)
+                text_color: (0.75, 0.78, 0.85, 1)
+                on_release: app.goto("home", skip_auth=True)
+
+            MDLabel:
+                id: login_status
+                text: ""
+                halign: "center"
+                theme_text_color: "Error"
+                size_hint_y: None
+                height: "28dp"
+
+    MDScreen:
+        name: "register"
+
+        MDBoxLayout:
+            orientation: "vertical"
+            size_hint: (0.88, 0.85)
+            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+            spacing: "10dp"
+
+            MDLabel:
+                text: "TẠO TÀI KHOẢN"
+                font_style: "H5"
+                halign: "center"
+                theme_text_color: "Primary"
+                size_hint_y: None
+                height: "56dp"
+
+            MDTextField:
+                id: r_uname
+                hint_text: "Username"
+                helper_text: "3–20 ký tự: chữ thường, số, ._-"
+                helper_text_mode: "on_focus"
+                mode: "rectangle"
+                size_hint_y: None
+                height: "64dp"
+
+            MDTextField:
+                id: r_pass
+                hint_text: "Mật khẩu (≥ 6 ký tự)"
+                mode: "rectangle"
+                password: True
+                size_hint_y: None
+                height: "64dp"
+
+            MDTextField:
+                id: r_name
+                hint_text: "Tên hiển thị (không bắt buộc)"
+                mode: "rectangle"
+                size_hint_y: None
+                height: "64dp"
+
+            MDFillRoundFlatButton:
+                text: "ĐĂNG KÝ"
+                md_bg_color: app.theme_cls.primary_color
+                on_release: app.do_register()
+
+            MDTextButton:
+                text: "Đã có tài khoản? ĐĂNG NHẬP"
+                halign: "right"
+                on_release: app.goto("login")
+
+            MDLabel:
+                id: reg_status
+                text: ""
+                halign: "center"
+                theme_text_color: "Error"
+                size_hint_y: None
+                height: "28dp"
+
+    MDScreen:
+        name: "home"
+
+        MDBoxLayout:
+            orientation: "vertical"
+            padding: "12dp"
+            spacing: "10dp"
+
+            MDTopAppBar:
+                title: "TOOL TX"
+                md_bg_color: app.theme_cls.primary_color
+                elevation: 3
+                right_action_items: [["logout", lambda x: app.do_logout()], ["refresh", lambda x: app.recheck()]]
+                left_action_items: [["account-circle", lambda x: app.goto("account")]]
+
+            MDLabel:
+                id: h_user
+                text: ""
+                font_style: ("Subtitle1")
+                theme_text_color: "Primary"
+                halign: "center"
+                size_hint_y: None
+                height: "34dp"
+
+            MDFillRoundFlatIconButton:
+                id: btn_link
+                text: "KHỞI ĐỘNG CHROME MÁY BẠN (mượt tuyệt đối)"
+                icon: "laptop"
+                on_release: app.start_agent()
+
+            MDLabel:
+                id: h_agent
+                text: "Chưa có mã liên kết"
+                halign: "center"
+                theme_text_color: "Secondary"
+                font_style: "Caption"
+                size_hint_y: None
+                height: "26dp"
+
+            MDFillRoundFlatIconButton:
+                id: btn_fork
+                text: "START BROWSER — CHROMIUM TRÊN ĐIỆN THOẠI"
+                icon: "cellphone-wireless"
+                on_release: app.start_fork()
+
+            MDLabel:
+                id: h_picks
+                text: "Lượt đoán: --"
+                halign: "center"
+                theme_text_color: "Secondary"
+                size_hint_y: None
+                height: "24dp"
+
+            MDLabel:
+                id: h_gate
+                text: ""
+                halign: "center"
+                theme_text_color: "Error"
+                font_style: "Caption"
+                size_hint_y: None
+                height: "22dp"
+
+            MDCard:
+                orientation: "vertical"
+                padding: "12dp"
+                spacing: "4dp"
+                size_hint_y: None
+                height: "150dp"
+
+                MDLabel:
+                    text: "DỰ ĐOÁN VÁN KẾ TIẾP"
+                    font_style: "Caption"
+                    theme_text_color: "Secondary"
+
+                MDLabel:
+                    id: h_pick
+                    text: "--"
+                    font_style: "H4"
+                    halign: "center"
+                    theme_text_color: "Primary"
+
+                MDLabel:
+                    id: h_pct
+                    text: "T 50% · X 50%"
+                    halign: "center"
+                    theme_text_color: "Secondary"
+
+                MDLabel:
+                    id: h_conf
+                    text: "chờ dữ liệu"
+                    halign: "center"
+                    theme_text_color: "Secondary"
+
+                MDLabel:
+                    id: h_hist
+                    text: ""
+                    halign: "center"
+                    theme_text_color: "Primary"
+
+            MDLabel:
+                id: h_log
+                text: "Khởi động..."
+                font_style: "Caption"
+                theme_text_color: "Secondary"
+                size_hint_y: None
+                height: "150dp"
+                valign: "top"
+
+    MDScreen:
+        name: "account"
+
+        MDBoxLayout:
+            orientation: "vertical"
+            padding: "12dp"
+            spacing: "10dp"
+
+            MDTopAppBar:
+                title: "TÀI KHOẢN"
+                md_bg_color: app.theme_cls.primary_color
+                elevation: 3
+                right_action_items: [["arrow-back", lambda x: app.goto("home")]]
+
+            MDLabel:
+                id: a_user
+                text: ""
+                font_style: "H6"
+                halign: "center"
+                theme_text_color: "Primary"
+                size_hint_y: None
+                height: "40dp"
+
+            MDLabel:
+                id: a_picks
+                text: ""
+                halign: "center"
+                theme_text_color: "Secondary"
+                size_hint_y: None
+                height: "30dp"
+
+            MDLabel:
+                id: a_uid
+                text: ""
+                halign: "center"
+                font_style: "Caption"
+                theme_text_color: "Secondary"
+                size_hint_y: None
+                height: "30dp"
