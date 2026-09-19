@@ -73,8 +73,9 @@ html,body{margin:0;padding:0;height:100%;background:#000;color:#e2e8f0;font-fami
     socket = io(serverUrl, { auth: { token }, transports: ['websocket', 'polling'] });
     socket.on('connect', () => setMsg('Đã kết nối — chờ phiên Chrome CDP của bạn...'));
     socket.on('user-status', (d) => {
+      if (d && d.agent) { setMsg('✓ Chrome mở tại máy bạn — hãy chơi/dự đoán trực tiếp trên Chrome và trang chính, không cần màn hình stream.'); wait.classList.add('hide'); return; }
       if (d && d.connected) { setMsg('✓ Chrome CDP của bạn đang chạy — thao tác tự do.'); wait.classList.add('hide'); }
-      else { setMsg('Chưa có phiên: ' + (d && d.msg || 'bấm KẾT NỐI TOOL ở trang chính.')); st.className = ''; }
+      else { setMsg('Chưa có phiên: ' + (d && d.msg || 'bấm KẾT NỌI TOOL ở trang chính.')); st.className = ''; }
     });
     socket.on('screen', (buf) => {
       try {
