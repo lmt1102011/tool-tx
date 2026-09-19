@@ -1,8 +1,13 @@
-# main.py — App KivyMD: đăng nhập/đăng ký (Firebase Auth như web) + kết nối tool server
-#                       + (desktop) mở Chrome/Chromium CDP tại máy user để chơi mượt tuyệt đối.
+# main.py — App KivyMD: đăng nhập/đăng ký (Firebase Auth REST) + kết nối tool server
+#                       + agent trình duyệt (Chromium Fork / Chrome CDP).
 #
-# Chạy desktop:   pip install kivy kivymd python-socketio websocket-client requests
-#                 python main.py
+# Kiến trúc theo mẫu module:
+#   ToolApp(MDApp).build()  →  MDScreenManager + LoginScreen/HomeScreen/BrowserScreen/SettingsScreen
+#   core/auth.py            →  AuthManager (Firebase)
+#   core/theme.py, config.py→  màu brand + nền gradient
+#   widgets/bottomnav.py    →  thanh điều hướng dưới
+#
+# Chạy desktop:   python main.py
 # Build APK:      xem README (buildozer — chạy trên Linux/WSL).
 
 import os
@@ -12,49 +17,39 @@ import threading
 from functools import partial
 
 from kivy.clock import Clock
-from kivy.lang import Builder
+from kivy.core.window import Window
 from kivy.metrics import dp
-
-try:
-    from kivymd.app import MDApp
-    from kivymd.uix.snackbar import Snackbar
-except Exception:  # pragma: no cover
-    from kivymd.app import MDApp  # thử lại
-    Snackbar = None
+from kivy.graphics import Color, Rectangle
+from kivy.uix.screenmanager import FadeTransition
+from kivymd.app import MDApp
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.screenmanager import MDScreenManager
 
 import fb
 import sio_client
-
-IS_ANDROID = sys.platform == "linux" and "ANDROID" in os.environ.get("ANDROID_ARGUMENT", "")
-
-if IS_ANDROID:
-    from android.storage import app_storage_dir
-    BASE_DIR = app_storage_dir() or os.path.expanduser("~")
-else:
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-SESSION_PATH = os.path.join(BASE_DIR, "session.json")
-CFG_PATH = os.path.join(BASE_DIR, "config.txt")
-
-# Chromium Fork APK (bạn tự build theo fork/build.sh) — UI riêng, "1 tab riêng trên đth".
-FORK_PACKAGE = "org.lmt1102011.chromefork"
-FORK_ACTIVITY = "org.chromium.chrome.browser.ChromeLauncherActivity"
-
-KV = os.path.join(BASE_DIR, "ui.kv")
-if not os.path.exists(KV):
-    KV = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui.kv")
+from core import config as C
+from core.auth import AuthManager
+from core.theme import make_bg
+from screens.login import LoginScreen
+from screens.home import HomeScreen
+from screens.browser import BrowserScreen
+from screens.settings import SettingsScreen
+from widgets.bottomnav import BottomNav
 
 
 class ToolApp(MDApp):
     def __init__(self, **kw):
         super().__init__(**kw)
+        self.auth = AuthManager()
         self.sio = sio_client.SioClient(
             on_status=self._on_snapshot,
             on_panel=self._on_panel,
             on_user_status=self._on_user_status,
             on_log=self._log_ui,
-            on_connected=lambda: self._log_ui("Socket đã kết nối."),
-            on_disconnected=lambda r: self._log_ui("Mất kết nối socket: %s" % r, err=True),
+            on_connected=lambda: (self._log_ui("Socket đã kết nối."),
+                                  self._set_conn("ONLINE", ok=True)),
+            on_disconnected=lambda r: (self._log_ui("Mất kết nối socket: %s" % r, err=True),
+                                       self._set_conn("OFFLINE", warn=True)),
         )
         self.agent = None
         self.agent_code = None
@@ -65,32 +60,69 @@ class ToolApp(MDApp):
         self._tick_handle = None
         self._logs = []
 
+    # ────────────────── build ──────────────────
     def build(self):
         self.theme_cls.theme_style = "Dark"
-        self.theme_cls.primary_palette = "Indigo"
+        self.theme_cls.primary_palette = "Amber"
         self.theme_cls.accent_palette = "Amber"
-        return Builder.load_file(KV)
+        self.theme_cls.primary_hue = "700"
+        Window.clearcolor = (0.04, 0.05, 0.09, 1)
+
+        self.bg_texture = make_bg()
+
+        self.root_box = MDBoxLayout(orientation="vertical", md_bg_color=(0, 0, 0, 0))
+        self._apply_bg(self.root_box)
+
+        self.sm = MDScreenManager(transition=FadeTransition(duration=0.22))
+        self.login = LoginScreen(name="login")
+        self.home = HomeScreen(name="home")
+        self.browser = BrowserScreen(name="browser")
+        self.settings = SettingsScreen(name="settings")
+        for s in (self.login, self.home, self.browser, self.settings):
+            self.sm.add_widget(s)
+        self.root_box.add_widget(self.sm)
+
+        self.nav = BottomNav(on_select=self.goto, height=dp(62))
+        self.root_box.add_widget(self.nav)
+
+        self.goto("login")
+        return self.root_box
+
+    def _apply_bg(self, w):
+        """Nền gradient + lớp nền đậm dự phòng (tránh ô trắng nếu thiếu texture)."""
+        with w.canvas.before:
+            self._bg_solid = Color(0.05, 0.065, 0.11, 1)
+            self._bg_solid_r = Rectangle()
+            self._bg_tex = Color(1, 1, 1, 1)
+            self._bg_tex_r = Rectangle(texture=self.bg_texture)
+        w.bind(pos=self._bg_draw, size=self._bg_draw)
+        self._bg_draw(w)
+
+    def _bg_draw(self, inst, *a):
+        self._bg_solid_r.pos = inst.pos
+        self._bg_solid_r.size = inst.size
+        self._bg_tex_r.pos = inst.pos
+        self._bg_tex_r.size = inst.size
 
     def on_start(self):
-        fb.set_session_path(SESSION_PATH)
-        fb.load_session()
-        if fb.logged_in():
+        super().on_start()
+        Window.clearcolor = (0.04, 0.05, 0.09, 1)
+        self.auth.set_session_path(C.SESSION_PATH)
+        if self.auth.logged_in():
             self.goto("home")
             self.recheck()
         else:
             self.goto("login")
 
     # ────────────────── điều hướng ──────────────────
-    def goto(self, name, skip_auth=False):
-        sm = self.root
-        if not hasattr(sm, "current"):  # root có thể không phải ScreenManager
-            try:
-                sm = self.root.ids.sm
-            except Exception:
-                sm = self.root.ids["sm"]
-        if name == "home" and skip_auth:
-            self._set_user(None)
-        sm.current = name
+    def goto(self, name):
+        try:
+            self.sm.current = name
+        except Exception:
+            return
+        show = name != "login"
+        self.nav.show(show)
+        self.nav.set_active(name if show else "")
 
     # ────────────────── đăng nhập / đăng ký ──────────────────
     def _run(self, fn, ok, err):
@@ -102,39 +134,32 @@ class ToolApp(MDApp):
                 Clock.schedule_once(lambda dt: err(e))
         threading.Thread(target=_w, daemon=True).start()
 
-    def do_login(self):
-        uname = self.root.ids.l_uname.text.strip()
-        upass = self.root.ids.l_pass.text
-        self._log_ui("Đang đăng nhập...")
+    def do_login(self, user, password):
         self._run(
-            lambda: fb.login(uname, upass),
+            lambda: self.auth.login(user, password),
             lambda v: self._login_ok(v),
-            lambda e: self._set_status("login_status", "Lỗi: " + str(e), err=True),
+            lambda e: self.login.set_status("Lỗi: " + str(e), err=True),
         )
 
     def _login_ok(self, res):
-        self._set_user(fb._session)
+        self._set_user(self.auth.current())
         self._log_ui("Đã đăng nhập: " + str(res["data"].get("displayName", res["uid"])))
         self.goto("home")
         threading.Thread(target=self._connect_socket, daemon=True).start()
 
-    def do_register(self):
-        uname = self.root.ids.r_uname.text.strip()
-        upass = self.root.ids.r_pass.text
-        dname = self.root.ids.r_name.text.strip()
-        self._set_status("reg_status", "Đang đăng ký...")
+    def do_register(self, user, password, name):
         self._run(
-            lambda: fb.register(uname, upass, dname),
-            lambda v: self._reg_ok(v, uname, upass),
-            lambda e: self._set_status("reg_status", "Lỗi: " + str(e), err=True),
+            lambda: self.auth.register(user, password, name),
+            lambda v: self._reg_ok(v, user, password),
+            lambda e: self.login.set_status("Lỗi: " + str(e), err=True),
         )
 
-    def _reg_ok(self, res, uname, upass):
-        self._set_status("reg_status", "Đăng ký thành công — tự động đăng nhập", err=False)
+    def _reg_ok(self, res, user, password):
+        self.login.set_status("Đăng ký thành công — tự động đăng nhập")
         Clock.schedule_once(lambda dt: self._run(
-            lambda: fb.login(uname, upass),
+            lambda: self.auth.login(user, password),
             lambda v: self._login_ok(v),
-            lambda e: self._set_status("login_status", "Đã tạo tài khoản, đăng nhập lại.", err=True),
+            lambda e: self.login.set_status("Đã tạo tài khoản, đăng nhập lại.", err=True),
         ), 0.6)
 
     def do_logout(self):
@@ -157,44 +182,46 @@ class ToolApp(MDApp):
                 self.agent.stop()
         except Exception:
             pass
-        fb.logout()
+        self.auth.logout()
 
     # ────────────────── hiển thị ──────────────────
     def _set_user(self, sess):
         d = sess or {}
         name = d.get("displayName") or d.get("username") or "Khách"
-        self.root.ids.h_user.text = "Xin chào, " + name
-        self.root.ids.a_user.text = name
-        self.root.ids.a_uid.text = (d.get("uid") or "").strip()
-        try:
-            data = fb.get_user_data(d.get("uid"), d.get("idToken")) if d.get("uid") else None
-            self.root.ids.a_picks.text = "Lượt đoán: " + str(fb.picks(data))
-        except Exception:
-            self.root.ids.a_picks.text = "Lượt đoán: --"
+        letter = (name or "K")[:1].upper()
+        self.home.greet(name)
+        self.settings.profile(name, letter, d.get("uid"), d.get("role"), "--")
         self.refresh_picks()
 
     def refresh_picks(self):
         """Đọc số lượt đoán còn lại từ RTDB (giống tool web) để quản lý lượt cho từng user."""
-        sess = fb._session or {}
+        sess = self.auth.current()
         uid = sess.get("uid")
         if not uid:
             self.picks, self.role = -1, ""
             return
         try:
-            data = fb.get_user_data(uid, sess.get("idToken"))
+            data = self.auth.user_data()
             self.picks = int(fb.picks(data))
             self.role = (data or {}).get("role") or ""
         except Exception as e:
             self._log_ui("Không đọc được số lượt: " + str(e), err=True)
             return
+
         def upd(dt):
             try:
-                self.root.ids.h_picks.text = "Lượt đoán: %s" % ("∞" if self.role == "admin" else self.picks)
-                g = self.root.ids.h_gate
-                if self._check_gate():
-                    g.text = "HẾT LƯỢT ĐOÁN — nạp thêm tại trang web để tiếp tục."
+                if self.role == "admin":
+                    txt = "∞"
+                    warn = False
                 else:
-                    g.text = ""
+                    txt = str(self.picks)
+                    warn = self._check_gate()
+                self.home.picks_text("Lượt: " + txt, warn=warn)
+                self.settings.picks_text(txt)
+                if self._check_gate():
+                    self.home.gate("BẠN ĐÃ HẾT LƯỢT ĐOÁN — nạp thêm tại trang web để tiếp tục.")
+                else:
+                    self.home.gate(None)
             except Exception:
                 pass
         Clock.schedule_once(upd)
@@ -204,9 +231,6 @@ class ToolApp(MDApp):
 
     def _tick_picks(self, dt=None):
         threading.Thread(target=self.refresh_picks, daemon=True).start()
-
-    def _gate_or_refresh(self):
-        """Trước khi chạy: gate số lượt giống tool.web. Nếu còn lượt, đủ avatar."""
 
     def _picks_ok(self):
         if self._check_gate():
@@ -218,31 +242,29 @@ class ToolApp(MDApp):
     def _agent_stopped(self):
         """Server từ chối (hết lượt) hoặc mất kết nối → reset UI + đọc lại lượt."""
         self.agent_running = False
-        Clock.schedule_once(lambda dt: self._log_ui("Agent đã dừng — kiểm tra số lượt đoán."))
+        Clock.schedule_once(
+            lambda dt: (self._log_ui("Agent đã dừng — kiểm tra số lượt đoán."),
+                        self.browser.set_agent("Agent đã dừng.")),
+        )
         threading.Thread(target=self.refresh_picks, daemon=True).start()
-
-    def _set_status(self, id_, msg, err=False):
-        lbl = self.root.ids[id_]
-        lbl.text = str(msg)
-        lbl.theme_text_color = "Error" if err else "Secondary"
 
     def _log_ui(self, msg, err=False):
         self._logs.append((str(msg), err))
-        self._logs = self._logs[-60:]
+        self._logs = self._logs[-80:]
         text = "\n".join("⚠ " + m if e else m for m, e in self._logs)
         Clock.schedule_once(partial(self._apply_log, text))
 
     def _apply_log(self, text, dt):
         try:
-            self.root.ids.h_log.text = text
+            self.settings.set_log(text)
         except Exception:
             pass
 
     # ────────────────── socket server ──────────────────
     def _connect_socket(self, attempts=0):
         try:
-            tok = fb.refresh_id_token()
-            srv = sio_client.SioClient.discover_server(CFG_PATH)
+            tok = self.auth.refresh_id_token()
+            srv = sio_client.SioClient.discover_server(C.CFG_PATH)
             if not srv:
                 self._log_ui("Không tìm thấy server (server-url.json).", err=True)
                 return
@@ -252,11 +274,12 @@ class ToolApp(MDApp):
             if attempts < 2:
                 threading.Timer(5, lambda: self._connect_socket(attempts + 1)).start()
             self._log_ui("Lỗi kết nối server: " + str(e), err=True)
+            self._set_conn("OFFLINE", warn=True)
 
     def _on_snapshot(self, d):
         snap = d or {}
-        st = snap.get("status") or {}
-        self._log_ui("Đã kết nối — %s ván" % (len(snap.get("history") or [])))
+        self._set_conn("ONLINE", ok=True)
+        self._log_ui("Đã kết nối — %s ván" % (len((snap.get("history") or []))))
         self._update_pred(snap.get("prediction"), snap.get("lastResult"))
 
     def _on_panel(self, p):
@@ -271,42 +294,47 @@ class ToolApp(MDApp):
 
     def _apply_user_status(self, d, dt):
         try:
-            self.root.ids.h_agent.text = (d.get("msg") or "")[:80]
+            msg = (d.get("msg") or "")[:60]
+            if self.is_agent_mode:
+                self._set_conn("AGENT", ok=True)
+                self.home.agent(msg, col=(0.35, 0.85, 0.55, 1))
+                self.browser.set_agent("Đang chạy agent: " + msg, col=(0.35, 0.85, 0.55, 1))
+            else:
+                self._set_conn("ONLINE")
+                self.home.agent("")
+                self.browser.set_agent("Chưa có agent nào chạy.")
         except Exception:
             pass
 
     def _update_pred(self, p, last=None):
-        p = p or {}
         def upd(dt):
             try:
-                if p.get("pick"):
-                    pk = str(p["pick"]).upper()
-                    t = ("TÀI" if pk == "T" else "XỈU")
-                    self.root.ids.h_pick.text = t
-                    self.root.ids.h_pct.text = "T %.0f%% · X %.0f%%" % (
-                        float(p.get("pT") or 50), float(p.get("pX") or 50))
-                    c = p.get("confidence", p.get("conf"))
-                    self.root.ids.h_conf.text = "Độ tin cậy %.0f%%" % float(c) if c is not None else "chờ dữ liệu"
-                hist = p.get("hist") or p.get("history") or []
-                short = "".join(str(x)[0] if str(x).lower() in ("t", "x") else ("T" if str(x)[0].lower() == "t" else "X") for x in hist[-30:])
-                self.root.ids.h_hist.text = short or ""
+                self.home.prediction(p)
             except Exception:
                 pass
         Clock.schedule_once(upd)
 
+    def _set_conn(self, text, ok=False, warn=False):
+        col = (0.35, 0.85, 0.55, 1) if ok else ((0.97, 0.62, 0.24, 1) if warn else (0.60, 0.66, 0.78, 1))
+        try:
+            self.home.conn(text, col)
+        except Exception:
+            pass
+
     def recheck(self):
-        self._set_user(fb._session)
+        self._set_user(self.auth.current())
         threading.Thread(target=self._connect_socket, daemon=True).start()
 
-    # ────────────────── agent Chrome/CDP ──────────────────
+    # ────────────────── agent Chrome/CDP (máy tính) ──────────────────
     def start_agent(self):
         if self.agent_running:
             self._log_ui("Agent đang chạy — dừng trước khi khởi động lại.", err=True)
             return
-        if IS_ANDROID:
-            self._log_ui("Trên Android không mở được Chrome CDP. Dùng máy tính cho chức năng này.", err=True)
-            if self.sio.connected and not self.agent_code:
-                self._get_code()
+        if C.IS_ANDROID:
+            self._log_ui("Trên Android không mở được Chrome CDP. Dùng START BROWSER.", err=True)
+            return
+        if self.is_agent_mode:
+            self._log_ui("Bạn đang ở chế độ agent — ngắt để quay lại máy chủ.", err=True)
             return
 
         def on_code(r):
@@ -315,27 +343,21 @@ class ToolApp(MDApp):
                 self._log_ui("Chưa lấy được mã liên kết.", err=True)
                 return
             self.agent_code = code
+            self.browser.set_code(code)
             srv = self.sio.server_url or "http://localhost:8787"
             self._log_ui("Mã liên kết: %s — mở Chrome và nối server..." % code)
+            self.browser.set_status("Đang mở Chrome và nối server...", col=(0.97, 0.62, 0.24, 1))
             try:
                 from agent import Agent
                 self.agent = Agent(on_log=self._log_ui, on_stopped=self._agent_stopped)
                 ok = self.agent.start(server=srv, code=code)
                 self.agent_running = ok
+                self.browser.set_agent("Agent Chrome đang chạy." if ok else "Khởi động agent thất bại.",
+                                   col=(0.35, 0.85, 0.55, 1) if ok else (0.96, 0.42, 0.46, 1))
             except Exception as e:
                 self._log_ui("Lỗi agent: " + str(e), err=True)
+                self.browser.set_status("Lỗi agent: " + str(e), col=(0.96, 0.42, 0.46, 1))
 
-        if self.is_agent_mode:
-            self._log_ui("Bạn đang ở chế độ agent — ngắt để quay lại máy chủ.", err=True)
-            return
-        self.sio.agent_pair(on_code)
-
-    def _get_code(self):
-        def on_code(r):
-            code = (r or {}).get("code")
-            self.agent_code = code
-            if code:
-                self._log_ui("Mã liên kết: %s — chạy agent_chrome.js trên máy tính." % code)
         self.sio.agent_pair(on_code)
 
     # ────────────────── START BROWSER — Chromium Fork trên Android ──────────────────
@@ -348,12 +370,15 @@ class ToolApp(MDApp):
             return
         if not self._picks_ok():
             return
-        if not IS_ANDROID:
-            self._log_ui("START BROWSER dành cho Android. Trên máy tính dùng nút CHROME MÁY BẠN.", err=True)
+        if not C.IS_ANDROID:
+            self._log_ui("START BROWSER dành cho Android. Trên máy tính dùng CHROME MÁY BẠN.", err=True)
             return
         if not self.sio.connected:
             self._log_ui("Chưa kết nối server. Đang nối lại...", err=True)
             threading.Thread(target=self._connect_socket, daemon=True).start()
+            return
+        if self.is_agent_mode:
+            self._log_ui("Đang ở chế độ agent — ngắt trước khi khởi động lại.", err=True)
             return
         try:
             import hcdp
@@ -368,26 +393,31 @@ class ToolApp(MDApp):
                 self._log_ui("Chưa lấy được mã liên kết.", err=True)
                 return
             self.agent_code = code
+            self.browser.set_code(code)
             try:
-                # 1) mở fork thành app riêng (1 tab nền) trên điện thoại
-                hcdp.start_browser(url="", package=FORK_PACKAGE, activity=FORK_ACTIVITY)
+                hcdp.start_browser(url="", package=C.FORK_PACKAGE, activity=C.FORK_ACTIVITY)
                 self._log_ui("Đã mở Chromium Fork — kết nối CDP 127.0.0.1:9222...")
-                # 2) agent dùng chính fork đó (không spawn browser)
+                self.browser.set_status("Đã mở Chromium Fork — kết nối CDP...",
+                                    col=(0.97, 0.62, 0.24, 1))
                 from agent import Agent
                 bridge = hcdp.ForkCdpBridge(on_log=self._log_ui)
-                self.agent = Agent(on_log=self._log_ui, cdp_backend=bridge, on_stopped=self._agent_stopped)
+                self.agent = Agent(on_log=self._log_ui, cdp_backend=bridge,
+                                   on_stopped=self._agent_stopped)
                 ok = self.agent.start(server=srv, code=code)
                 self.agent_running = ok
                 if ok:
                     self._log_ui("Agent fork đang chạy — vào game đăng nhập trên tab vừa mở.")
+                    self.browser.set_agent("Agent fork đang chạy trên điện thoại.",
+                                       col=(0.35, 0.85, 0.55, 1))
                     if self._tick_handle is None:
                         self._tick_handle = Clock.schedule_interval(self._tick_picks, 30)
+                else:
+                    self.browser.set_agent("Khởi động agent fork thất bại.",
+                                       col=(0.96, 0.42, 0.46, 1))
             except Exception as e:
                 self._log_ui("Lỗi start fork: " + str(e), err=True)
+                self.browser.set_status("Lỗi start fork: " + str(e), col=(0.96, 0.42, 0.46, 1))
 
-        if self.is_agent_mode:
-            self._log_ui("Đang ở chế độ agent — ngắt trước khi khởi động lại.", err=True)
-            return
         self.sio.agent_pair(on_code)
 
 

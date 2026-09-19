@@ -1,0 +1,1 @@
+# screens: các màn hình theo kiến trúc module (Login/Home/Browser/Settings).
