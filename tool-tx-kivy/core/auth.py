@@ -10,6 +10,28 @@ class AuthManager:
     def register(self, username, password, display_name=""):
         return fb.register(username, password, display_name)
 
+    def register_with_picks(self, username, password, display_name="", picks=0):
+        return fb.register(username, password, display_name, picks)
+
+    # ── admin (giống admin.html) ──
+    def list_users(self):
+        return fb.list_users()
+
+    def update_balance(self, uid, new_value):
+        return fb.update_balance(uid, new_value)
+
+    def update_role(self, uid, role):
+        return fb.update_role(uid, role)
+
+    def delete_user(self, uid):
+        return fb.delete_user(uid)
+
+    def get_rate(self):
+        return int(fb.get_settings().get("vndPerPick") or 5000)
+
+    def set_rate(self, vnd_per_pick):
+        return fb.set_rate(int(vnd_per_pick))
+
     def logout(self):
         fb.logout()
 

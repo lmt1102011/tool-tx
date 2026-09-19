@@ -42,16 +42,17 @@ class BottomNav(MDBoxLayout):
         ("browser", "web", "Trình duyệt"),
         ("settings", "cog", "Cài đặt"),
     ]
+    ADMIN_ITEM = ("admin", "shield-account", "Quản trị")
 
     def __init__(self, on_select=None, height=dp(62), **kw):
         super().__init__(orientation="horizontal", spacing=dp(6), padding=[dp(10), dp(8), dp(10), dp(6)], **kw)
         self.size_hint_y = None
         self.height = height
+        self._on_select = on_select
         self._tabs = {}
+        self._admin_tab = None
         for key, icon, text in self.ITEMS:
-            t = NavTab(key, icon, text, on_select=on_select)
-            self._tabs[key] = t
-            self.add_widget(t)
+            self._add_tab(key, icon, text)
         with self.canvas.before:
             Color(*NIGHT)
             self._bg = Rectangle()
@@ -59,6 +60,21 @@ class BottomNav(MDBoxLayout):
             self._top = Line(points=[], width=dp(1.2))
         self.bind(pos=self._draw, size=self._draw)
         self._draw()
+
+    def _add_tab(self, key, icon, text):
+        t = NavTab(key, icon, text, on_select=self._on_select)
+        self._tabs[key] = t
+        self.add_widget(t)
+        return t
+
+    def set_admin(self, visible):
+        """Bật/tắt tab 'Quản trị' (chỉ khi role=admin)."""
+        if visible and self._admin_tab is None:
+            self._admin_tab = self._add_tab(*self.ADMIN_ITEM)
+        elif not visible and self._admin_tab is not None:
+            self.remove_widget(self._admin_tab)
+            self._tabs.pop("admin", None)
+            self._admin_tab = None
 
     def _draw(self, *a):
         self._bg.pos = self.pos

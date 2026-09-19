@@ -59,6 +59,9 @@ class ToolApp(MDApp):
         self.role = ""
         self._tick_handle = None
         self._logs = []
+        self.admin = None
+        self.admin_users = {}
+        self._admin_tick = None
 
     # ────────────────── build ──────────────────
     def build(self):
@@ -123,6 +126,62 @@ class ToolApp(MDApp):
         show = name != "login"
         self.nav.show(show)
         self.nav.set_active(name if show else "")
+        if name == "admin":
+            threading.Thread(
+                target=lambda: Clock.schedule_once(lambda dt: self.admin_refresh()),
+                daemon=True,
+            ).start()
+
+    # ────────────────── admin (role=admin) ──────────────────
+    def ensure_admin(self):
+        """Khi đăng nhập admin: thêm màn Quản trị + tab nav, bật auto-refresh."""
+        if self.role != "admin":
+            return
+        if getattr(self, "admin", None) is not None:
+            return
+        from screens.admin import AdminScreen
+        self.admin = AdminScreen(name="admin")
+        try:
+            self.sm.add_widget(self.admin)
+            self.nav.set_admin(True)
+        except Exception:
+            pass
+        self.admin_users = {}
+        self.admin_refresh()
+        if getattr(self, "_admin_tick", None) is None:
+            self._admin_tick = Clock.schedule_interval(
+                lambda dt: threading.Thread(target=self.admin_refresh, daemon=True).start(),
+                20,
+            )
+
+    def discard_admin(self):
+        """Khi thoát phiên admin: gỡ màn + tab + auto-refresh."""
+        if getattr(self, "_admin_tick", None) is not None:
+            try:
+                Clock.unschedule(self._admin_tick)
+            except Exception:
+                pass
+            self._admin_tick = None
+        try:
+            self.nav.set_admin(False)
+        except Exception:
+            pass
+        if getattr(self, "admin", None) is not None:
+            try:
+                self.sm.remove_widget(self.admin)
+            except Exception:
+                pass
+            self.admin = None
+
+    def admin_refresh(self):
+        try:
+            users = self.auth.list_users()
+            rate = self.auth.get_rate()
+            self.admin_users = users or {}
+            if getattr(self, "admin", None) is not None:
+                Clock.schedule_once(lambda dt: self.admin.load(users or {}, rate))
+        except Exception as e:
+            self._log_ui("Không đọc được dữ liệu quản trị: " + str(e), err=True)
 
     # ────────────────── đăng nhập / đăng ký ──────────────────
     def _run(self, fn, ok, err):
@@ -183,6 +242,7 @@ class ToolApp(MDApp):
         except Exception:
             pass
         self.auth.logout()
+        self.discard_admin()
 
     # ────────────────── hiển thị ──────────────────
     def _set_user(self, sess):
@@ -207,6 +267,7 @@ class ToolApp(MDApp):
         except Exception as e:
             self._log_ui("Không đọc được số lượt: " + str(e), err=True)
             return
+        Clock.schedule_once(lambda dt: self.ensure_admin())
 
         def upd(dt):
             try:

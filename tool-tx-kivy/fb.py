@@ -57,6 +57,28 @@ def _http_get(url):
         raise FbError("Mất kết nối Firebase: " + str(e))
 
 
+def _http_write(url, payload, method="PATCH"):
+    """PATCH/DELETE/DELETE dữ liệu (admin cập nhật user / settings)."""
+    if method == "DELETE":
+        req = urllib.request.Request(url, method="DELETE")
+        body = None
+    else:
+        body = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(url, data=body, method=method,
+                                     headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            raw = r.read().decode("utf-8")
+            return (json.loads(raw) if raw.strip() else {}), r.status
+    except urllib.error.HTTPError as e:
+        try:
+            return json.loads(e.read().decode("utf-8")), e.code
+        except Exception:
+            return {"error": {"message": str(e)}}, e.code
+    except Exception as e:
+        raise FbError("Mất kết nối Firebase: " + str(e))
+
+
 def _msg(code_or_text):
     m = str(code_or_text or "")
     if "email-already-in-use" in m or "EMAIL_EXISTS" in m:
@@ -175,7 +197,7 @@ def login(username, password):
     return {"uid": uid, "data": data, "idToken": j["idToken"]}
 
 
-def register(username, password, display_name=""):
+def register(username, password, display_name="", balance_fields=0):
     uname = str(username or "").strip().lower()
     if not (len(uname) >= 3 and len(uname) <= 20 and all(c.isalnum() or c in "._-" for c in uname)):
         raise FbError("Username chỉ gồm chữ thường/số, 3–20 ký tự")
@@ -197,7 +219,7 @@ def register(username, password, display_name=""):
         "email": email,
         "displayName": (display_name or "").strip() or uname,
         "role": "user",
-        "balanceFields": 0,
+        "balanceFields": max(0, int(balance_fields or 0)),
         "createdAt": now,
         "lastSeen": now,
     }
@@ -243,6 +265,70 @@ def logged_in():
     load_session()
     with _lock:
         return bool(_session.get("uid") and _session.get("refreshToken"))
+
+
+# ────────────────── admin (giống admin.html trên web) ──────────────────
+def _auth_url(path, tok):
+    return DB_URL + "/" + path + "?auth=" + urllib.parse.quote(tok)
+
+
+def _with_token(tok=None):
+    """Ưu tiên token truyền vào, fallback token phiên hiện tại (idToken hoặc refresh mới)."""
+    if tok:
+        return tok
+    return id_token()
+
+
+def list_users(tok=None):
+    """Toàn bộ /users.json → {uid: user}."""
+    j, code = _http_get(_auth_url("users.json", _with_token(tok)))
+    if code != 200:
+        raise FbError("Không đọc được danh sách user: " + str(j))
+    return j or {}
+
+
+def update_balance(uid, new_value, tok=None):
+    if new_value < 0:
+        raise FbError("Số lượt không được âm")
+    j, code = _http_write(_auth_url("users/" + urllib.parse.quote(uid) + ".json",
+                                    _with_token(tok)),
+                          {"balanceFields": int(new_value), "lastSeen": {".sv": "timestamp"}})
+    if code != 200:
+        raise FbError("Cập nhật lượt thất bại: " + str(j))
+    return j
+
+
+def update_role(uid, role, tok=None):
+    j, code = _http_write(_auth_url("users/" + urllib.parse.quote(uid) + ".json",
+                                    _with_token(tok)), {"role": str(role)})
+    if code != 200:
+        raise FbError("Đổi quyền thất bại: " + str(j))
+    return j
+
+
+def delete_user(uid, tok=None):
+    j, code = _http_write(_auth_url("users/" + urllib.parse.quote(uid) + ".json",
+                                    _with_token(tok)), None, method="DELETE")
+    if code != 200 and code != 204:
+        raise FbError("Xóa user thất bại: " + str(j))
+    return j
+
+
+def get_settings(tok=None):
+    """/settings/config.json → {vndPerPick} (mặc định 5000)."""
+    j, code = _http_get(_auth_url("settings/config.json", _with_token(tok)))
+    if code == 200 and j:
+        return j
+    return {}
+
+
+def set_rate(vnd_per_pick, tok=None):
+    v = max(1, int(vnd_per_pick or 0))
+    j, code = _http_write(_auth_url("settings/config.json", _with_token(tok)),
+                          {"vndPerPick": v})
+    if code != 200:
+        raise FbError("Lưu giá thất bại: " + str(j))
+    return v
 
 
 if HAS_REQUESTS:
