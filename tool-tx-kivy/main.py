@@ -82,7 +82,12 @@ class ToolApp(MDApp):
 
     # ────────────────── điều hướng ──────────────────
     def goto(self, name, skip_auth=False):
-        sm = self.root.ids.sm
+        sm = self.root
+        if not hasattr(sm, "current"):  # root có thể không phải ScreenManager
+            try:
+                sm = self.root.ids.sm
+            except Exception:
+                sm = self.root.ids["sm"]
         if name == "home" and skip_auth:
             self._set_user(None)
         sm.current = name
