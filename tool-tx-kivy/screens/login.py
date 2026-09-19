@@ -2,6 +2,8 @@
 import os
 from kivy.metrics import dp, sp
 from kivy.uix.image import Image
+from kivy.graphics import Color, RoundedRectangle
+from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.button import MDFillRoundFlatButton, MDTextButton
 from kivymd.uix.scrollview import MDScrollView
@@ -25,8 +27,15 @@ class LoginScreen(MDScreen):
         self.add_widget(sc)
 
         if os.path.exists(LOGO):
-            col.add_widget(Image(source=LOGO, size_hint=(None, None), size=(dp(110), dp(110)),
-                                 pos_hint={"center_x": 0.5}, keep_ratio=True, allow_stretch=True))
+            lcard = MDBoxLayout(size_hint=(None, None), size=(dp(132), dp(132)),
+                                pos_hint={"center_x": 0.5},
+                                padding=[dp(8)] * 4)
+            with lcard.canvas.before:
+                Color(1, 1, 1, 0.97)
+                lcard._r = RoundedRectangle(radius=[dp(30)] * 4)
+            lcard.bind(pos=_lcard_draw, size=_lcard_draw)
+            lcard.add_widget(Image(source=LOGO, keep_ratio=True, allow_stretch=True))
+            col.add_widget(lcard)
         col.add_widget(label("TOOLTX", style="H4", color=GOLD, size=34,
                              halign="center", bold=True))
         col.add_widget(label("Dự đoán Tài/Xỉu tự động · Gold edition",
@@ -104,3 +113,8 @@ class LoginScreen(MDScreen):
     def set_status(self, msg, err=False):
         self.status.text = msg
         self.status.text_color = RED_T if err else DIM
+
+
+def _lcard_draw(inst, *a):
+    inst._r.pos = inst.pos
+    inst._r.size = inst.size

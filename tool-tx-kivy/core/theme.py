@@ -2,7 +2,7 @@
 from kivy.graphics.texture import Texture
 
 
-def make_bg(top=(12, 17, 30), bottom=(25, 38, 66)):
+def make_bg(top=(18, 30, 52), bottom=(54, 98, 165)):
     """Texture gradient dọc 2x384 — nhờ Pillow vẽ sẵn, không cần shader."""
     try:
         from PIL import Image

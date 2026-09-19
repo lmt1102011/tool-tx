@@ -69,7 +69,7 @@ class ToolApp(MDApp):
         self.theme_cls.primary_palette = "Amber"
         self.theme_cls.accent_palette = "Amber"
         self.theme_cls.primary_hue = "700"
-        Window.clearcolor = (0.04, 0.05, 0.09, 1)
+        Window.clearcolor = (0.10, 0.14, 0.22, 1)
 
         self.bg_texture = make_bg()
 
@@ -94,7 +94,7 @@ class ToolApp(MDApp):
     def _apply_bg(self, w):
         """Nền gradient + lớp nền đậm dự phòng (tránh ô trắng nếu thiếu texture)."""
         with w.canvas.before:
-            self._bg_solid = Color(0.05, 0.065, 0.11, 1)
+            self._bg_solid = Color(0.10, 0.14, 0.22, 1)
             self._bg_solid_r = Rectangle()
             self._bg_tex = Color(1, 1, 1, 1)
             self._bg_tex_r = Rectangle(texture=self.bg_texture)
@@ -109,7 +109,7 @@ class ToolApp(MDApp):
 
     def on_start(self):
         super().on_start()
-        Window.clearcolor = (0.04, 0.05, 0.09, 1)
+        Window.clearcolor = (0.10, 0.14, 0.22, 1)
         self.auth.set_session_path(C.SESSION_PATH)
         if self.auth.logged_in():
             self.goto("home")
@@ -482,10 +482,66 @@ class ToolApp(MDApp):
         self.sio.agent_pair(on_code)
 
 
+CRASH_PATH = os.path.join(C.BASE_DIR, "crash.log")
+
+
+def _write_crash(tb):
+    try:
+        os.makedirs(C.BASE_DIR, exist_ok=True)
+        with open(CRASH_PATH, "a", encoding="utf-8") as f:
+            f.write(tb + "\n")
+    except Exception:
+        pass
+
+
+def _show_error(tb):
+    """Hiện traceback trên màn hình xám đen để chụp ảnh gửi lại."""
+    from kivy.app import App
+    from kivy.uix.label import Label
+    from kivy.uix.scrollview import ScrollView
+
+    class ErrApp(App):
+        title = "TOOLTX — lỗi khởi động"
+
+        def build(self):
+            sv = ScrollView()
+            l = Label(text=tb, font_size="10sp", halign="left", valign="top",
+                      size_hint_y=None, padding=(10, 10))
+            l.bind(width=lambda inst, w: setattr(inst, "text_size", (w * 0.98, None)))
+            sv.add_widget(l)
+            return sv
+
+    ErrApp().run()
+
+
+def _thread_exc(args):
+    import traceback
+    try:
+        tb = "".join(traceback.format_exception(
+            args.exc_type, args.exc_value, args.exc_traceback))
+        _write_crash("\n[thread] " + tb)
+    except Exception:
+        pass
+
+
+def _boot():
+    try:
+        ToolApp().run()
+    except Exception:
+        import traceback
+        tb = traceback.format_exc()
+        _write_crash(tb)
+        try:
+            _show_error(tb)
+        except Exception:
+            pass
+
+
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         if sys.argv[1] == "--find-browser":
             from agent import find_browser
             print("Browser: " + str(find_browser(sys.argv[2] if len(sys.argv) > 2 else None)))
             sys.exit(0)
-    ToolApp().run()
+    threading.excepthook = _thread_exc
+    _boot()
