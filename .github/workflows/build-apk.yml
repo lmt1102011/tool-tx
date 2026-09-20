@@ -74,37 +74,20 @@ jobs:
             echo "=== EMU start ==="
             APK=$(ls "$GITHUB_WORKSPACE"/tool-tx-kivy/bin/tooltx-*.apk 2>/dev/null | head -n 1)
             echo "APK=$APK"
-            adb wait-for-device || echo "adb wait FAIL"
-            adb install -r "$APK" || echo "install FAIL"
+            adb wait-for-device || echo "E1 wait fail"
+            adb install -r "$APK" || echo "E2 install fail"
             sleep 5
-            adb logcat -c || echo "logcat clear FAIL"
-            adb shell pm clear org.lmt1102011.tooltx || echo "pm clear FAIL"
-            adb shell am start -n org.lmt1102011.tooltx/org.kivy.android.PythonActivity || echo "am start FAIL"
+            adb logcat -c || echo "E3 clear fail"
+            adb shell pm clear org.lmt1102011.tooltx || echo "E4 pmclear fail"
+            adb shell am start -n org.lmt1102011.tooltx/org.kivy.android.PythonActivity || echo "E5 start fail"
             echo "=== launch sent, sleeping 55 ==="
             sleep 55
-            adb logcat -d -v threadtime > emulator-logcat.txt || echo "logcat dump FAIL"
+            adb logcat -d -v threadtime > emulator-logcat.txt || echo "E6 dump fail"
             wc -l emulator-logcat.txt
-            rm -f emulator-crash.txt
-            { echo "== STACK =="
-              grep -nE "FATAL EXCEPTION|F DEBUG|backtrace|Abort message|signal [0-9]+|crash_dump|SIGSEGV|SIGABRT|SIGBUS|SIGILL" emulator-logcat.txt | head -60
-              echo "== ANDROID RUNTIME =="
-              grep -nE "AndroidRuntime" emulator-logcat.txt | head -30
-              echo "== STEP/KIVY =="
-              grep -nE "STEP |Kivy v|Logger|Window|SDL|GL |pyjnius|jnius|tooltx|main.py" emulator-logcat.txt | tail -60
-              echo "== FILES =="
-              adb shell "run-as org.lmt1102011.tooltx find files -name '*' -type f" 2>/dev/null
-              adb shell "run-as org.lmt1102011.tooltx cat files/app/fault.log" 2>/dev/null
-              adb shell "run-as org.lmt1102011.tooltx cat files/app/crash.log" 2>/dev/null
-            } >> emulator-crash.txt
-            echo "===== CRASH SUMMARY (full) ====="
-            cat emulator-crash.txt
-            echo "===== first 8 for annotations ====="
-            head -n 8 emulator-crash.txt | while IFS= read -r line; do printf '::warning::EMU | %s\n' "$(printf '%s' "$line" | sed 's/[^[:print:]]//g' | cut -c1-500)"; done
-            if grep -qiE "FATAL EXCEPTION|AndroidRuntime" emulator-crash.txt; then
-              printf '::error::EMU FATAL DETECTED — xem artifact emulator-logcat / crash summary o tren\n'
-            else
-              printf '::warning::EMU NO FATAL detected\n'
-            fi
+            grep -nE "FATAL EXCEPTION|F DEBUG|backtrace|Abort message|signal (11|6|7|4)|crash_dump|AndroidRuntime|Choreographer" emulator-logcat.txt | head -8 | while IFS= read -r line; do printf '::error::EMU %s\n' "$(printf '%s' "$line" | tr -d '\000-\011\013-\037' | cut -c1-450)"; done
+            grep -nE "STEP |Kivy v|pyjnius|jnius|main.py|tooltx|python" emulator-logcat.txt | tail -8 | while IFS= read -r line; do printf '::warning::EMU %s\n' "$(printf '%s' "$line" | tr -d '\000-\011\013-\037' | cut -c1-450)"; done
+            if [ ! -s emulator-logcat.txt ]; then printf '::error::EMU logcat EMPTY — emulator khong boot duoc hay shell chet som\n'; fi
+            printf '::warning::EMU done — gui anh annotation de biet ket qua\n'
             true
 
       - name: Upload emulator logcat
