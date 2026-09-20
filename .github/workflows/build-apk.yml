@@ -75,8 +75,10 @@ jobs:
             adb wait-for-device || echo "E1 wait fail"
             adb logcat -G 32M || echo "E0 size fail"
             until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do echo "boot chua xong, doi 5s"; sleep 5; done
-            echo "boot xong, doi them 30s cho idle"
-            sleep 30
+            for n in 1 2 3 4 5; do RES=$(adb shell 'dumpsys activity activities 2>/dev/null | grep -m1 mResumedActivity'); echo "resumed[$n]=$RES"; echo "$RES" | grep -q "Launcher" && break; sleep 6; done
+            echo "launcher da idle, doi 20s"
+            sleep 20
+            adb shell pm path android > /dev/null || echo "storage chua ready"
             APK=$(ls "$GITHUB_WORKSPACE"/tool-tx-kivy/bin/tooltx-*.apk 2>/dev/null | head -n 1)
             echo "APK=$APK"
             adb install -r "$APK" || echo "E2 install fail"
@@ -91,11 +93,11 @@ jobs:
             echo "PS:"; cat emu-ps.txt
             adb logcat -d -v threadtime > emulator-logcat.txt || echo "E6 dump fail"
             wc -l emulator-logcat.txt
-            grep -niE "tooltx|PythonActivity|python|kivy|jnius|SDL|HELLO-A|KIVY-OK|RAN-OK|PY-EXC|STEP |FATAL|fatal|exception|exception|error|ANR|died|not responding|lowmemorykiller|Killing" emulator-logcat.txt > emu-scan.txt
-            echo "HEAD10:"; head -10 emu-scan.txt
-            echo "TAIL10:"; tail -10 emu-scan.txt
-            head -10 emu-scan.txt | while IFS= read -r line; do printf '::error::EMU-H %s\n' "$(printf '%s' "$line" | tr -d '\000-\011\013-\037' | cut -c1-450)"; done
-            tail -10 emu-scan.txt | while IFS= read -r line; do printf '::error::EMU-T %s\n' "$(printf '%s' "$line" | tr -d '\000-\011\013-\037' | cut -c1-450)"; done
+            grep -niE "tooltx|PythonActivity|HELLO-A|KIVY-OK|RAN-OK|PY-EXC|STEP |Kivy v|jnius|SDL|FATAL EXCEPTION|F DEBUG|backtrace|signal (11|6|4)|Killing .*tooltx|lowmemorykiller|died|ANR in" emulator-logcat.txt > emu-scan.txt
+            echo "== TAIL12:"; tail -12 emu-scan.txt
+            echo "== HEAD12:"; head -12 emu-scan.txt
+            tail -12 emu-scan.txt | while IFS= read -r line; do printf '::error::EMU-T %s\n' "$(printf '%s' "$line" | tr -d '\000-\011\013-\037' | cut -c1-450)"; done
+            head -12 emu-scan.txt | while IFS= read -r line; do printf '::error::EMU-H %s\n' "$(printf '%s' "$line" | tr -d '\000-\011\013-\037' | cut -c1-450)"; done
             if [ ! -s emulator-logcat.txt ]; then printf '::error::EMU logcat EMPTY\n'; fi
             true
 
