@@ -58,6 +58,15 @@ def _mark(step):
     _toast("T:" + step)
 
 
+def _last_step():
+    try:
+        with open(CRASH_PATH, encoding="utf-8") as f:
+            lines = [ln.strip() for ln in f.read().splitlines() if ln.strip()]
+            return (lines[-1] if lines else "")[:300]
+    except Exception:
+        return ""
+
+
 def _gate_read():
     try:
         with open(GATE_PATH, encoding="utf-8") as f:
@@ -111,28 +120,74 @@ class ToolApp(App):
         self.admin_users = {}
         self._admin_tick = None
 
-    # ────────────────── build ──────────────────
+    # ────────────────── build: CHỈ nhóm kivy đã chứng minh (Label/ScrollView) ──────────────────
     def build(self):
         _mark("build")
-        try:
-            self._bootstrap()
-        except BaseException:
-            # chuyển vào crash.log + toast; _boot sẽ hiện traceback trên màn hình
-            tb = traceback.format_exc()
-            _write_crash(tb)
-            _toast("BUILD FAIL: " + tb.splitlines()[-1][:180])
-            _mark("app-exited")
-            raise
-        _mark("build-done")
-        return self.root_box
+        sv = ScrollView()
+        lbl = Label(text="TOOLTX\nLoading app...", font_size="13sp", halign="left",
+                    valign="top", size_hint_y=None, padding=(14, 14), color=(1, 1, 1, 1))
+        lbl.bind(width=lambda i, w: setattr(i, "text_size", (w * 0.97, None)))
+        sv.add_widget(lbl)
+        self._lines = ["TOOLTX", "Loading app...", ""]
+        self._loading = lbl
+        return sv
 
-    def _bootstrap(self):
-        """MỌI import nặng ở đây — chạy sau khi kivy App + GL đã khởi động (an toàn)."""
-        from kivy.core.window import Window
-        from kivy.metrics import dp
-        from kivy.graphics import Color, Rectangle
-        from kivy.uix.screenmanager import FadeTransition
-        from kivy.graphics.texture import Texture
+    def _say(self, text, err=False):
+        self._lines.append(text)
+        self._lines = self._lines[-40:]
+        self._loading.text = "\n".join(self._lines)
+        self._loading.color = (1, 0.5, 0.5, 1) if err else (1, 1, 1, 1)
+
+    def on_start(self):
+        try:
+            super().on_start()
+        except Exception:
+            pass
+        _mark("on_start")
+        self._ladder = [
+            ("import nang",       self._st_imports),
+            ("theme+window",      self._st_theme),
+            ("services fb/sio",   self._st_services),
+            ("nen gradient",      self._st_bg),
+            ("4 man hinh",        self._st_screens),
+            ("nav+load UI",       self._st_finish),
+            ("DONE",              None),
+        ]
+        Clock.schedule_once(self._next, 0.1)
+
+    def _next(self, *fdeps):
+        while self._ladder:
+            name, fn = self._ladder.pop(0)
+            if fn is None:
+                _mark("all-ok")
+                self._say("TOOLTX SAN SANG ✓")
+                return
+            _mark(name)
+            self._say("RUN  " + name)
+            try:
+                fn()
+                _mark(name + "=ok")
+                self._say("OK   " + name + " ✓")
+            except BaseException as e:
+                _mark(name + "=fail")
+                self._say("ERR  " + name + " :: " + repr(e)[:160], err=True)
+                tb = traceback.format_exc().splitlines()
+                for ln in tb[-6:]:
+                    self._say("     " + ln[:120], err=True)
+                try:
+                    with open(CRASH_PATH, "a", encoding="utf-8") as f:
+                        f.write("\n### FAIL AT " + name)
+                        f.write("\n" + "\n".join(tb))
+                except Exception:
+                    pass
+                return
+            if self._ladder:
+                Clock.schedule_once(self._next, 0.02)
+            return
+        _mark("all-ok")
+        self._say("TOOLTX SAN SANG ✓")
+
+    def _st_imports(self):
         import fb
         import sio_client
         from core import config as C
@@ -146,8 +201,10 @@ class ToolApp(App):
         from screens.browser import BrowserScreen
         from screens.settings import SettingsScreen
         from widgets.bottomnav import BottomNav
-        _mark("imports-ok")
 
+    def _st_theme(self):
+        from kivy.core.window import Window
+        from kivymd.theming import ThemeManager
         self.theme_cls = ThemeManager()
         self.theme_cls.theme_style = "Dark"
         self.theme_cls.primary_palette = "Amber"
@@ -155,6 +212,8 @@ class ToolApp(App):
         self.theme_cls.primary_hue = "700"
         Window.clearcolor = (0.10, 0.14, 0.22, 1)
 
+    def _st_services(self):
+        from core.auth import AuthManager
         self.auth = AuthManager()
         self.sio = sio_client.SioClient(
             on_status=self._on_snapshot,
@@ -167,29 +226,57 @@ class ToolApp(App):
                                        self._set_conn("OFFLINE", warn=True)),
         )
 
+    def _st_bg(self):
+        from core.theme import make_bg
+        from kivy.graphics import Color, Rectangle
         self.bg_texture = make_bg()
-        _mark("build-bg")
-
+        from kivymd.uix.boxlayout import MDBoxLayout
         self.root_box = MDBoxLayout(orientation="vertical", md_bg_color=(0, 0, 0, 0))
         self._apply_bg(self.root_box)
 
+    def _st_screens(self):
+        from kivy.uix.screenmanager import FadeTransition
+        from kivymd.uix.screenmanager import MDScreenManager
+        from screens.login import LoginScreen
+        from screens.home import HomeScreen
+        from screens.browser import BrowserScreen
+        from screens.settings import SettingsScreen
         self.sm = MDScreenManager(transition=FadeTransition(duration=0.22))
         self.login = LoginScreen(name="login")
-        _mark("build-login")
         self.home = HomeScreen(name="home")
-        _mark("build-home")
         self.browser = BrowserScreen(name="browser")
-        _mark("build-browser")
         self.settings = SettingsScreen(name="settings")
-        _mark("build-settings")
         for s in (self.login, self.home, self.browser, self.settings):
             self.sm.add_widget(s)
         self.root_box.add_widget(self.sm)
 
+    def _st_finish(self):
+        from kivy.metrics import dp
+        from kivy.core.window import Window
+        from widgets.bottomnav import BottomNav
         self.nav = BottomNav(on_select=self.goto, height=dp(62))
         self.root_box.add_widget(self.nav)
-
         self.goto("login")
+
+        # gắn UI thật vào gốc (thay màn loading)
+        try:
+            self.root.clear_widgets()
+            self.root_box.size_hint = (1, 1)
+            self.root.add_widget(self.root_box)
+        except Exception:
+            pass
+
+        # logic phiên đăng nhập (vốn nằm trong on_start)
+        try:
+            Window.clearcolor = (0.10, 0.14, 0.22, 1)
+            self.auth.set_session_path(C.SESSION_PATH)
+            if self.auth.logged_in():
+                self.goto("home")
+                self.recheck()
+            else:
+                self.goto("login")
+        except BaseException as e:
+            _mark("session-fail:" + repr(e)[:80])
 
     def _apply_bg(self, w):
         """Nền gradient + lớp nền đậm dự phòng (tránh ô trắng nếu thiếu texture)."""
@@ -207,25 +294,6 @@ class ToolApp(App):
         self._bg_solid_r.size = inst.size
         self._bg_tex_r.pos = inst.pos
         self._bg_tex_r.size = inst.size
-
-    def on_start(self):
-        super().on_start()
-        from kivy.core.window import Window
-        _mark("on_start")
-        try:
-            Window.clearcolor = (0.10, 0.14, 0.22, 1)
-            self.auth.set_session_path(C.SESSION_PATH)
-            if self.auth.logged_in():
-                self.goto("home")
-                self.recheck()
-            else:
-                self.goto("login")
-        except BaseException as e:
-            _mark("on_start-fail:" + repr(e)[:80])
-            try:
-                Window.clearcolor = (0.10, 0.14, 0.22, 1)
-            except Exception:
-                pass
 
     def on_stop(self):
         try:
@@ -597,15 +665,6 @@ class ToolApp(App):
                 self.browser.set_status("Lỗi start fork: " + str(e), col=(0.96, 0.42, 0.46, 1))
 
         self.sio.agent_pair(on_code)
-
-
-def _last_step():
-    try:
-        with open(CRASH_PATH, encoding="utf-8") as f:
-            lines = [ln.strip() for ln in f.read().splitlines() if ln.strip()]
-            return (lines[-1] if lines else "")[:300]
-    except Exception:
-        return ""
 
 
 def _write_crash(tb):
