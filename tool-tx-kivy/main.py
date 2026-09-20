@@ -188,6 +188,7 @@ class ToolApp(App):
         self._say("TOOLTX SAN SANG ✓")
 
     def _st_imports(self):
+        global fb, sio_client, C
         import fb
         import sio_client
         from core import config as C
