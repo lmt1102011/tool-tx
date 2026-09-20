@@ -74,25 +74,28 @@ jobs:
             echo "=== EMU start ==="
             adb wait-for-device || echo "E1 wait fail"
             adb logcat -G 32M || echo "E0 size fail"
+            until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do echo "boot chua xong, doi 5s"; sleep 5; done
+            echo "boot xong, doi them 30s cho idle"
+            sleep 30
             APK=$(ls "$GITHUB_WORKSPACE"/tool-tx-kivy/bin/tooltx-*.apk 2>/dev/null | head -n 1)
             echo "APK=$APK"
             adb install -r "$APK" || echo "E2 install fail"
             sleep 5
             adb logcat -c || echo "E3 clear fail"
-            adb shell am start -n org.lmt1102011.tooltx/org.kivy.android.PythonActivity || echo "E5 start fail"
-            echo "=== launch sent, sleeping 55 ==="
-            sleep 55
-            adb logcat -d -v threadtime > emulator-logcat.txt || echo "E6 dump fail"
-            wc -l emulator-logcat.txt
+            adb shell am start -W -n org.lmt1102011.tooltx/org.kivy.android.PythonActivity || echo "E5 start fail"
+            echo "=== launch ack; sleeping 40 ==="
+            sleep 40
             adb shell pidof org.lmt1102011.tooltx | tr -d '\r' > emu-pid.txt
             printf '::warning::EMU pid=%s\n' "$(cat emu-pid.txt)"
-            grep -niE "tooltx|PythonActivity|python|kivy|jnius|SDL|fatal|exception|error|ANR|died|not responding|defunct|exit" emulator-logcat.txt > emu-scan.txt
+            adb shell ps -A 2>/dev/null | grep -Ei "tooltx|python|kivy" | head -5 > emu-ps.txt
+            echo "PS:"; cat emu-ps.txt
+            adb logcat -d -v threadtime > emulator-logcat.txt || echo "E6 dump fail"
+            wc -l emulator-logcat.txt
+            grep -niE "tooltx|PythonActivity|python|kivy|jnius|SDL|HELLO-A|KIVY-OK|RAN-OK|PY-EXC|STEP |FATAL|fatal|exception|exception|error|ANR|died|not responding|lowmemorykiller|Killing" emulator-logcat.txt > emu-scan.txt
             echo "HEAD10:"; head -10 emu-scan.txt
             echo "TAIL10:"; tail -10 emu-scan.txt
             head -10 emu-scan.txt | while IFS= read -r line; do printf '::error::EMU-H %s\n' "$(printf '%s' "$line" | tr -d '\000-\011\013-\037' | cut -c1-450)"; done
             tail -10 emu-scan.txt | while IFS= read -r line; do printf '::error::EMU-T %s\n' "$(printf '%s' "$line" | tr -d '\000-\011\013-\037' | cut -c1-450)"; done
-            adb shell "dumpsys dropbox --print 2>/dev/null" | grep -inE "tooltx|python|kivy" | head -5 | while IFS= read -r line; do printf '::warning::DROP %s\n' "$(printf '%s' "$line" | tr -d '\000-\011\013-\037' | cut -c1-450)"; done
-            grep -nE "FATAL EXCEPTION|F DEBUG|backtrace|Abort message|signal (11|6|7|4)|crash_dump|AndroidRuntime" emulator-logcat.txt | head -8 | while IFS= read -r line; do printf '::error::EMU %s\n' "$(printf '%s' "$line" | tr -d '\000-\011\013-\037' | cut -c1-450)"; done
             if [ ! -s emulator-logcat.txt ]; then printf '::error::EMU logcat EMPTY\n'; fi
             true
 
