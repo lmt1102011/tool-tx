@@ -86,9 +86,12 @@ jobs:
             wc -l emulator-logcat.txt
             adb shell pidof org.lmt1102011.tooltx | tr -d '\r' > emu-pid.txt
             printf '::warning::EMU pid=%s\n' "$(cat emu-pid.txt)"
-            grep -nE "Displayed |Process [^ ]+ has died|Killing |Force finishing|lowmemorykiller|Tombstone" emulator-logcat.txt | head -3 | while IFS= read -r line; do printf '::error::EMU %s\n' "$(printf '%s' "$line" | tr -d '\000-\011\013-\037' | cut -c1-450)"; done
-            grep -nE "I python|W python|E python|Kivy v|Logger|SDL|pyjnius|jnius|PythonActivity" emulator-logcat.txt | head -8 | while IFS= read -r line; do printf '::warning::EMU %s\n' "$(printf '%s' "$line" | tr -d '\000-\011\013-\037' | cut -c1-450)"; done
-            grep -nE "STEP " emulator-logcat.txt | head -10 | while IFS= read -r line; do printf '::warning::EMU %s\n' "$(printf '%s' "$line" | tr -d '\000-\011\013-\037' | cut -c1-450)"; done
+            grep -niE "tooltx|PythonActivity|python|kivy|jnius|SDL|fatal|exception|error|ANR|died|not responding|defunct|exit" emulator-logcat.txt > emu-scan.txt
+            echo "HEAD10:"; head -10 emu-scan.txt
+            echo "TAIL10:"; tail -10 emu-scan.txt
+            head -10 emu-scan.txt | while IFS= read -r line; do printf '::error::EMU-H %s\n' "$(printf '%s' "$line" | tr -d '\000-\011\013-\037' | cut -c1-450)"; done
+            tail -10 emu-scan.txt | while IFS= read -r line; do printf '::error::EMU-T %s\n' "$(printf '%s' "$line" | tr -d '\000-\011\013-\037' | cut -c1-450)"; done
+            adb shell "dumpsys dropbox --print 2>/dev/null" | grep -inE "tooltx|python|kivy" | head -5 | while IFS= read -r line; do printf '::warning::DROP %s\n' "$(printf '%s' "$line" | tr -d '\000-\011\013-\037' | cut -c1-450)"; done
             grep -nE "FATAL EXCEPTION|F DEBUG|backtrace|Abort message|signal (11|6|7|4)|crash_dump|AndroidRuntime" emulator-logcat.txt | head -8 | while IFS= read -r line; do printf '::error::EMU %s\n' "$(printf '%s' "$line" | tr -d '\000-\011\013-\037' | cut -c1-450)"; done
             if [ ! -s emulator-logcat.txt ]; then printf '::error::EMU logcat EMPTY\n'; fi
             true
