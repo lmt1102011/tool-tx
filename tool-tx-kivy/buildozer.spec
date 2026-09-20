@@ -11,7 +11,7 @@ version = 1.0.0
 # Icon app (launcher)
 icon.filename = icon-512.png
 # Android
-requirements = python3,kivy==2.3.0,kivymd==1.2.0,python-socketio==5.13.0,python-engineio==4.10.1,bidict==0.23.1,websocket-client==1.8.0,requests==2.32.3,pyjnius,android
+requirements = python3,kivy==2.3.0,kivymd==1.2.0,python-socketio==5.13.0,python-engineio==4.14.0,bidict==0.24.1,websocket-client==1.8.0,requests==2.32.3,pyjnius,android
 
 orientation = portrait
 fullscreen = 0
