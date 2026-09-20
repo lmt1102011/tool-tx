@@ -68,7 +68,7 @@ class GlassCard(MDBoxLayout):
 
 
 def chip(text, color, bg, size=12, bold=True):
-    """Viên nhỏ (badge) 2 dòng: chấm màu + chữ."""
+    """Viên nhỏ (badge): chấm tròn vẽ canvas + chữ."""
     b = MDBoxLayout(orientation="horizontal", spacing=dp(6), size_hint_y=None,
                     padding=[dp(10), dp(4), dp(10), dp(4)])
     b.bind(minimum_height=b.setter("height"))
@@ -76,14 +76,23 @@ def chip(text, color, bg, size=12, bold=True):
         Color(*bg)
         b._rec = RoundedRectangle(radius=[dp(9)] * 4)
     b.bind(pos=_chip_draw, size=_chip_draw)
-    dot_done = label("●", color=color, size=size, halign="center", adaptive=False)
-    dot_done.size_hint_x = None
-    dot_done.width = dp(12)
+    dot = MDBoxLayout(size_hint=(None, None), size=(dp(8), dp(8)),
+                      pos_hint={"center_y": 0.5})
+    with dot.canvas.before:
+        Color(*color)
+        dot._dot = RoundedRectangle(radius=[dp(4)] * 4)
+    dot.bind(pos=_dot_draw, size=_dot_draw)
     txt = label(text, color=color, size=size, halign="left", wrap=False)
     txt.bold = bold
-    b.add_widget(dot_done)
+    b.add_widget(dot)
     b.add_widget(txt)
     return b
+
+
+def _dot_draw(inst, *a):
+    if hasattr(inst, "_dot"):
+        inst._dot.pos = inst.pos
+        inst._dot.size = inst.size
 
 
 def _chip_draw(inst, *a):

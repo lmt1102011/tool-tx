@@ -80,7 +80,7 @@ class SettingsScreen(MDScreen):
         self.btn_logout.bind(on_release=lambda *a: self._logout())
         col.add_widget(self.btn_logout)
 
-        col.add_widget(label("ToolTX · Gold edition · v1.0", halign="center",
+        col.add_widget(label("ToolTX - Gold edition - v1.1", halign="center",
                              color=DIM, size=11))
         col.add_widget(MDBoxLayout(size_hint_y=None, height=dp(10)))
 

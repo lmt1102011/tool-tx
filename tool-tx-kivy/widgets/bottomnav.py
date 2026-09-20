@@ -14,11 +14,11 @@ class NavTab(ButtonBehavior, MDBoxLayout):
         super().__init__(orientation="vertical", spacing=dp(2), size_hint=(1, 1), **kw)
         self.key = key
         self._cb = on_select
-        dot = MDIcon(icon=icon, font_size=sp(20), theme_text_color="Custom",
-                     text_color=DIM, size_hint=(None, None), size=(dp(24), dp(26)),
+        dot = MDIcon(icon=icon, font_size=sp(22), theme_text_color="Custom",
+                     text_color=DIM, size_hint=(None, None), size=(dp(26), dp(28)),
                      pos_hint={"center_x": 0.5})
-        dot.text_size = (dp(24), None)
-        txt = label(text, style="Caption", color=DIM, size=11, halign="center")
+        dot.text_size = (dp(26), None)
+        txt = label(text, style="Caption", color=DIM, size=12, halign="center")
         self.icon = dot
         self.txt = txt
         self.add_widget(dot)

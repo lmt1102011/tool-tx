@@ -1,13 +1,13 @@
 # screens/home.py — màn hình chính: dự đoán Tài/Xỉu theo thời gian thực.
 from kivy.metrics import dp, sp
-from kivy.graphics import Color, Rectangle
+from kivy.graphics import Color, RoundedRectangle
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDRoundFlatButton
 from kivymd.uix.progressbar import MDProgressBar
 from kivymd.uix.scrollview import MDScrollView
 from kivymd.uix.screen import MDScreen
 
-from core.config import GOLD, GOLD_DIM, DIM, TXT, RED_T, BLUE_X, GREEN, WARN
+from core.config import GOLD, GOLD_DIM, DIM, TXT, RED_T, BLUE_X, GREEN, WARN, IS_ANDROID
 from screens.uikit import label, GlassCard, Column, chip
 
 
@@ -73,18 +73,16 @@ class HomeScreen(MDScreen):
         self.conf = label("Đang chờ dữ liệu...", halign="center", color=DIM, size=13)
         card.add_widget(self.conf)
 
-        divider = MDBoxLayout(size_hint_y=None, height=dp(1), padding=[dp(30), 0, dp(30), 0])
-        with divider.canvas.before:
-            divider._c = Color(*GOLD_DIM)
-            divider._r = Rectangle()
-        divider.bind(pos=_div_draw, size=_div_draw)
-        card.add_widget(divider)
-
-        card.add_widget(label("CHUỖI KẾT QUẢ", style="Overline", color=DIM, size=11,
-                              halign="left", bold=True))
-        self.hist = label("chờ dữ liệu", wrap=True, markup=True, size=15, halign="left")
-        self.hist.text_color = DIM
-        card.add_widget(self.hist)
+        # kết quả gần đây: dải ô màu T/X + dòng thống kê
+        res = GlassCard(spacing=dp(10), padding=[dp(14), dp(12), dp(14), dp(12)])
+        col.add_widget(res)
+        res.add_widget(label("KẾT QUẢ GẦN NHẤT", style="Overline", color=GOLD_DIM,
+                             size=11, halign="left", bold=True))
+        self.hist_boxes = MDBoxLayout(orientation="horizontal", spacing=dp(6),
+                                      size_hint_y=None, height=dp(34))
+        res.add_widget(self.hist_boxes)
+        self.hist_sum = label("chờ dữ liệu", wrap=True, color=DIM, size=13)
+        res.add_widget(self.hist_sum)
 
         # cổng lượt
         self.gate_card = GlassCard(bg=(0.36, 0.06, 0.08, 0.55), border=RED_T,
@@ -100,9 +98,11 @@ class HomeScreen(MDScreen):
         col.add_widget(action)
         action.add_widget(label("TRÌNH DUYỆT TỰ ĐỘNG", style="Overline", color=GOLD_DIM,
                                 size=12, bold=True))
-        action.add_widget(label("Chạy agent trên máy bạn, hoặc mở Chromium Fork "
-                                "trên điện thoại để chơi \"1 tab riêng\".",
-                                wrap=True, color=DIM, size=13))
+        if IS_ANDROID:
+            desc = "Mở Chromium Fork trên điện thoại để agent chơi giúp bạn."
+        else:
+            desc = "Mở Chromium Fork trên điện thoại, hoặc Chrome CDP trên máy tính."
+        action.add_widget(label(desc, wrap=True, color=DIM, size=13))
         b = MDRoundFlatButton(text="MỞ TRÌNH DUYỆT", size_hint=(1, None), height=dp(48),
                               md_bg_color=(0, 0, 0, 0), line_color=GOLD_DIM,
                               text_color=GOLD, font_size=sp(14))
@@ -165,20 +165,45 @@ class HomeScreen(MDScreen):
             self.conf.text = "Độ tin cậy %02.0f%%" % float(c) if c is not None \
                 else "Tỷ lệ TÀI chiếm ưu thế"
             self.conf.text_color = TXT
-        hist = p.get("hist") or p.get("history") or []
-        out = []
-        for x in hist[-24:]:
-            s = str(x).upper()
-            if s[:1] == "T":
-                out.append("[color=#F26B78]T[/color]")
-            elif s[:1] == "X":
-                out.append("[color=#6BA9F9]X[/color]")
-            else:
-                out.append("[color=#9AA7BD]?[/color]")
-        self.hist.text = "   ".join(out) or "[color=#556]chờ dữ liệu[/color]"
+        self._render_hist(p.get("hist") or p.get("history") or [])
+
+    def _render_hist(self, hist):
+        """Dựng dải ô T/X gần nhất + dòng thống kê."""
+        self.hist_boxes.clear_widgets()
+        self.hist_sum.text = "chờ dữ liệu"
+        items = [str(x).upper()[:1] for x in hist[-10:]]
+        if not items:
+            return
+        counts = {"T": 0, "X": 0}
+        for s in items:
+            counts[s] = counts.get(s, 0) + 1
+            color = RED_T if s == "T" else (BLUE_X if s == "X" else (0.16, 0.21, 0.31, 1))
+            bg = (0.35, 0.08, 0.10, 0.9) if s == "T" else (
+                (0.08, 0.15, 0.32, 0.9) if s == "X" else (0.13, 0.17, 0.26, 0.9))
+            self.hist_boxes.add_widget(self._res_box(s, color, bg))
+        rest = len(hist) - len(items)
+        tail = ("  ... thêm %d ván" % rest) if rest > 0 else ""
+        self.hist_sum.text = ("TÀI %d  -  XỈU %d" % (counts.get("T", 0), counts.get("X", 0))) + tail
+        self.hist_sum.text_color = TXT
+
+    def _res_box(self, text, color, bg):
+        b = MDBoxLayout(size_hint=(None, None), size=(dp(30), dp(30)))
+        with b.canvas.before:
+            Color(*bg)
+            b._r = RoundedRectangle(radius=[dp(8)] * 4)
+        b.bind(pos=_res_draw, size=_res_draw)
+        t = label(text, color=color, size=15, halign="center", bold=True)
+        b.add_widget(t)
+        return b
 
 
 def _div_draw(inst, *a):
+    if inst._r is not None:
+        inst._r.pos = inst.pos
+        inst._r.size = inst.size
+
+
+def _res_draw(inst, *a):
     if inst._r is not None:
         inst._r.pos = inst.pos
         inst._r.size = inst.size

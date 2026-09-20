@@ -155,7 +155,7 @@ class AdminScreen(MDScreen):
         name.add_widget(nm)
         name.add_widget(dn)
         picks = int(u.get("balanceFields") or 0)
-        pill = chip(("∞" if u.get("role") == "admin" else str(picks)),
+        pill = chip(("vô hạn" if u.get("role") == "admin" else str(picks)),
                     RED_T if picks <= 0 else GREEN,
                     (0.35, 0.08, 0.10, 0.5) if picks <= 0 else (0.16, 0.45, 0.30, 0.35),
                     size=12)

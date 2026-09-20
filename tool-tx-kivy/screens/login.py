@@ -38,7 +38,7 @@ class LoginScreen(MDScreen):
             col.add_widget(lcard)
         col.add_widget(label("TOOLTX", style="H4", color=GOLD, size=34,
                              halign="center", bold=True))
-        col.add_widget(label("Dự đoán Tài/Xỉu tự động · Gold edition",
+        col.add_widget(label("Dự đoán Tài/Xỉu tự động - Gold edition",
                              color=DIM, size=13, halign="center"))
 
         card = GlassCard(spacing=dp(14), padding=[dp(18), dp(22), dp(18), dp(18)])

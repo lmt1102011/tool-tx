@@ -147,6 +147,7 @@ class ToolApp(App):
         except Exception:
             pass
         _mark("on_start")
+        self._say("Đang tải dữ liệu...")
         self._ladder = [
             ("import nang",       self._st_imports),
             ("theme+window",      self._st_theme),
@@ -163,19 +164,20 @@ class ToolApp(App):
             name, fn = self._ladder.pop(0)
             if fn is None:
                 _mark("all-ok")
-                self._say("TOOLTX SAN SANG ✓")
+                try:
+                    self._loading.text = "TOOLTX\nSẵn sàng!"
+                except Exception:
+                    pass
                 return
             _mark(name)
-            self._say("RUN  " + name)
             try:
                 fn()
                 _mark(name + "=ok")
-                self._say("OK   " + name + " ✓")
             except BaseException as e:
                 _mark(name + "=fail")
-                self._say("ERR  " + name + " :: " + repr(e)[:160], err=True)
+                self._say("LỖI KHỞI ĐỘNG\n" + name + " :: " + repr(e)[:160], err=True)
                 tb = traceback.format_exc().splitlines()
-                for ln in tb[-6:]:
+                for ln in tb[-8:]:
                     self._say("     " + ln[:120], err=True)
                 try:
                     with open(CRASH_PATH, "a", encoding="utf-8") as f:
@@ -188,7 +190,10 @@ class ToolApp(App):
                 Clock.schedule_once(self._next, 0.02)
             return
         _mark("all-ok")
-        self._say("TOOLTX SAN SANG ✓")
+        try:
+            self._loading.text = "TOOLTX\nSẵn sàng!"
+        except Exception:
+            pass
 
     def _st_imports(self):
         global fb, sio_client, C
@@ -215,6 +220,11 @@ class ToolApp(App):
         self.theme_cls.accent_palette = "Amber"
         self.theme_cls.primary_hue = "700"
         Window.clearcolor = (0.10, 0.14, 0.22, 1)
+        # bàn phím không che ô nhập nữa: tự cuộn vùng nhập lên trên bàn phím
+        try:
+            Window.softinput_mode = "below_target"
+        except Exception:
+            pass
 
     def _st_services(self):
         from core.auth import AuthManager
@@ -258,15 +268,17 @@ class ToolApp(App):
         from kivy.metrics import dp
         from kivy.core.window import Window
         from widgets.bottomnav import BottomNav
-        self.nav = BottomNav(on_select=self.goto, height=dp(62))
+        self.nav = BottomNav(on_select=self.goto, height=dp(64))
         self.root_box.add_widget(self.nav)
         self.goto("login")
 
-        # gắn UI thật vào gốc (thay màn loading)
+        # Thay màn hình loading bằng UI thật: đẩy thẳng vào cửa sổ (không giữ
+        # ScrollView gốc — vì nó nuốt cú chạm của tab điều hướng bên dưới).
+        self.root_box.size_hint = (1, 1)
         try:
-            self.root.clear_widgets()
-            self.root_box.size_hint = (1, 1)
-            self.root.add_widget(self.root_box)
+            Window.clear_widgets()
+            Window.add_widget(self.root_box)
+            self.root = self.root_box
         except Exception:
             pass
 
@@ -461,7 +473,7 @@ class ToolApp(App):
         def upd(dt):
             try:
                 if self.role == "admin":
-                    txt = "∞"
+                    txt = "vô hạn"
                     warn = False
                 else:
                     txt = str(self.picks)
@@ -501,7 +513,7 @@ class ToolApp(App):
     def _log_ui(self, msg, err=False):
         self._logs.append((str(msg), err))
         self._logs = self._logs[-80:]
-        text = "\n".join("⚠ " + m if e else m for m, e in self._logs)
+        text = "\n".join("- " + m if e else m for m, e in self._logs)
         Clock.schedule_once(partial(self._apply_log, text))
 
     def _apply_log(self, text, dt):
