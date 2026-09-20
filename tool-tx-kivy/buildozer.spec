@@ -16,7 +16,7 @@ requirements = python3,kivy==2.3.0,kivymd==1.2.0,python-socketio==5.13.0,websock
 orientation = portrait
 fullscreen = 0
 
-android.archs = arm64-v8a
+android.archs = arm64-v8a x86_64
 android.api = 33
 android.minapi = 21
 android.ndk_api = 21

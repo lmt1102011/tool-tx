@@ -79,7 +79,8 @@ jobs:
             echo "launcher da idle, doi 20s"
             sleep 20
             adb shell pm path android > /dev/null || echo "storage chua ready"
-            APK=$(ls "$GITHUB_WORKSPACE"/tool-tx-kivy/bin/tooltx-*.apk 2>/dev/null | head -n 1)
+            APK=$(ls "$GITHUB_WORKSPACE"/tool-tx-kivy/bin/tooltx-*x86_64.apk 2>/dev/null | head -n 1)
+            if [ -z "$APK" ]; then APK=$(ls "$GITHUB_WORKSPACE"/tool-tx-kivy/bin/tooltx-*.apk 2>/dev/null | head -n 1); fi
             echo "APK=$APK"
             adb install -r "$APK" || echo "E2 install fail"
             sleep 5
