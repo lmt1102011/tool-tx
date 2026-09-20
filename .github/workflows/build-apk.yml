@@ -70,27 +70,42 @@ jobs:
           profile: pixel_2
           disable-animations: true
           script: |
-            APK=$(ls "$GITHUB_WORKSPACE/tool-tx-kivy/bin/tooltx-"*.apk 2>/dev/null | head -n 1)
-            echo "INSERT_APK=$APK" || true
-            adb wait-for-device || true
-            adb install -r "$APK" || true
-            adb shell am start -n org.lmt1102011.tooltx/org.kivy.android.PythonActivity || true
+            set +e
+            echo "=== EMU start ==="
+            APK=$(ls "$GITHUB_WORKSPACE"/tool-tx-kivy/bin/tooltx-*.apk 2>/dev/null | head -n 1)
+            echo "APK=$APK"
+            adb wait-for-device || echo "adb wait FAIL"
+            adb install -r "$APK" || echo "install FAIL"
+            sleep 5
+            adb logcat -c || echo "logcat clear FAIL"
+            adb shell pm clear org.lmt1102011.tooltx || echo "pm clear FAIL"
+            adb shell am start -n org.lmt1102011.tooltx/org.kivy.android.PythonActivity || echo "am start FAIL"
+            echo "=== launch sent, sleeping 55 ==="
             sleep 55
-            adb logcat -d -v threadtime > emulator-logcat.txt || true
-            grep -nE "STEP |FATAL EXCEPTION|AndroidRuntime|F DEBUG|backtrace|caused by|Traceback|Kivy v|main.py|tooltx" emulator-logcat.txt | tail -n 220 > crash-lines.txt || true
-            echo "===== SEARCH (220) ====="
-            cat crash-lines.txt || true
-            echo "===== app files ====="
-            adb shell "run-as org.lmt1102011.tooltx find files -name '*.log'" || true
-            adb shell "run-as org.lmt1102011.tooltx cat /data/data/org.lmt1102011.tooltx/files/app/fault.log 2>/dev/null" || true
-            adb shell "run-as org.lmt1102011.tooltx cat /data/data/org.lmt1102011.tooltx/files/app/crash.log 2>/dev/null" || true
-            if grep -qiE "FATAL EXCEPTION|AndroidRuntime" crash-lines.txt 2>/dev/null; then
-              echo "::error::CRASH_DETECTED — mo artifact emulator-logcat, tim FATAL EXCEPTION"
-            elif grep -q "STEP " crash-lines.txt 2>/dev/null; then
-              echo "::warning::NO FATAL; Python da chay (co STEP) — xem emulator-logcat"
+            adb logcat -d -v threadtime > emulator-logcat.txt || echo "logcat dump FAIL"
+            wc -l emulator-logcat.txt
+            rm -f emulator-crash.txt
+            { echo "== STACK =="
+              grep -nE "FATAL EXCEPTION|F DEBUG|backtrace|Abort message|signal [0-9]+|crash_dump|SIGSEGV|SIGABRT|SIGBUS|SIGILL" emulator-logcat.txt | head -60
+              echo "== ANDROID RUNTIME =="
+              grep -nE "AndroidRuntime" emulator-logcat.txt | head -30
+              echo "== STEP/KIVY =="
+              grep -nE "STEP |Kivy v|Logger|Window|SDL|GL |pyjnius|jnius|tooltx|main.py" emulator-logcat.txt | tail -60
+              echo "== FILES =="
+              adb shell "run-as org.lmt1102011.tooltx find files -name '*' -type f" 2>/dev/null
+              adb shell "run-as org.lmt1102011.tooltx cat files/app/fault.log" 2>/dev/null
+              adb shell "run-as org.lmt1102011.tooltx cat files/app/crash.log" 2>/dev/null
+            } >> emulator-crash.txt
+            echo "===== CRASH SUMMARY (full) ====="
+            cat emulator-crash.txt
+            echo "===== first 8 for annotations ====="
+            head -n 8 emulator-crash.txt | while IFS= read -r line; do printf '::warning::EMU | %s\n' "$(printf '%s' "$line" | sed 's/[^[:print:]]//g' | cut -c1-500)"; done
+            if grep -qiE "FATAL EXCEPTION|AndroidRuntime" emulator-crash.txt; then
+              printf '::error::EMU FATAL DETECTED — xem artifact emulator-logcat / crash summary o tren\n'
             else
-              echo "::warning::NO FATAL va khong thay STEP — chet truoc Python hoac app khong chay"
+              printf '::warning::EMU NO FATAL detected\n'
             fi
+            true
 
       - name: Upload emulator logcat
         if: always()
