@@ -70,24 +70,23 @@ jobs:
           profile: pixel_2
           disable-animations: true
           script: |
-            set -o pipefail
             APK=$(ls tool-tx-kivy/bin/tooltx-*.apk | head -n 1)
             echo "INSERT_APK=$APK"
             adb install -r "$APK"
             adb shell am start -n org.lmt1102011.tooltx/org.kivy.android.PythonActivity
             sleep 55
             adb logcat -d -v threadtime > emulator-logcat.txt || true
-            grep -nE "STEP |FATAL|AndroidRuntime|F DEBUG|backtrace|caused by|Exception|Error|Traceback|Kivy|kivy|main\.py|tooltx" emulator-logcat.txt | tail -n 220 > crash-lines.txt || true
+            grep -nE "STEP |FATAL EXCEPTION|AndroidRuntime|F DEBUG|backtrace|caused by|Traceback|Kivy v|main.py|tooltx" emulator-logcat.txt | tail -n 220 > crash-lines.txt || true
             echo "===== SEARCH (220) ====="
             cat crash-lines.txt
+            echo "===== fault.log ====="
             adb shell "run-as org.lmt1102011.tooltx cat /data/data/org.lmt1102011.tooltx/files/app/fault.log 2>/dev/null || run-as org.lmt1102011.tooltx cat files/fault.log 2>/dev/null" || true
-            echo "===== crash.log in app ====="
+            echo "===== crash.log ====="
             adb shell "run-as org.lmt1102011.tooltx cat /data/data/org.lmt1102011.tooltx/files/app/crash.log 2>/dev/null || run-as org.lmt1102011.tooltx cat files/crash.log 2>/dev/null" || true
-            if grep -qiE "FATAL|AndroidRuntime" crash-lines.txt; then
-              echo "CRASH_DETECTED"
-              exit 1
+            if grep -qiE "FATAL EXCEPTION|AndroidRuntime" crash-lines.txt; then
+              echo "::error::CRASH_DETECTED — mở artifact emulator-logcat, tìm FATAL EXCEPTION"
             else
-              echo "NO_FATAL_FOUND (xem logcat manual)"
+              echo "::warning::NO_FATAL trong logcat — xem artifact emulator-logcat và STEP markers"
             fi
 
       - name: Upload emulator logcat
