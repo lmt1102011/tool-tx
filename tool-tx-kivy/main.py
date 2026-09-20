@@ -12,29 +12,55 @@
 
 import os
 import sys
+
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+CRASH_PATH = os.path.join(APP_DIR, "crash.log")
+
+
+def _log_step(step):
+    try:
+        with open(CRASH_PATH, "w", encoding="utf-8") as f:
+            f.write("STEP " + step)
+    except Exception:
+        pass
+
+
+_log_step("main-start")
+
 import threading
 
 from functools import partial
 
-from kivy.clock import Clock
-from kivy.core.window import Window
-from kivy.metrics import dp
-from kivy.graphics import Color, Rectangle
-from kivy.uix.screenmanager import FadeTransition
-from kivymd.app import MDApp
-from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.screenmanager import MDScreenManager
+try:
+    from kivy.clock import Clock
+    from kivy.core.window import Window
+    from kivy.metrics import dp
+    from kivy.graphics import Color, Rectangle
+    from kivy.uix.screenmanager import FadeTransition
+    from kivymd.app import MDApp
+    from kivymd.uix.boxlayout import MDBoxLayout
+    from kivymd.uix.screenmanager import MDScreenManager
+    _log_step("kivy-ok")
+except BaseException:
+    _log_step("kivy-import-fail")
+    raise
 
-import fb
-import sio_client
-from core import config as C
-from core.auth import AuthManager
-from core.theme import make_bg
-from screens.login import LoginScreen
-from screens.home import HomeScreen
-from screens.browser import BrowserScreen
-from screens.settings import SettingsScreen
-from widgets.bottomnav import BottomNav
+try:
+    import fb
+    import sio_client
+    from core import config as C
+    from core.auth import AuthManager
+    from core.theme import make_bg
+    from screens.login import LoginScreen
+    from screens.home import HomeScreen
+    from screens.browser import BrowserScreen
+    from screens.settings import SettingsScreen
+    from widgets.bottomnav import BottomNav
+    from kivy.graphics.texture import Texture
+    _log_step("app-imports-ok")
+except BaseException:
+    _log_step("app-imports-fail")
+    raise
 
 
 class ToolApp(MDApp):
@@ -490,26 +516,12 @@ class ToolApp(MDApp):
         self.sio.agent_pair(on_code)
 
 
-CRASH_PATH = os.path.join(C.BASE_DIR, "crash.log")
-
-
 def _last_step():
     try:
         with open(CRASH_PATH, encoding="utf-8") as f:
             return (f.read() or "").strip()[:300]
     except Exception:
         return "(chưa có)"
-
-
-def _log_step(step):
-    """Ghi lại BƯỚC khởi động hiện tại (ghi đè) — nếu app chết giữa chừng,
-    lần mở sau sẽ đọc được nơi app dừng."""
-    try:
-        os.makedirs(C.BASE_DIR, exist_ok=True)
-        with open(CRASH_PATH, "w", encoding="utf-8") as f:
-            f.write("STEP " + step)
-    except Exception:
-        pass
 
 
 def _write_crash(tb):
@@ -520,11 +532,26 @@ def _write_crash(tb):
         pass
 
 
+def _toast(msg):
+    """Popup Android nhỏ — dùng khi kivy không hiển thị được."""
+    try:
+        from jnius import autoclass
+        PythonActivity = autoclass("org.kivy.android.PythonActivity")
+        Toast = autoclass("android.widget.Toast")
+        Toast.makeText(PythonActivity.mActivity, msg[:260], 1).show()
+    except Exception:
+        pass
+
+
 def _show_error(tb, prev=None):
     """Hiện traceback trên màn hình xám đen để chụp ảnh gửi lại."""
-    from kivy.app import App
-    from kivy.uix.label import Label
-    from kivy.uix.scrollview import ScrollView
+    try:
+        from kivy.app import App
+        from kivy.uix.label import Label
+        from kivy.uix.scrollview import ScrollView
+    except Exception:
+        _toast("LỖI: " + (prev or "")[:200])
+        return
 
     head = ""
     if prev:
