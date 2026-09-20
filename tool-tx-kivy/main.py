@@ -17,6 +17,7 @@ import sys
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 CRASH_PATH = os.path.join(APP_DIR, "crash.log")
+GATE_PATH = os.path.join(APP_DIR, "boot_state")
 _ON_ANDROID = bool(os.environ.get("ANDROID_ARGUMENT"))
 
 import faulthandler  # noqa: E402
@@ -56,6 +57,25 @@ def _mark(step):
     _log_step(step)
     _toast("T:" + step)
 
+
+def _gate_read():
+    try:
+        with open(GATE_PATH, encoding="utf-8") as f:
+            return f.read().strip()
+    except Exception:
+        return ""
+
+
+def _gate_write(v):
+    try:
+        with open(GATE_PATH, "w", encoding="utf-8") as f:
+            f.write(v)
+    except Exception:
+        pass
+
+
+# BẮT prev TRƯỚC khi ghi marker của lần chạy này, để màn hình xám đọc đúng dữ liệu lần trước.
+_PREV_STEP = _last_step()
 
 _mark("main-start")
 
@@ -206,6 +226,13 @@ class ToolApp(App):
                 Window.clearcolor = (0.10, 0.14, 0.22, 1)
             except Exception:
                 pass
+
+    def on_stop(self):
+        try:
+            super().on_stop()
+        except Exception:
+            pass
+        _gate_write("OK")
 
     # ────────────────── điều hướng ──────────────────
     def goto(self, name):
@@ -627,27 +654,31 @@ def _thread_exc(args):
 
 
 def _boot():
-    prev = _last_step()
-    if prev and prev != "STEP app-exited":
+    prev = _PREV_STEP
+    if _gate_read() == "START":
+        # lần chạy trước chết bên trong run() (native hay python) — hiện báo lỗi
         _show_error("", prev=prev)
+        _gate_write("OK")
         try:
             os.remove(CRASH_PATH)
         except Exception:
             pass
         return
     _mark("boot")
+    app = ToolApp()
+    _mark("app-created")
+    _gate_write("START")
     try:
-        app = ToolApp()
-        _mark("app-created")
         app.run()
     except BaseException:
         tb = traceback.format_exc()
         _write_crash(tb)
         _toast("EXC: " + tb.splitlines()[-1][:180])
         try:
-            _show_error(tb, prev=_last_step())
+            _show_error(tb, prev=prev)
         except Exception:
             pass
+    _gate_write("OK")
     _mark("app-exited")
 
 
