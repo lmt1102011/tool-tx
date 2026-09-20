@@ -37,13 +37,14 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          STAGE=$(grep -nE 'Building .+|Running cython' build.log | tail -n 2 | tr '\n' ';')
+          STAGE=$(grep -nE 'Building .+|Running cython|Installing package|Configured for' build.log 2>/dev/null | tail -n 2 | tr '\n' ';')
           echo "::error::STAGE=$STAGE"
-          ERR=$(grep -nE 'error:|Error|ERROR|Traceback|Exception|failed|no such file' build.log | tail -n 10 | tr '\n' ';' || true)
+          ERR=$(grep -nE 'error:|Error|ERROR|Traceback|Exception|failed|FAILED|no such file|No module named|ccache|fatal|undefined' build.log 2>/dev/null | tail -n 6 | tr '\n' ';')
           echo "::error::ERRS=$ERR"
-          echo "::error::TAIL=$(tail -n 5 build.log | tr '\n' ';' || true)"
+          echo "::error::TAIL=$(tail -n 6 build.log 2>/dev/null | tr '\n' ';')"
           APKDIR=$(find .buildozer -name '*.apk' 2>/dev/null | head -n1 || true)
           echo "::error::APK=$APKDIR"
+          true
 
       - name: Upload build log (on failure)
         if: failure()
