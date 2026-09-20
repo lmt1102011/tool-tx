@@ -65,6 +65,7 @@ class ToolApp(MDApp):
 
     # ────────────────── build ──────────────────
     def build(self):
+        _log_step("build")
         self.theme_cls.theme_style = "Dark"
         self.theme_cls.primary_palette = "Amber"
         self.theme_cls.accent_palette = "Amber"
@@ -72,15 +73,20 @@ class ToolApp(MDApp):
         Window.clearcolor = (0.10, 0.14, 0.22, 1)
 
         self.bg_texture = make_bg()
+        _log_step("build-bg")
 
         self.root_box = MDBoxLayout(orientation="vertical", md_bg_color=(0, 0, 0, 0))
         self._apply_bg(self.root_box)
 
         self.sm = MDScreenManager(transition=FadeTransition(duration=0.22))
         self.login = LoginScreen(name="login")
+        _log_step("build-login")
         self.home = HomeScreen(name="home")
+        _log_step("build-home")
         self.browser = BrowserScreen(name="browser")
+        _log_step("build-browser")
         self.settings = SettingsScreen(name="settings")
+        _log_step("build-settings")
         for s in (self.login, self.home, self.browser, self.settings):
             self.sm.add_widget(s)
         self.root_box.add_widget(self.sm)
@@ -89,6 +95,7 @@ class ToolApp(MDApp):
         self.root_box.add_widget(self.nav)
 
         self.goto("login")
+        _log_step("build-done")
         return self.root_box
 
     def _apply_bg(self, w):
@@ -109,6 +116,7 @@ class ToolApp(MDApp):
 
     def on_start(self):
         super().on_start()
+        _log_step("on_start")
         Window.clearcolor = (0.10, 0.14, 0.22, 1)
         self.auth.set_session_path(C.SESSION_PATH)
         if self.auth.logged_in():
@@ -485,28 +493,50 @@ class ToolApp(MDApp):
 CRASH_PATH = os.path.join(C.BASE_DIR, "crash.log")
 
 
-def _write_crash(tb):
+def _last_step():
+    try:
+        with open(CRASH_PATH, encoding="utf-8") as f:
+            return (f.read() or "").strip()[:300]
+    except Exception:
+        return "(chưa có)"
+
+
+def _log_step(step):
+    """Ghi lại BƯỚC khởi động hiện tại (ghi đè) — nếu app chết giữa chừng,
+    lần mở sau sẽ đọc được nơi app dừng."""
     try:
         os.makedirs(C.BASE_DIR, exist_ok=True)
-        with open(CRASH_PATH, "a", encoding="utf-8") as f:
-            f.write(tb + "\n")
+        with open(CRASH_PATH, "w", encoding="utf-8") as f:
+            f.write("STEP " + step)
     except Exception:
         pass
 
 
-def _show_error(tb):
+def _write_crash(tb):
+    try:
+        with open(CRASH_PATH, "a", encoding="utf-8") as f:
+            f.write("\n" + tb + "\n")
+    except Exception:
+        pass
+
+
+def _show_error(tb, prev=None):
     """Hiện traceback trên màn hình xám đen để chụp ảnh gửi lại."""
     from kivy.app import App
     from kivy.uix.label import Label
     from kivy.uix.scrollview import ScrollView
+
+    head = ""
+    if prev:
+        head = "LẦN CHẠY TRƯỚC DỪNG TẠI: %s\n\n" % prev
 
     class ErrApp(App):
         title = "TOOLTX — lỗi khởi động"
 
         def build(self):
             sv = ScrollView()
-            l = Label(text=tb, font_size="10sp", halign="left", valign="top",
-                      size_hint_y=None, padding=(10, 10))
+            l = Label(text=head + tb, font_size="11sp", halign="left", valign="top",
+                      size_hint_y=None, padding=(10, 10), color=(1, 1, 1, 1))
             l.bind(width=lambda inst, w: setattr(inst, "text_size", (w * 0.98, None)))
             sv.add_widget(l)
             return sv
@@ -519,22 +549,34 @@ def _thread_exc(args):
     try:
         tb = "".join(traceback.format_exception(
             args.exc_type, args.exc_value, args.exc_traceback))
-        _write_crash("\n[thread] " + tb)
+        _write_crash("[thread] " + tb)
     except Exception:
         pass
 
 
 def _boot():
+    prev = _last_step()
+    if prev and "STEP app-exited" not in prev:
+        _show_error("", prev=prev)
+        try:
+            os.remove(CRASH_PATH)
+        except Exception:
+            pass
+        return
+    _log_step("boot")
     try:
-        ToolApp().run()
+        app = ToolApp()
+        _log_step("app-created")
+        app.run()
     except Exception:
         import traceback
         tb = traceback.format_exc()
         _write_crash(tb)
         try:
-            _show_error(tb)
+            _show_error(tb, prev=_last_step())
         except Exception:
             pass
+    _log_step("app-exited")
 
 
 if __name__ == "__main__":
