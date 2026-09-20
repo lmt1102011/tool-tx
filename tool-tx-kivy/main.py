@@ -62,12 +62,19 @@ import threading
 from functools import partial
 
 try:
+    _mark("k1-clock")
     from kivy.clock import Clock
+    _mark("k2-metrics")
     from kivy.metrics import dp
+    _mark("k3-graphics")
     from kivy.graphics import Color, Rectangle
+    _mark("k4-screenmgr")
     from kivy.uix.screenmanager import FadeTransition
+    _mark("k5-mdapp")
     from kivymd.app import MDApp
+    _mark("k6-mdbox")
     from kivymd.uix.boxlayout import MDBoxLayout
+    _mark("k7-mdsm")
     from kivymd.uix.screenmanager import MDScreenManager
     _mark("kivy-ok")
 except BaseException as _e:
@@ -76,16 +83,27 @@ except BaseException as _e:
     raise
 
 try:
+    _mark("a1-fb")
     import fb
+    _mark("a2-sio")
     import sio_client
+    _mark("a3-config")
     from core import config as C
+    _mark("a4-auth")
     from core.auth import AuthManager
+    _mark("a5-theme")
     from core.theme import make_bg
+    _mark("a6-login")
     from screens.login import LoginScreen
+    _mark("a7-home")
     from screens.home import HomeScreen
+    _mark("a8-browser")
     from screens.browser import BrowserScreen
+    _mark("a9-settings")
     from screens.settings import SettingsScreen
+    _mark("a10-nav")
     from widgets.bottomnav import BottomNav
+    _mark("a11-tex")
     from kivy.graphics.texture import Texture
     _mark("app-imports-ok")
 except BaseException as _e:
