@@ -27,21 +27,25 @@ jobs:
       - name: Build debug APK (ghcr.io/kivy/buildozer)
         run: |
           set -o pipefail
-          docker run --rm \
+          if ! docker run --rm \
             -v "$HOME/.buildozer":/home/user/.buildozer \
             -v "$GITHUB_WORKSPACE/tool-tx-kivy":/home/user/hostcwd \
             ghcr.io/kivy/buildozer:latest \
-            -v android debug 2>&1 | tee build.log
+            -v android debug 2>&1 | tee build.log; then
+            echo "::error::ERR=$(grep -nE 'error:|Error|ERROR|Traceback|Exception|failed|FAILED|No module named|undefined|fatal' build.log | tail -n 5 | tr '\n' ';' || true)"
+            echo "::error::TAIL=$(tail -n 6 build.log | tr '\n' ';' || true)"
+            exit 1
+          fi
 
       - name: Dump build error (annotations)
         if: failure()
         shell: bash
         run: |
-          STAGE=$(grep -nE 'Building .+|Running cython|Installing package|Configured for' build.log 2>/dev/null | tail -n 2 | tr '\n' ';')
+          STAGE=$(grep -nE 'Building .+|Running cython|Installing package|Configured for' build.log 2>/dev/null | tail -n 2 | tr '\n' ';' || true)
           echo "::error::STAGE=$STAGE"
-          ERR=$(grep -nE 'error:|Error|ERROR|Traceback|Exception|failed|FAILED|no such file|No module named|ccache|fatal|undefined' build.log 2>/dev/null | tail -n 6 | tr '\n' ';')
+          ERR=$(grep -nE 'error:|Error|ERROR|Traceback|Exception|failed|FAILED|no such file|No module named|ccache|fatal|undefined' build.log 2>/dev/null | tail -n 6 | tr '\n' ';' || true)
           echo "::error::ERRS=$ERR"
-          echo "::error::TAIL=$(tail -n 6 build.log 2>/dev/null | tr '\n' ';')"
+          echo "::error::TAIL=$(tail -n 6 build.log 2>/dev/null | tr '\n' ';' || true)"
           APKDIR=$(find .buildozer -name '*.apk' 2>/dev/null | head -n1 || true)
           echo "::error::APK=$APKDIR"
           true
