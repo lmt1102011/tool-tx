@@ -99,10 +99,13 @@ from kivy.app import App  # noqa: E402
 from kivy.uix.label import Label  # noqa: E402
 from kivy.uix.scrollview import ScrollView  # noqa: E402
 from kivy.clock import Clock  # noqa: E402
+from kivy.properties import ObjectProperty  # noqa: E402
 _mark("base-ok")
 
 
 class ToolApp(App):
+    theme_cls = ObjectProperty(None)
+
     def __init__(self, **kw):
         super().__init__(**kw)
         self.theme_cls = None
