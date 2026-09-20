@@ -44,6 +44,10 @@ def _log_step(step):
             f.write("\nSTEP " + step)
     except Exception:
         pass
+    try:
+        print("STEP " + step, flush=True)
+    except Exception:
+        pass
 
 
 def _mark(step):
