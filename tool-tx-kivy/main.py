@@ -15,17 +15,43 @@ import sys
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 CRASH_PATH = os.path.join(APP_DIR, "crash.log")
+_ON_ANDROID = bool(os.environ.get("ANDROID_ARGUMENT"))
+
+import faulthandler
+try:
+    _FAULT_FH = open(os.path.join(APP_DIR, "fault.log"), "a")
+    faulthandler.enable(_FAULT_FH, all_threads=True)
+except Exception:
+    pass
 
 
-def _log_step(step):
+def _toast(msg):
+    """Popup Android nhỏ — kênh chẩn đoán không phụ thuộc ghi file/kivy."""
+    if not _ON_ANDROID:
+        return
     try:
-        with open(CRASH_PATH, "w", encoding="utf-8") as f:
-            f.write("STEP " + step)
+        from jnius import autoclass
+        A = autoclass("org.kivy.android.PythonActivity")
+        Toast = autoclass("android.widget.Toast")
+        Toast.makeText(A.mActivity, str(msg)[:220], 0).show()
     except Exception:
         pass
 
 
-_log_step("main-start")
+def _log_step(step):
+    try:
+        with open(CRASH_PATH, "a", encoding="utf-8") as f:
+            f.write("\nSTEP " + step)
+    except Exception:
+        pass
+
+
+def _mark(step):
+    _log_step(step)
+    _toast("T:" + step)
+
+
+_mark("main-start")
 
 import threading
 
@@ -40,9 +66,10 @@ try:
     from kivymd.app import MDApp
     from kivymd.uix.boxlayout import MDBoxLayout
     from kivymd.uix.screenmanager import MDScreenManager
-    _log_step("kivy-ok")
-except BaseException:
+    _mark("kivy-ok")
+except BaseException as _e:
     _log_step("kivy-import-fail")
+    _toast("KIVY FAIL: " + repr(_e)[:200])
     raise
 
 try:
@@ -57,9 +84,10 @@ try:
     from screens.settings import SettingsScreen
     from widgets.bottomnav import BottomNav
     from kivy.graphics.texture import Texture
-    _log_step("app-imports-ok")
-except BaseException:
+    _mark("app-imports-ok")
+except BaseException as _e:
     _log_step("app-imports-fail")
+    _toast("IMPORT FAIL: " + repr(_e)[:200])
     raise
 
 
@@ -91,7 +119,7 @@ class ToolApp(MDApp):
 
     # ────────────────── build ──────────────────
     def build(self):
-        _log_step("build")
+        _mark("build")
         self.theme_cls.theme_style = "Dark"
         self.theme_cls.primary_palette = "Amber"
         self.theme_cls.accent_palette = "Amber"
@@ -99,20 +127,20 @@ class ToolApp(MDApp):
         Window.clearcolor = (0.10, 0.14, 0.22, 1)
 
         self.bg_texture = make_bg()
-        _log_step("build-bg")
+        _mark("build-bg")
 
         self.root_box = MDBoxLayout(orientation="vertical", md_bg_color=(0, 0, 0, 0))
         self._apply_bg(self.root_box)
 
         self.sm = MDScreenManager(transition=FadeTransition(duration=0.22))
         self.login = LoginScreen(name="login")
-        _log_step("build-login")
+        _mark("build-login")
         self.home = HomeScreen(name="home")
-        _log_step("build-home")
+        _mark("build-home")
         self.browser = BrowserScreen(name="browser")
-        _log_step("build-browser")
+        _mark("build-browser")
         self.settings = SettingsScreen(name="settings")
-        _log_step("build-settings")
+        _mark("build-settings")
         for s in (self.login, self.home, self.browser, self.settings):
             self.sm.add_widget(s)
         self.root_box.add_widget(self.sm)
@@ -121,7 +149,7 @@ class ToolApp(MDApp):
         self.root_box.add_widget(self.nav)
 
         self.goto("login")
-        _log_step("build-done")
+        _mark("build-done")
         return self.root_box
 
     def _apply_bg(self, w):
@@ -142,7 +170,7 @@ class ToolApp(MDApp):
 
     def on_start(self):
         super().on_start()
-        _log_step("on_start")
+        _mark("on_start")
         Window.clearcolor = (0.10, 0.14, 0.22, 1)
         self.auth.set_session_path(C.SESSION_PATH)
         if self.auth.logged_in():
@@ -519,26 +547,16 @@ class ToolApp(MDApp):
 def _last_step():
     try:
         with open(CRASH_PATH, encoding="utf-8") as f:
-            return (f.read() or "").strip()[:300]
+            lines = [ln.strip() for ln in f.read().splitlines() if ln.strip()]
+            return (lines[-1] if lines else "")[:300]
     except Exception:
-        return "(chưa có)"
+        return ""
 
 
 def _write_crash(tb):
     try:
         with open(CRASH_PATH, "a", encoding="utf-8") as f:
             f.write("\n" + tb + "\n")
-    except Exception:
-        pass
-
-
-def _toast(msg):
-    """Popup Android nhỏ — dùng khi kivy không hiển thị được."""
-    try:
-        from jnius import autoclass
-        PythonActivity = autoclass("org.kivy.android.PythonActivity")
-        Toast = autoclass("android.widget.Toast")
-        Toast.makeText(PythonActivity.mActivity, msg[:260], 1).show()
     except Exception:
         pass
 
@@ -583,27 +601,28 @@ def _thread_exc(args):
 
 def _boot():
     prev = _last_step()
-    if prev and "STEP app-exited" not in prev:
+    if prev and prev != "STEP app-exited":
         _show_error("", prev=prev)
         try:
             os.remove(CRASH_PATH)
         except Exception:
             pass
         return
-    _log_step("boot")
+    _mark("boot")
     try:
         app = ToolApp()
-        _log_step("app-created")
+        _mark("app-created")
         app.run()
     except Exception:
         import traceback
         tb = traceback.format_exc()
         _write_crash(tb)
+        _toast("EXC: " + tb.splitlines()[-1][:180])
         try:
             _show_error(tb, prev=_last_step())
         except Exception:
             pass
-    _log_step("app-exited")
+    _mark("app-exited")
 
 
 if __name__ == "__main__":

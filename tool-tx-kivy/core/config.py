@@ -1,14 +1,10 @@
 # core/config.py — hằng số cấu hình + màu brand (dark navy + vàng kim).
 import os
-import sys
 
-IS_ANDROID = sys.platform == "linux" and "ANDROID" in os.environ.get("ANDROID_ARGUMENT", "")
+IS_ANDROID = bool(os.environ.get("ANDROID_ARGUMENT"))
 
-if IS_ANDROID:
-    from android.storage import app_storage_dir
-    BASE_DIR = app_storage_dir() or os.path.expanduser("~")
-else:
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Thư mục app: desktop = thư mục dự án; Android = thư mục người dùng của app.
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SESSION_PATH = os.path.join(BASE_DIR, "session.json")
 CFG_PATH = os.path.join(BASE_DIR, "config.txt")
