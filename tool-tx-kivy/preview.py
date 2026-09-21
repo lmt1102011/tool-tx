@@ -105,8 +105,8 @@ log_write("Kivy loaded")
 
 try:
     from kivy.core.window import Window
-    Window.size = (412, 892)
-    log_write("Window: 412x892")
+    Window.size = (412, 720)
+    log_write("Window: 412x720")
 except Exception:
     log_exception("window-init")
 
