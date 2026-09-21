@@ -20,9 +20,22 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("release-keystore.jks")
+            storePassword = "tooltx2024"
+            keyAlias = "tooltx"
+            keyPassword = "tooltx2024"
+        }
+    }
+
     buildTypes {
+        debug {
+            isMinifyEnabled = false
+        }
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
