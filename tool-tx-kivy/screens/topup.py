@@ -1,109 +1,101 @@
-# screens/topup.py — Màn Top Up (M3): chọn ngân hàng + popup dưới để chuyển khoản.
 from kivy.metrics import dp, sp
+from kivy.uix.widget import Widget
+from kivy.uix.behaviors import ButtonBehavior
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDIconButton, MDFillRoundFlatButton, MDTextButton
 from kivymd.uix.label import MDIcon
+from kivymd.uix.card import MDCard
 from kivymd.uix.dialog import MDDialog
-from kivy.uix.behaviors import ButtonBehavior
-from kivymd.uix.behaviors import RectangularRippleBehavior
 from kivymd.uix.screen import MDScreen
 
-from core.config import BANKS, WEB_TOPUP
+from core.config import BANKS
 from core.m3 import S
-from screens.uikit import label, Panel, Spacer
+from screens.uikit import t, spacer
 
 
-class BankRow(RectangularRippleBehavior, ButtonBehavior, MDBoxLayout):
-    """List item 72dp: icon tròn primaryContainer + tên bank + mũi tên xuống."""
-
+class BankRow(ButtonBehavior, MDBoxLayout):
     def __init__(self, bank_key, bank_name, on_pick=None, **kw):
-        super().__init__(orientation="horizontal", spacing=dp(16), size_hint_y=None,
-                         height=dp(72), padding=[dp(8), 0, dp(8), 0], **kw)
+        super().__init__(orientation="horizontal", spacing=dp(16),
+                         size_hint_y=None, height=dp(72),
+                         padding=[dp(16), dp(8), dp(16), dp(8)], **kw)
         self._cb = on_pick
-        circle = MDBoxLayout(size_hint=(None, None), size=(dp(40), dp(40)),
-                             pos_hint={"center_y": 0.5})
-        with circle.canvas.before:
-            from kivy.graphics import Color, Ellipse
-            Color(*S["primaryContainer"])
-            self._e = Ellipse(pos=circle.pos, size=circle.size)
-        circle.bind(pos=self._sync, size=self._sync)
-        ic = MDIcon(icon="account-balance", theme_text_color="Custom",
-                    text_color=S["onPrimaryContainer"], font_size=sp(24),
+
+        circle = MDCard(style="filled", radius=[dp(20)] * 4,
+                        size_hint=(None, None), size=(dp(40), dp(40)),
+                        md_bg_color=S["primaryContainer"])
+        ic = MDIcon(icon="account-balance", font_size=sp(20),
                     pos_hint={"center_x": 0.5, "center_y": 0.5})
+        ic.theme_text_color = "Custom"
+        ic.text_color = S["onPrimaryContainer"]
         circle.add_widget(ic)
         self.add_widget(circle)
-        self.add_widget(label(bank_name, role="onSurface", size=16))
-        md = MDIcon(icon="keyboard-arrow-down", theme_text_color="Custom",
-                    text_color=S["onSurfaceVariant"], font_size=sp(28),
-                    size_hint_x=None, width=dp(40))
-        self.add_widget(md)
-        self.bind(on_release=self._fire)
-        self._circle = circle
 
-    def _sync(self, inst, *a):
-        self._e.pos = inst.pos
-        self._e.size = inst.size
+        self.add_widget(t(bank_name, size=16, role="onSurface"))
+        self.add_widget(Widget())
 
-    def _fire(self, *a):
-        if self._cb:
-            self._cb()
+        ic2 = MDIcon(icon="keyboard-arrow-down", font_size=sp(28),
+                     size_hint_x=None, width=dp(40),
+                     pos_hint={"center_y": 0.5})
+        ic2.theme_text_color = "Custom"
+        ic2.text_color = S["onSurfaceVariant"]
+        self.add_widget(ic2)
+
+        self.bind(on_release=lambda *a: self._cb() if self._cb else None)
 
 
 class TopUpScreen(MDScreen):
     def __init__(self, on_open_web=None, on_done=None, **kw):
         super().__init__(**kw)
-        self.md_bg_color = (0, 0, 0, 0)
         self._on_open_web = on_open_web
         self._on_done = on_done
         self._dialog = None
         self._build()
 
     def _build(self):
-        root = MDBoxLayout(orientation="vertical")
+        root = MDBoxLayout(orientation="vertical", padding=0, spacing=0)
         self.add_widget(root)
 
-        # top app bar: back + title
         bar = MDBoxLayout(orientation="horizontal", padding=[dp(4), dp(12), dp(12), 0],
-                          size_hint_y=None, height=dp(64))
-        back = MDIconButton(icon="arrow-left", icon_size=sp(28),
+                          size_hint_y=None, height=dp(64), spacing=dp(8))
+        back = MDIconButton(icon="arrow-left", icon_size=sp(24),
                             theme_icon_color="Custom", icon_color=S["onSurface"])
         back.bind(on_release=lambda *a: self.open_back())
         bar.add_widget(back)
-        bar.add_widget(label("Top Up", role="onSurface", size=22, bold=True))
+        bar.add_widget(t("Top Up", size=22, bold=True, role="onSurface"))
         root.add_widget(bar)
 
-        box = Panel(bg="surfaceContainerHighest", radius=28, padding=[dp(12), dp(16), dp(12), dp(16)],
-                    width=dp(392), height=dp(684), auto=False, spacing=dp(14))
-        box.size_hint_x = None
-        box.pos_hint = {"center_x": 0.5}
-        root.add_widget(box)
+        panel = MDCard(radius=[dp(28)] * 4, size_hint=(None, None),
+                       size=(dp(392), dp(684)),
+                       pos_hint={"center_x": 0.5},
+                       padding=[dp(12), dp(16), dp(12), dp(16)],
+                       spacing=dp(14), orientation="vertical",
+                       md_bg_color=S["surfaceContainerHighest"])
+        root.add_widget(panel)
 
-        self._bank_rows = []
         for key, name in BANKS:
             r = BankRow(key, name, on_pick=lambda k=key, n=name: self._pick(k, n))
-            box.add_widget(r)
-            self._bank_rows.append(r)
+            panel.add_widget(r)
 
-        inner = Panel(bg="surfaceContainerLow", radius=20, padding=[dp(16), dp(20), dp(16), dp(20)],
-                      height=dp(320), auto=False, spacing=dp(10))
-        inner.add_widget(Spacer(height=dp(6), size_hint_y=None))
-        inner.add_widget(label("Nạp tiền qua ngân hàng", role="onSurface", size=16, bold=True))
-        inner.add_widget(label("Chọn ngân hàng bên trên, nhận số tài khoản và "
-                               "chuyển khoản đúng nội dung. Credit được cộng sau khi "
-                               "server xác nhận.", role="onSurfaceVariant", size=13,
-                               wrap=True, line_h=1.4))
-        add = MDFillRoundFlatButton(icon="add", size_hint=(1, None), height=dp(56),
-                                    md_bg_color=S["primary"], text_color=S["onPrimary"])
-        add.bind(on_release=lambda *a: self.open_web())
-        inner.add_widget(add)
-        box.add_widget(inner)
-
-        box.add_widget(Spacer(size_hint_y=(1, None), height=dp(6)))
-        box.add_widget(label("© ToolTX - Gold edition", role="onSurfaceVariant",
-                             size=11, halign="center"))
+        info = MDCard(style="elevated", radius=[dp(20)] * 4,
+                      padding=[dp(16), dp(20), dp(16), dp(20)],
+                      spacing=dp(10), orientation="vertical", size_hint_y=None, height=dp(280))
+        info.add_widget(spacer(6))
+        info.add_widget(t("Nạp tiền qua ngân hàng", size=16, bold=True, role="onSurface"))
+        info.add_widget(t("Chọn ngân hàng bên trên, nhận số tài khoản và "
+                          "chuyển khoản đúng nội dung. Credit được cộng sau khi "
+                          "server xác nhận.", size=13, role="onSurfaceVariant", wrap=True))
+        btn = MDFillRoundFlatButton(text="  Mở trang nạp tiền", icon="add",
+                                    size_hint=(1, None), height=dp(56),
+                                    md_bg_color=S["primary"], text_color=S["onPrimary"],
+                                    font_size=sp(15))
+        btn.bind(on_release=lambda *a: self.open_web())
+        info.add_widget(btn)
+        panel.add_widget(info)
+        panel.add_widget(spacer(6))
+        panel.add_widget(t("© ToolTX - Gold edition", size=11, role="onSurfaceVariant",
+                           halign="center"))
 
     def open_back(self):
-        # main đăng ký handler back; nếu chưa thì tự back qua stack
         try:
             from kivymd.app import MDApp
             MDApp.get_running_app().back()
@@ -142,6 +134,3 @@ class TopUpScreen(MDScreen):
             self._on_open_web()
         elif self._on_done:
             self._on_done()
-
-    def get_web(self):
-        return WEB_TOPUP

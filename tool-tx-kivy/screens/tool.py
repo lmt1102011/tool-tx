@@ -1,59 +1,59 @@
-# screens/tool.py — Màn Tool (M3): bảng phân tích dữ liệu + nút mở tool (fork).
 from kivy.metrics import dp, sp
+from kivy.uix.widget import Widget
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDIconButton, MDFillRoundFlatButton
+from kivymd.uix.label import MDIcon
 from kivymd.uix.progressbar import MDProgressBar
+from kivymd.uix.card import MDCard
 from kivymd.uix.screen import MDScreen
 
 from core.m3 import S
-from screens.uikit import label, Card, Panel, Spacer
+from screens.uikit import t, spacer
 
 
 class ToolScreen(MDScreen):
     def __init__(self, on_open=None, **kw):
         super().__init__(**kw)
-        self.md_bg_color = (0, 0, 0, 0)
         self._on_open = on_open
         self._build()
 
     def _build(self):
-        root = MDBoxLayout(orientation="vertical")
+        root = MDBoxLayout(orientation="vertical", padding=0, spacing=0)
         self.add_widget(root)
 
         bar = MDBoxLayout(orientation="horizontal", padding=[dp(4), dp(12), dp(12), 0],
-                          size_hint_y=None, height=dp(64))
-        back = MDIconButton(icon="arrow-left", icon_size=sp(28),
+                          size_hint_y=None, height=dp(64), spacing=dp(8))
+        back = MDIconButton(icon="arrow-left", icon_size=sp(24),
                             theme_icon_color="Custom", icon_color=S["onSurface"])
         back.bind(on_release=lambda *a: self.open_back())
         bar.add_widget(back)
-        bar.add_widget(label("Tool", role="onSurface", size=22, bold=True))
+        bar.add_widget(t("Tool", size=22, bold=True, role="onSurface"))
         root.add_widget(bar)
 
-        box = Panel(bg="surfaceContainerHighest", radius=28, padding=[dp(12), dp(14), dp(12), dp(14)],
-                    width=dp(392), height=dp(684), auto=False, spacing=dp(14))
-        box.size_hint_x = None
-        box.pos_hint = {"center_x": 0.5}
-        root.add_widget(box)
+        panel = MDCard(radius=[dp(28)] * 4, size_hint=(None, None),
+                       size=(dp(392), dp(684)),
+                       pos_hint={"center_x": 0.5},
+                       padding=[dp(14), dp(14), dp(14), dp(14)],
+                       spacing=dp(14), orientation="vertical",
+                       md_bg_color=S["surfaceContainerHighest"])
+        root.add_widget(panel)
 
-        # thẻ Data analysis table
-        c1 = Card(kind="elevated", bg="surfaceContainerLow", radius=20, spacing=dp(10))
-        c1.add_widget(label("Data analysis table", role="onSurface", size=16, bold=True))
-        tbl = MDBoxLayout(orientation="vertical", spacing=dp(8),
-                          size_hint=(None, None), width=dp(348), height=dp(212))
-        from kivy.graphics import Color, RoundedRectangle
-        with tbl.canvas.before:
-            Color(*S["surfaceContainerHigh"])
-            tbl._bg = RoundedRectangle(radius=[dp(7)] * 4)
-        tbl.bind(pos=lambda *a: setattr(tbl._bg, "pos", tbl.pos),
-                 size=lambda *a: setattr(tbl._bg, "size", tbl.size))
-        tbl.pos_hint = {"center_x": 0.5}
-        tbl.padding = [dp(14), dp(10), dp(14), dp(10)]
-        tbl.spacing = dp(6)
+        c1 = MDCard(style="elevated", radius=[dp(20)] * 4,
+                    padding=[dp(16), dp(16)], spacing=dp(10),
+                    orientation="vertical", size_hint_y=None, adaptive_height=True)
+        c1.add_widget(t("Data analysis table", size=16, bold=True, role="onSurface"))
 
+        tbl = MDCard(radius=[dp(7)] * 4,
+                     size_hint=(None, None), size=(dp(348), dp(212)),
+                     pos_hint={"center_x": 0.5},
+                     padding=[dp(16), dp(12), dp(16), dp(12)],
+                     spacing=dp(8), orientation="vertical",
+                     md_bg_color=S["surfaceContainerHigh"])
         row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=dp(54))
-        self.big = label("--", role="onSurface", size=30, bold=True, halign="center")
+        self.big = t("--", size=30, bold=True, role="onSurface", halign="center")
         self.big.size_hint_x = 0.55
-        self.pct = label("", role="onSurfaceVariant", size=13, bold=True, halign="right")
+        self.pct = t("", size=13, bold=True, role="onSurfaceVariant", halign="right")
+        self.pct.size_hint_x = 0.45
         row.add_widget(self.big)
         row.add_widget(self.pct)
         tbl.add_widget(row)
@@ -61,28 +61,28 @@ class ToolScreen(MDScreen):
         self.pbar = MDProgressBar(value=50, size_hint_y=None, height=dp(8),
                                   color=S["primary"], back_color=(1, 1, 1, 0.1))
         tbl.add_widget(self.pbar)
-        self.hist = label("chờ dữ liệu...", role="onSurfaceVariant", size=12, wrap=True)
+        self.hist = t("chờ dữ liệu...", size=12, role="onSurfaceVariant", wrap=True)
         tbl.add_widget(self.hist)
         c1.add_widget(tbl)
-        box.add_widget(c1)
+        panel.add_widget(c1)
 
-        # thẻ Tool + nút mở
-        c2 = Card(kind="elevated", bg="surfaceContainerLow", radius=20, spacing=dp(6))
-        c2.add_widget(label("Tool", role="onSurface", size=16, bold=True))
-        self.tool_body = label("open tab tool", role="onSurfaceVariant", size=13, wrap=True)
+        c2 = MDCard(style="elevated", radius=[dp(20)] * 4,
+                    padding=[dp(16), dp(16)], spacing=dp(8),
+                    orientation="vertical", size_hint_y=None, adaptive_height=True)
+        c2.add_widget(t("Tool", size=16, bold=True, role="onSurface"))
+        self.tool_body = t("open tab tool", size=13, role="onSurfaceVariant", wrap=True)
         c2.add_widget(self.tool_body)
-        self.agent_lbl = label("Chưa có agent nào chạy.", role="onSurfaceVariant", size=12)
+        self.agent_lbl = t("Chưa có agent nào chạy.", size=12, role="onSurfaceVariant")
         c2.add_widget(self.agent_lbl)
-        btn = MDFillRoundFlatButton(icon="power-settings-new", size_hint=(None, None),
+        btn = MDFillRoundFlatButton(text="  Open Tool", icon="power-settings-new",
+                                    size_hint=(None, None),
                                     width=dp(344), height=dp(56),
                                     md_bg_color=S["primary"], text_color=S["onPrimary"],
                                     font_size=sp(15), pos_hint={"center_x": 0.5})
-        btn.text = " Open Tool"
         btn.bind(on_release=lambda *a: self._open())
         c2.add_widget(btn)
-        box.add_widget(c2)
-
-        box.add_widget(Spacer(size_hint_y=(1, None), height=dp(6)))
+        panel.add_widget(c2)
+        panel.add_widget(spacer(6))
 
     def open_back(self):
         try:
@@ -95,7 +95,6 @@ class ToolScreen(MDScreen):
         if self._on_open:
             self._on_open()
 
-    # ── API cho App ─────────────────────────────────────────────
     def prediction(self, p):
         p = p or {}
         if not p.get("pick"):
@@ -116,17 +115,8 @@ class ToolScreen(MDScreen):
 
     def set_status(self, text, col=None):
         self.tool_body.text = text or "open tab tool"
-        if col:
-            self.tool_body.text_color = col
-        else:
-            self.tool_body.text_color = S["onSurfaceVariant"]
-
-    def set_code(self, text):
-        pass  # mã liên kết quá chi tiết, bỏ qua trên giao diện này
+        self.tool_body.text_color = col if col else S["onSurfaceVariant"]
 
     def set_agent(self, text, col=None):
         self.agent_lbl.text = text or "Chưa có agent nào chạy."
-        if col:
-            self.agent_lbl.text_color = col
-        else:
-            self.agent_lbl.text_color = S["onSurfaceVariant"]
+        self.agent_lbl.text_color = col if col else S["onSurfaceVariant"]

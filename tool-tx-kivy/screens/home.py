@@ -1,106 +1,94 @@
-# screens/home.py — Màn Home (M3): top app bar, chip Credit, box 392, 2 thẻ.
 import os
 from kivy.metrics import dp, sp
 from kivy.uix.image import Image
+from kivy.uix.widget import Widget
+from kivy.graphics import Color, RoundedRectangle
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDIconButton
-from kivymd.uix.scrollview import MDScrollView
+from kivymd.uix.label import MDIcon
 from kivymd.uix.screen import MDScreen
+from kivymd.uix.card import MDCard
 
-from core.config import LOGO
 from core.m3 import S
-from screens.uikit import (label, Card, Panel, Chip, Spacer, round_clip)
+from core.config import LOGO
+from screens.uikit import t, spacer
 
 
 class HomeScreen(MDScreen):
     def __init__(self, on_profile=None, **kw):
         super().__init__(**kw)
-        self.md_bg_color = (0, 0, 0, 0)
         self._on_profile = on_profile
         self._build()
 
     def _build(self):
-        root = MDBoxLayout(orientation="vertical")
-        sc = MDScrollView(size_hint=(1, 1), do_scroll_x=False, do_scroll_y=False)
-        sc.add_widget(root)
-        self.add_widget(sc)
+        root = MDBoxLayout(orientation="vertical", padding=0, spacing=0)
+        self.add_widget(root)
 
-        # top app bar 64dp: account_circle + tiêu đề "Name"; chip Credit phải
-        top = MDBoxLayout(orientation="horizontal", padding=[dp(8), dp(14), dp(8), 0],
-                          size_hint_y=None, height=dp(64))
-        self.btn_profile = MDIconButton(icon="account-circle", icon_size=sp(30),
-                                        theme_icon_color="Custom",
-                                        icon_color=S["onSurfaceVariant"])
-        self.btn_profile.bind(on_release=lambda *a: self._on_profile() if self._on_profile else None)
-        top.add_widget(self.btn_profile)
-        self.name_lbl = label("Name", role="onSurface", size=22, bold=True)
-        top.add_widget(self.name_lbl)
+        bar = MDBoxLayout(orientation="horizontal", padding=[dp(12), dp(14), dp(16), dp(8)],
+                          size_hint_y=None, height=dp(64), spacing=dp(8))
+        btn = MDIconButton(icon="account-circle", icon_size=sp(30),
+                           theme_icon_color="Custom", icon_color=S["onSurfaceVariant"])
+        btn.bind(on_release=lambda *a: self._on_profile() if self._on_profile else None)
+        bar.add_widget(btn)
+        self.name_lbl = t("Name", size=22, bold=True, role="onSurface")
+        bar.add_widget(self.name_lbl)
+        bar.add_widget(Widget())
 
-        row = MDBoxLayout(orientation="vertical", padding=[0, dp(6), dp(16), 0],
-                          size_hint_x=None, width=dp(190))
-        row.add_widget(self._credit_chip())
-        top.add_widget(row)
-        root.add_widget(top)
+        chip = MDCard(style="filled", radius=[dp(18)] * 4,
+                      size_hint=(None, None), size=(dp(140), dp(36)),
+                      padding=[dp(8), dp(4)], spacing=dp(4),
+                      md_bg_color=S["secondaryContainer"],
+                      orientation="horizontal")
+        ic = MDIcon(icon="credit-card", font_size=sp(16), size_hint_x=None, width=dp(22),
+                    pos_hint={"center_y": 0.5})
+        ic.theme_text_color = "Custom"
+        ic.text_color = S["onSecondaryContainer"]
+        chip.add_widget(ic)
+        self.credit_lbl = t("Credit: --", size=13, bold=True, role="onSecondaryContainer")
+        chip.add_widget(self.credit_lbl)
+        bar.add_widget(chip)
+        root.add_widget(bar)
 
-        # box trung tâm 392 + 2 thẻ
-        box = Panel(bg="surfaceContainerHighest", radius=28, padding=[dp(10), dp(16), dp(10), dp(16)],
-                    width=dp(392), height=dp(648), auto=False, spacing=dp(14))
-        box.size_hint_x = None
-        box.pos_hint = {"center_x": 0.5}
-        root.add_widget(box)
+        panel = MDCard(radius=[dp(28)] * 4, size_hint=(None, None),
+                       size=(dp(392), dp(648)),
+                       pos_hint={"center_x": 0.5},
+                       padding=[dp(28), dp(16), dp(28), dp(16)],
+                       spacing=dp(14), orientation="vertical",
+                       md_bg_color=S["surfaceContainerHighest"])
+        root.add_widget(panel)
 
-        card1 = Card(kind="elevated", bg="surfaceContainerLow", radius=20,
-                     padding=[0, 0, 0, dp(16)], spacing=dp(4))
-        self._hero_pic = MDBoxLayout(size_hint=(1, None), height=dp(218))
+        c1 = MDCard(style="elevated", radius=[dp(20)] * 4,
+                    size_hint_y=None, height=dp(380),
+                    padding=0, spacing=0, orientation="vertical")
+        hero = MDBoxLayout(size_hint_y=None, height=dp(218))
         if os.path.exists(LOGO):
-            img = Image(source=LOGO, keep_ratio=True, allow_stretch=True)
-            round_clip(self._hero_pic, radius=dp(20))
-            self._hero_pic.add_widget(img)
+            hero.add_widget(Image(source=LOGO, keep_ratio=True, allow_stretch=True))
         else:
-            self._hero_pic.md_bg_color = S["surfaceContainerHighest"]
-        card1.add_widget(self._hero_pic)
-        hp = MDBoxLayout(orientation="vertical", padding=[dp(20), 0, dp(20), 0], spacing=dp(4))
-        hp.add_widget(label("Tool Made By LMT", role="onSurface", size=16, bold=True))
-        hp.add_widget(label("A tool specifically designed for in-depth probabilistic data analysis.",
-                            role="onSurfaceVariant", size=14, wrap=True, line_h=1.4))
-        card1.add_widget(hp)
-        box.add_widget(card1)
+            hero.md_bg_color = S["surfaceContainerHighest"]
+        c1.add_widget(hero)
+        txt_box = MDBoxLayout(orientation="vertical", padding=[dp(20), dp(16)],
+                              spacing=dp(4), size_hint_y=None, height=dp(130))
+        txt_box.add_widget(t("Tool Made By LMT", size=16, bold=True, role="onSurface"))
+        txt_box.add_widget(t("A tool specifically designed for in-depth probabilistic data analysis.",
+                             size=14, role="onSurfaceVariant", wrap=True))
+        c1.add_widget(txt_box)
+        panel.add_widget(c1)
 
-        card2 = Card(kind="elevated", bg="surfaceContainerLow", radius=20,
-                     height=dp(96), auto=False, spacing=dp(4))
-        card2.add_widget(label("Server", role="onSurface", size=16, bold=True))
-        self.server_lbl = label("Server is off", role="onSurfaceVariant", size=14, wrap=True)
-        card2.add_widget(self.server_lbl)
-        box.add_widget(card2)
+        c2 = MDCard(style="elevated", radius=[dp(20)] * 4,
+                    size_hint_y=None, height=dp(96),
+                    padding=[dp(20), dp(16)], spacing=dp(4),
+                    orientation="vertical")
+        c2.add_widget(t("Server", size=16, bold=True, role="onSurface"))
+        self.server_lbl = t("Server is off", size=14, role="onSurfaceVariant")
+        c2.add_widget(self.server_lbl)
+        panel.add_widget(c2)
 
-        # cảnh báo hết lượt (nếu có)
-        self.gate_txt = label("", role="error", size=13, wrap=True, halign="center")
+        self.gate_txt = t("", size=13, role="error", halign="center", wrap=True)
         self.gate_txt.opacity = 0
-        self.gate_txt.height = dp(0)
-        box.add_widget(self.gate_txt)
-        box.add_widget(Spacer(size_hint_y=(1, None), height=dp(6)))
+        self.gate_txt.size_hint_y = None
+        self.gate_txt.height = 0
+        panel.add_widget(self.gate_txt)
 
-    def _credit_chip(self):
-        c = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36),
-                        padding=[dp(8), 0, dp(12), 0], spacing=dp(6),
-                        pos_hint={"center_x": 1.0})
-        from kivy.graphics import Color, RoundedRectangle
-        with c.canvas.before:
-            Color(*S["secondaryContainer"])
-            c._bg = RoundedRectangle(radius=[dp(18)] * 4)
-        c.bind(pos=lambda *a: setattr(c._bg, "pos", c.pos),
-               size=lambda *a: setattr(c._bg, "size", c.size))
-        from kivymd.uix.label import MDIcon
-        ic = MDIcon(icon="credit-card", theme_text_color="Custom",
-                    text_color=S["onSecondaryContainer"], font_size=sp(18),
-                    size_hint_x=None, width=dp(24))
-        c.add_widget(ic)
-        self.credit_lbl = label("Credit: --", role="onSecondaryContainer", size=13,
-                                bold=True, halign="left")
-        c.add_widget(self.credit_lbl)
-        return c
-
-    # ── API cho App ─────────────────────────────────────────────
     def greet(self, name):
         self.name_lbl.text = name or "Name"
 
@@ -113,9 +101,6 @@ class HomeScreen(MDScreen):
         self.server_lbl.text_color = S["primary"] if ok else (
             S["onSurfaceVariant"] if not warn else S["error"])
 
-    def agent(self, text, col=None):
-        pass  # hiện thị agent nằm ở màn Tool
-
     def gate(self, msg):
         if msg:
             self.gate_txt.text = msg
@@ -124,7 +109,4 @@ class HomeScreen(MDScreen):
         else:
             self.gate_txt.text = ""
             self.gate_txt.opacity = 0
-            self.gate_txt.height = dp(0)
-
-    def prediction(self, p):
-        pass  # bảng dữ liệu nằm ở màn Tool (screens/tool.py)
+            self.gate_txt.height = 0
