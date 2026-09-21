@@ -1,0 +1,123 @@
+package com.lmt.tooltx.ui.home
+
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
+import com.lmt.tooltx.MainActivity
+import com.lmt.tooltx.R
+import com.lmt.tooltx.bridge.PythonBridge
+import com.lmt.tooltx.databinding.FragmentHomeBinding
+import com.lmt.tooltx.ui.settings.SettingsFragment
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+class HomeFragment : Fragment() {
+
+    private var _binding: FragmentHomeBinding? = null
+    private val binding get() = _binding!!
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        _binding = FragmentHomeBinding.inflate(inflater, container, false)
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        binding.btnProfile.setOnClickListener {
+            (requireActivity() as MainActivity).showFragment(SettingsFragment::class.java, "settings")
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refresh()
+    }
+
+    private fun refresh() {
+        GlobalScope.launch(Dispatchers.IO) {
+            val bridge: PythonBridge = (requireActivity() as MainActivity).getBridge()
+            val session = bridge.getSession()
+            val user = bridge.getUserData()
+            val picks = bridge.getPicks()
+            val connected = bridge.isSocketConnected()
+            withContext(Dispatchers.Main) {
+                val b = _binding ?: return@withContext
+                val name = session?.get("displayName")?.toString()
+                    ?: session?.get("username")?.toString()
+                    ?: "Name"
+                greet(name)
+
+                val role = user["role"]?.toString().orEmpty()
+                if (role == "admin") {
+                    credit("vô hạn", warn = false)
+                    gate(null)
+                } else if (picks >= 0) {
+                    val warn = picks <= 0
+                    credit(picks.toString(), warn)
+                    if (warn) {
+                        gate("BẠN ĐÃ HẾT LƯỢT ĐOÁN — nạp thêm tại trang web để tiếp tục.")
+                    } else {
+                        gate(null)
+                    }
+                } else {
+                    credit("--", warn = false)
+                    gate(null)
+                }
+
+                if (connected) {
+                    server("Máy chủ đang hoạt động", ok = true)
+                } else {
+                    server("Máy chủ đang tắt", ok = false)
+                }
+            }
+        }
+    }
+
+    private fun greet(name: String) {
+        binding.tvName.text = name
+    }
+
+    private fun credit(txt: String, warn: Boolean) {
+        binding.tvCredit.text = "Tín dụng: $txt"
+        binding.tvCredit.setTextColor(
+            ContextCompat.getColor(
+                requireContext(),
+                if (warn) R.color.error else R.color.onSecondaryContainer
+            )
+        )
+    }
+
+    private fun server(text: String, ok: Boolean) {
+        binding.tvServer.text = text
+        binding.tvServer.setTextColor(
+            ContextCompat.getColor(
+                requireContext(),
+                if (ok) R.color.primary else R.color.onSurfaceVariant
+            )
+        )
+    }
+
+    private fun gate(msg: String?) {
+        if (msg.isNullOrEmpty()) {
+            binding.tvGate.visibility = View.GONE
+        } else {
+            binding.tvGate.text = msg
+            binding.tvGate.visibility = View.VISIBLE
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+}

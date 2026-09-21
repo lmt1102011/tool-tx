@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/surface"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/spacing_lg">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_sm"
+            android:text="@string/admin"
+            android:textColor="@color/gold"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_admin_sub"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_xs"
+            android:text="@string/admin_desc"
+            android:textColor="@color/onSurfaceVariant"
+            android:textSize="13sp" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_lg"
+            app:cardCornerRadius="@dimen/card_radius"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/card_padding">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/total_users"
+                        android:textColor="@color/onSurfaceVariant"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tv_stat_users"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/spacing_md"
+                        android:textColor="@color/onSurface"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_md"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/total_picks"
+                        android:textColor="@color/onSurfaceVariant"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tv_stat_picks"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/spacing_md"
+                        android:textColor="@color/onSurface"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/field_height"
+                    android:layout_marginTop="@dimen/spacing_lg"
+                    app:boxBackgroundColor="@color/surfaceContainerHighest"
+                    app:boxCornerRadiusBottomEnd="@dimen/spacing_lg"
+                    app:boxCornerRadiusBottomStart="@dimen/spacing_lg"
+                    app:boxCornerRadiusTopEnd="@dimen/spacing_lg"
+                    app:boxCornerRadiusTopStart="@dimen/spacing_lg"
+                    app:hintTextColor="@color/onSurfaceVariant"
+                    app:startIconDrawable="@drawable/ic_account_balance"
+                    app:startIconTint="@color/onSurfaceVariant">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/et_rate"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/price_per_pick"
+                        android:inputType="number"
+                        android:textColor="@color/onSurface"
+                        android:textColorHint="@color/onSurfaceVariant" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_save_rate"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/btn_height"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/save"
+                    android:textColor="@color/onPrimary"
+                    android:textSize="16sp"
+                    app:backgroundTint="@color/primary"
+                    app:cornerRadius="@dimen/btn_height" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_lg"
+            app:cardCornerRadius="@dimen/card_radius"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/card_padding">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/add_user"
+                    android:textColor="@color/gold"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/field_height"
+                    android:layout_marginTop="@dimen/spacing_lg"
+                    app:boxBackgroundColor="@color/surfaceContainerHighest"
+                    app:boxCornerRadiusBottomEnd="@dimen/spacing_lg"
+                    app:boxCornerRadiusBottomStart="@dimen/spacing_lg"
+                    app:boxCornerRadiusTopEnd="@dimen/spacing_lg"
+                    app:boxCornerRadiusTopStart="@dimen/spacing_lg"
+                    app:hintTextColor="@color/onSurfaceVariant"
+                    app:startIconDrawable="@drawable/ic_person"
+                    app:startIconTint="@color/onSurfaceVariant">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/et_new_user"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/username_hint"
+                        android:inputType="text"
+                        android:textColor="@color/onSurface"
+                        android:textColorHint="@color/onSurfaceVariant" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/field_height"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    app:boxBackgroundColor="@color/surfaceContainerHighest"
+                    app:boxCornerRadiusBottomEnd="@dimen/spacing_lg"
+                    app:boxCornerRadiusBottomStart="@dimen/spacing_lg"
+                    app:boxCornerRadiusTopEnd="@dimen/spacing_lg"
+                    app:boxCornerRadiusTopStart="@dimen/spacing_lg"
+                    app:endIconMode="password_toggle"
+                    app:hintTextColor="@color/onSurfaceVariant"
+                    app:startIconDrawable="@drawable/ic_lock"
+                    app:startIconTint="@color/onSurfaceVariant">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/et_new_pass"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/password_hint"
+                        android:inputType="textPassword"
+                        android:textColor="@color/onSurface"
+                        android:textColorHint="@color/onSurfaceVariant" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/field_height"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    app:boxBackgroundColor="@color/surfaceContainerHighest"
+                    app:boxCornerRadiusBottomEnd="@dimen/spacing_lg"
+                    app:boxCornerRadiusBottomStart="@dimen/spacing_lg"
+                    app:boxCornerRadiusTopEnd="@dimen/spacing_lg"
+                    app:boxCornerRadiusTopStart="@dimen/spacing_lg"
+                    app:hintTextColor="@color/onSurfaceVariant"
+                    app:startIconDrawable="@drawable/ic_credit_card"
+                    app:startIconTint="@color/onSurfaceVariant">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/et_new_picks"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/balance"
+                        android:inputType="number"
+                        android:textColor="@color/onSurface"
+                        android:textColorHint="@color/onSurfaceVariant" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_create_user"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/btn_height"
+                    android:layout_marginTop="@dimen/spacing_lg"
+                    android:text="@string/create_account"
+                    android:textColor="@color/onPrimary"
+                    android:textSize="16sp"
+                    app:backgroundTint="@color/primary"
+                    app:cornerRadius="@dimen/btn_height" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/field_height"
+            android:layout_marginTop="@dimen/spacing_lg"
+            app:boxBackgroundColor="@color/surfaceContainerHighest"
+            app:boxCornerRadiusBottomEnd="@dimen/spacing_lg"
+            app:boxCornerRadiusBottomStart="@dimen/spacing_lg"
+            app:boxCornerRadiusTopEnd="@dimen/spacing_lg"
+            app:boxCornerRadiusTopStart="@dimen/spacing_lg"
+            app:hintTextColor="@color/onSurfaceVariant"
+            app:startIconDrawable="@drawable/ic_search"
+            app:startIconTint="@color/onSurfaceVariant">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_search"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/search_hint"
+                android:inputType="text"
+                android:textColor="@color/onSurface"
+                android:textColorHint="@color/onSurfaceVariant" />
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_lg"
+            android:layout_marginBottom="@dimen/spacing_xl"
+            app:cardCornerRadius="@dimen/card_radius"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/card_padding">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/user_list"
+                    android:textColor="@color/gold"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/layout_user_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_md"
+                    android:orientation="vertical" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+</ScrollView>
