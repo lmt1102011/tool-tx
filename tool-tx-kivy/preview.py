@@ -15,8 +15,13 @@ LOG_PATH = os.path.join(APP_DIR, "preview_crash.log")
 def _ensure_venv():
     if "kivy" in sys.modules:
         return
-    # Tim .venv trong APP_DIR hoac cha (repo copy)
-    for check_dir in [APP_DIR, os.path.dirname(APP_DIR)]:
+    # Tim .venv o nhieu noi
+    candidates = [
+        APP_DIR,
+        os.path.dirname(APP_DIR),
+        r"C:\Users\Tri\Desktop\Tool\tool-tx-kivy",
+    ]
+    for check_dir in candidates:
         for sub in ["Scripts/python.exe", "bin/python3"]:
             venv_python = os.path.join(check_dir, ".venv", sub)
             if os.path.isfile(venv_python):
