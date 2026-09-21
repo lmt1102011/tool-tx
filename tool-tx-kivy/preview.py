@@ -245,15 +245,13 @@ class DevShell(MDApp):
         log_write("DevShell.build done")
         return root
 
-    def _nav_select(self, idx):
-        names = ["home", "topup", "tool", "settings"]
-        if idx < len(names):
-            try:
-                self.sm.current = names[idx]
-                self._nav.select(idx)
-                log_write("nav -> %s" % names[idx])
-            except Exception:
-                log_exception("nav-select:%s" % names[idx])
+    def _nav_select(self, name):
+        try:
+            self.sm.current = name
+            self._nav.set_active(name)
+            log_write("nav -> %s" % name)
+        except Exception:
+            log_exception("nav-select:%s" % name)
 
     def _on_key(self, window, key, scancode, codepoint, modifiers):
         try:
@@ -264,7 +262,8 @@ class DevShell(MDApp):
                 self.stop()
                 return True
             elif key in (49, 50, 51, 52):
-                self._nav_select(key - 49)
+                names = ["home", "topup", "tool", "settings"]
+                self._nav_select(names[key - 49])
         except Exception:
             log_exception("key:%d" % key)
         return False
