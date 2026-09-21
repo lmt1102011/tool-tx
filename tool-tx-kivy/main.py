@@ -5,11 +5,22 @@
 
 import os
 import sys
+import time
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 CRASH_PATH = os.path.join(APP_DIR, "crash.log")
 GATE_PATH = os.path.join(APP_DIR, "boot_state")
 _ON_ANDROID = bool(os.environ.get("ANDROID_ARGUMENT"))
+
+# ── Crash log: ghi ra 2 nơi ──────────────────────────────
+#  1) crash.log  trong APP_DIR (ADB truy cập được)
+#  2) /sdcard/Download/crash.log  (user mở File Manager là thấy)
+_DL_CRASH = ""
+if _ON_ANDROID:
+    for _d in ["/sdcard/Download", "/storage/emulated/0/Download"]:
+        if os.path.isdir(_d):
+            _DL_CRASH = os.path.join(_d, "crash.log")
+            break
 
 import faulthandler  # noqa: E402
 try:
@@ -17,6 +28,45 @@ try:
     faulthandler.enable(_FAULT_FH, all_threads=True)
 except Exception:
     pass
+
+
+def _crash_write(text):
+    """Ghi crash log ra cả 2 nơi: internal + /sdcard/Download/."""
+    ts = time.strftime("%Y-%m-%d %H:%M:%S")
+    entry = "\n========== %s ==========\n%s\n" % (ts, text)
+    for p in [CRASH_PATH, _DL_CRASH]:
+        if not p:
+            continue
+        try:
+            with open(p, "a", encoding="utf-8") as f:
+                f.write(entry)
+        except Exception:
+            pass
+
+
+def _crash_read_prev():
+    """Đọc crash log lần chạy trước (tối đa 3000 ký tự)."""
+    for p in [CRASH_PATH, _DL_CRASH]:
+        if not p:
+            continue
+        try:
+            with open(p, encoding="utf-8") as f:
+                data = f.read()
+            if data.strip():
+                return data[-3000:]
+        except Exception:
+            pass
+    return ""
+
+
+def _crash_clear():
+    for p in [CRASH_PATH, _DL_CRASH]:
+        if not p:
+            continue
+        try:
+            os.remove(p)
+        except Exception:
+            pass
 
 
 def _toast(msg):
@@ -74,8 +124,23 @@ def _gate_write(v):
         pass
 
 
+# ── Global exception handler: BẮT MỌI LỖI không bị catch ──
+_prev_excepthook = sys.excepthook
+
+def _global_excepthook(exc_type, exc_value, exc_tb):
+    import traceback
+    tb = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+    _crash_write("[UNCAUGHT]\n" + tb)
+    _toast("CRASH: " + str(exc_value)[:180])
+    if _prev_excepthook:
+        _prev_excepthook(exc_type, exc_value, exc_tb)
+
+sys.excepthook = _global_excepthook
+
+
 # BẮT prev TRƯỚC khi ghi marker lần này.
 _PREV_STEP = _last_step()
+_PREV_CRASH = _crash_read_prev()
 
 _mark("main-start")
 
@@ -142,6 +207,13 @@ class ToolApp(App):
             pass
         _mark("on_start")
         self._say("Đang tải dữ liệu...")
+        if _PREV_CRASH:
+            self._say("")
+            self._say("=== LỖI LẦN TRƯỚC ===", err=True)
+            for ln in _PREV_CRASH.splitlines()[-20:]:
+                self._say(ln[:140], err=True)
+            self._say("========================", err=True)
+            self._say("")
         self._ladder = [
             ("import nang",       self._st_imports),
             ("theme+window",      self._st_theme),
@@ -158,6 +230,7 @@ class ToolApp(App):
             name, fn = self._ladder.pop(0)
             if fn is None:
                 _mark("all-ok")
+                _crash_clear()
                 try:
                     self._loading.text = "TOOLTX\nSẵn sàng!"
                 except Exception:
@@ -169,16 +242,12 @@ class ToolApp(App):
                 _mark(name + "=ok")
             except BaseException as e:
                 _mark(name + "=fail")
+                tb = traceback.format_exc()
+                _crash_write("LADDER FAIL [%s]\n%s" % (name, tb))
+                _toast("LỖI: " + name + " — " + repr(e)[:180])
                 self._say("LỖI KHỞI ĐỘNG\n" + name + " :: " + repr(e)[:160], err=True)
-                tb = traceback.format_exc().splitlines()
-                for ln in tb[-8:]:
+                for ln in tb.splitlines()[-8:]:
                     self._say("     " + ln[:120], err=True)
-                try:
-                    with open(CRASH_PATH, "a", encoding="utf-8") as f:
-                        f.write("\n### FAIL AT " + name)
-                        f.write("\n" + "\n".join(tb))
-                except Exception:
-                    pass
                 return
             if self._ladder:
                 Clock.schedule_once(self._next, 0.02)
@@ -230,7 +299,6 @@ class ToolApp(App):
         from screens.tool import ToolScreen
         from screens.settings import SettingsScreen
         from widgets.bottomnav import BottomNav
-        # áp theme (đọc cả hệ thống) TRƯỚC khi dựng màn
         self._load_prefs()
         m3.set_dark(self._dark)
 
@@ -435,11 +503,11 @@ class ToolApp(App):
             cur = self.sm.current_screen
             if cur is None:
                 return None
-            from kivymd.uix.textfield import MDTextField
             found = []
 
             def walk(w):
-                if isinstance(w, MDTextField) and w.focus:
+                from kivy.uix.textinput import TextInput
+                if isinstance(w, TextInput) and w.focus:
                     found.append(w)
                 for ch in w.children:
                     walk(ch)
@@ -455,7 +523,7 @@ class ToolApp(App):
                 f.focus = False
             else:
                 self.back()
-            return True  # luôn nuốt: nút back không thoát app
+            return True
         return True
 
     # ────────────────── immersive + mở web ──────────────────
@@ -514,7 +582,6 @@ class ToolApp(App):
         self._rebuild_ui()
 
     def _rebuild_ui(self):
-        """Dựng lại sm + nav theo scheme mới (giữ phiên đăng nhập)."""
         try:
             self._stack = []
             self._refresh_bg()
@@ -610,6 +677,9 @@ class ToolApp(App):
                 v = fn()
                 Clock.schedule_once(lambda dt: ok(v))
             except Exception as e:
+                tb = traceback.format_exc()
+                _crash_write("[THREAD]\n%s" % tb)
+                _toast("LỖI: " + str(e)[:180])
                 Clock.schedule_once(lambda dt: err(e))
         threading.Thread(target=_w, daemon=True).start()
 
@@ -897,6 +967,9 @@ class ToolApp(App):
                     self.tool.set_agent("Khởi động agent fork thất bại.",
                                         col=(0.96, 0.42, 0.46, 1))
             except Exception as e:
+                tb = traceback.format_exc()
+                _crash_write("START FORK FAIL\n%s" % tb)
+                _toast("LỖI FORK: " + str(e)[:180])
                 self._log_ui("Lỗi start fork: " + str(e), err=True)
                 self.tool.set_status("Lỗi mở tool: " + str(e),
                                      col=(0.96, 0.42, 0.46, 1))
@@ -912,11 +985,7 @@ class ToolApp(App):
 
 
 def _write_crash(tb):
-    try:
-        with open(CRASH_PATH, "a", encoding="utf-8") as f:
-            f.write("\n" + tb + "\n")
-    except Exception:
-        pass
+    _crash_write(tb)
 
 
 def _show_error(tb, prev=None):
@@ -951,7 +1020,8 @@ def _thread_exc(args):
     try:
         tb = "".join(traceback.format_exception(
             args.exc_type, args.exc_value, args.exc_traceback))
-        _write_crash("[thread] " + tb)
+        _crash_write("[THREAD] %s\n%s" % (args.thread, tb))
+        _toast("THREAD ERR: " + str(args.exc_value)[:180])
     except Exception:
         pass
 
@@ -959,7 +1029,6 @@ def _thread_exc(args):
 def _boot():
     prev = _PREV_STEP
     if _gate_read() == "START":
-        # chết sau khi ladder xong → tự hồi phục, không kẹt màn xám.
         died_after_ok = prev.startswith("all-ok") or prev.endswith("=ok")
         if not died_after_ok:
             _show_error("", prev=prev)
@@ -977,7 +1046,7 @@ def _boot():
         app.run()
     except BaseException:
         tb = traceback.format_exc()
-        _write_crash(tb)
+        _crash_write("FATAL\n" + tb)
         _toast("EXC: " + tb.splitlines()[-1][:180])
         try:
             _show_error(tb, prev=prev)
