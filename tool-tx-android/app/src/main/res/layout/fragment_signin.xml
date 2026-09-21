@@ -63,7 +63,7 @@
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
-                    android:layout_height="@dimen/field_height"
+                    android:layout_height="wrap_content"
                     android:layout_marginTop="@dimen/spacing_lg"
                     app:boxBackgroundColor="@color/surfaceContainerHighest"
                     app:boxCornerRadiusBottomEnd="@dimen/spacing_lg"
@@ -78,6 +78,7 @@
                         android:id="@+id/et_username"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:minHeight="56dp"
                         android:hint="@string/username_hint"
                         android:inputType="text"
                         android:textColor="@color/onSurface"
@@ -87,7 +88,7 @@
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
-                    android:layout_height="@dimen/field_height"
+                    android:layout_height="wrap_content"
                     android:layout_marginTop="@dimen/spacing_sm"
                     app:boxBackgroundColor="@color/surfaceContainerHighest"
                     app:boxCornerRadiusBottomEnd="@dimen/spacing_lg"
@@ -103,6 +104,7 @@
                         android:id="@+id/et_password"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:minHeight="56dp"
                         android:hint="@string/password_hint"
                         android:inputType="textPassword"
                         android:textColor="@color/onSurface"
