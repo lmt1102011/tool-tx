@@ -12,6 +12,9 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
     steps:
       - uses: actions/checkout@v4
 
@@ -26,8 +29,15 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Accept Android SDK licenses & install components
+        run: |
+          export JAVA_HOME=$JAVA_HOME_17_X64
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "platform-tools" \
+            "platforms;android-34" 2>&1 || true
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -43,12 +53,12 @@ jobs:
 
       - name: Build Debug APK
         working-directory: tool-tx-android
-        run: gradle assembleDebug --no-daemon
+        run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: Build Release APK
         working-directory: tool-tx-android
         if: success()
-        run: gradle assembleRelease --no-daemon
+        run: gradle assembleRelease --no-daemon --stacktrace
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
