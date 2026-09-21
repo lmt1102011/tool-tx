@@ -240,7 +240,7 @@ class ToolApp(App):
         from core.m3 import S
         self.theme_cls = ThemeManager()
         self.theme_cls.theme_style = "Dark" if self._dark else "Light"
-        self.theme_cls.primary_palette = "Sky"
+        self.theme_cls.primary_palette = "LightBlue"
         self.theme_cls.primary_hue = "400"
         Window.clearcolor = S["surface"]
         try:
