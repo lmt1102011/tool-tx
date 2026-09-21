@@ -214,9 +214,7 @@ class DevShell(MDApp):
 
         try:
             nav = BottomNav(
-                items=[("home", "Home"), ("credit-card", "Top Up"),
-                       ("wrench", "Tool"), ("cog", "Settings")],
-                on_select=lambda i: self._nav_select(i),
+                on_select=lambda name: self._nav_select(name),
             )
             self._nav = nav
             root.add_widget(nav)
@@ -247,6 +245,8 @@ class DevShell(MDApp):
 
     def _nav_select(self, name):
         try:
+            if name.startswith("submit-"):
+                return
             self.sm.current = name
             self._nav.set_active(name)
             log_write("nav -> %s" % name)

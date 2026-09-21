@@ -11,7 +11,7 @@ from kivymd.uix.card import MDCard
 
 from core.m3 import S
 from core.config import LOGO
-from screens.uikit import t, spacer
+from screens.uikit import t, spacer, PAD
 
 
 class HomeScreen(MDScreen):
@@ -49,45 +49,43 @@ class HomeScreen(MDScreen):
         bar.add_widget(chip)
         root.add_widget(bar)
 
-        panel = MDCard(radius=[dp(28)] * 4, size_hint=(None, None),
-                       size=(dp(392), dp(648)),
-                       pos_hint={"center_x": 0.5},
-                       padding=[dp(28), dp(16), dp(28), dp(16)],
-                       spacing=dp(14), orientation="vertical",
-                       md_bg_color=S["surfaceContainerHighest"])
-        root.add_widget(panel)
+        body = MDBoxLayout(orientation="vertical", spacing=dp(16),
+                           padding=[PAD, dp(8), PAD, dp(8)])
+        root.add_widget(body)
 
         c1 = MDCard(style="elevated", radius=[dp(20)] * 4,
-                    size_hint_y=None, height=dp(380),
+                    size_hint_y=None, height=dp(300),
                     padding=0, spacing=0, orientation="vertical")
-        hero = MDBoxLayout(size_hint_y=None, height=dp(218))
+        hero = MDBoxLayout(size_hint_y=None, height=dp(200))
         if os.path.exists(LOGO):
             hero.add_widget(Image(source=LOGO, keep_ratio=True, allow_stretch=True))
         else:
             hero.md_bg_color = S["surfaceContainerHighest"]
         c1.add_widget(hero)
         txt_box = MDBoxLayout(orientation="vertical", padding=[dp(20), dp(16)],
-                              spacing=dp(4), size_hint_y=None, height=dp(130))
+                              spacing=dp(4), size_hint_y=None, height=dp(100))
         txt_box.add_widget(t("Tool Made By LMT", size=16, bold=True, role="onSurface"))
         txt_box.add_widget(t("A tool specifically designed for in-depth probabilistic data analysis.",
-                             size=14, role="onSurfaceVariant", wrap=True))
+                             size=13, role="onSurfaceVariant", wrap=True))
         c1.add_widget(txt_box)
-        panel.add_widget(c1)
+        body.add_widget(c1)
 
         c2 = MDCard(style="elevated", radius=[dp(20)] * 4,
-                    size_hint_y=None, height=dp(96),
+                    size_hint_y=None, height=dp(80),
                     padding=[dp(20), dp(16)], spacing=dp(4),
                     orientation="vertical")
         c2.add_widget(t("Server", size=16, bold=True, role="onSurface"))
-        self.server_lbl = t("Server is off", size=14, role="onSurfaceVariant")
+        self.server_lbl = t("Server is off", size=13, role="onSurfaceVariant")
         c2.add_widget(self.server_lbl)
-        panel.add_widget(c2)
+        body.add_widget(c2)
 
         self.gate_txt = t("", size=13, role="error", halign="center", wrap=True)
         self.gate_txt.opacity = 0
         self.gate_txt.size_hint_y = None
         self.gate_txt.height = 0
-        panel.add_widget(self.gate_txt)
+        body.add_widget(self.gate_txt)
+
+        body.add_widget(Widget())
 
     def greet(self, name):
         self.name_lbl.text = name or "Name"

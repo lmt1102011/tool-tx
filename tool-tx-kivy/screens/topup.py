@@ -10,13 +10,13 @@ from kivymd.uix.screen import MDScreen
 
 from core.config import BANKS
 from core.m3 import S
-from screens.uikit import t, spacer
+from screens.uikit import t, spacer, PAD
 
 
 class BankRow(ButtonBehavior, MDBoxLayout):
     def __init__(self, bank_key, bank_name, on_pick=None, **kw):
         super().__init__(orientation="horizontal", spacing=dp(16),
-                         size_hint_y=None, height=dp(72),
+                         size_hint_y=None, height=dp(64),
                          padding=[dp(16), dp(8), dp(16), dp(8)], **kw)
         self._cb = on_pick
 
@@ -64,35 +64,37 @@ class TopUpScreen(MDScreen):
         bar.add_widget(t("Top Up", size=22, bold=True, role="onSurface"))
         root.add_widget(bar)
 
-        panel = MDCard(radius=[dp(28)] * 4, size_hint=(None, None),
-                       size=(dp(392), dp(684)),
-                       pos_hint={"center_x": 0.5},
-                       padding=[dp(12), dp(16), dp(12), dp(16)],
-                       spacing=dp(14), orientation="vertical",
-                       md_bg_color=S["surfaceContainerHighest"])
-        root.add_widget(panel)
+        body = MDBoxLayout(orientation="vertical", spacing=dp(16),
+                           padding=[dp(12), dp(8), dp(12), dp(8)])
+        root.add_widget(body)
 
+        bank_card = MDCard(style="filled", radius=[dp(20)] * 4,
+                           size_hint_y=None, adaptive_height=True,
+                           padding=[dp(4), dp(8)], spacing=dp(2),
+                           orientation="vertical",
+                           md_bg_color=S["surfaceContainerHigh"])
         for key, name in BANKS:
             r = BankRow(key, name, on_pick=lambda k=key, n=name: self._pick(k, n))
-            panel.add_widget(r)
+            bank_card.add_widget(r)
+        body.add_widget(bank_card)
 
         info = MDCard(style="elevated", radius=[dp(20)] * 4,
-                      padding=[dp(16), dp(20), dp(16), dp(20)],
-                      spacing=dp(10), orientation="vertical", size_hint_y=None, height=dp(280))
-        info.add_widget(spacer(6))
-        info.add_widget(t("Nạp tiền qua ngân hàng", size=16, bold=True, role="onSurface"))
-        info.add_widget(t("Chọn ngân hàng bên trên, nhận số tài khoản và "
-                          "chuyển khoản đúng nội dung. Credit được cộng sau khi "
-                          "server xác nhận.", size=13, role="onSurfaceVariant", wrap=True))
-        btn = MDFillRoundFlatButton(text="  Mở trang nạp tiền", icon="add",
+                      padding=[dp(20), dp(20)], spacing=dp(12),
+                      orientation="vertical", size_hint_y=None, height=dp(240))
+        info.add_widget(t("Nap tien qua ngan hang", size=16, bold=True, role="onSurface"))
+        info.add_widget(t("Chon ngan hang ben tren, nhan so tai khoan va "
+                          "chuyen khoan dung noi dung. Credit duoc cong sau khi "
+                          "server xac nhan.", size=13, role="onSurfaceVariant", wrap=True))
+        btn = MDFillRoundFlatButton(text="  Mo trang nap tien", icon="add",
                                     size_hint=(1, None), height=dp(56),
                                     md_bg_color=S["primary"], text_color=S["onPrimary"],
                                     font_size=sp(15))
         btn.bind(on_release=lambda *a: self.open_web())
         info.add_widget(btn)
-        panel.add_widget(info)
-        panel.add_widget(spacer(6))
-        panel.add_widget(t("© ToolTX - Gold edition", size=11, role="onSurfaceVariant",
+        body.add_widget(info)
+
+        body.add_widget(Widget())
+        body.add_widget(t("ToolTX - Gold edition", size=11, role="onSurfaceVariant",
                            halign="center"))
 
     def open_back(self):
@@ -113,13 +115,13 @@ class TopUpScreen(MDScreen):
             except Exception:
                 pass
         self._dialog = MDDialog(
-            title="CHUYỂN KHOẢN",
-            text=("%s\n\nChuyển khoản tới tài khoản máy chủ, nội dung ghi rõ "
-                  "số điện thoại/tài khoản của bạn để server xác nhận.\n\n"
-                  "Mở trang nạp tiền để xem số tài khoản và bảng giá." % name),
+            title="CHUYEN KHOAN",
+            text=("%s\n\nChuyen khoan toi tai khoan may chu, noi dung ghi ro "
+                  "so dien thoai/tai khoan cua ban de server xac nhan.\n\n"
+                  "Mo trang nap tien de xem so tai khoan va bang gia." % name),
             buttons=[
-                MDTextButton(text="HỦY", on_release=lambda *a: self._dlg(False)),
-                MDTextButton(text="MỞ WEB NẠP", bold=True,
+                MDTextButton(text="HUY", on_release=lambda *a: self._dlg(False)),
+                MDTextButton(text="MO WEB NAP", bold=True,
                              on_release=lambda *a: self._dlg(True)),
             ],
         )

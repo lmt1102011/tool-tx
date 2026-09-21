@@ -10,7 +10,7 @@ from kivymd.uix.dialog import MDDialog
 from kivymd.uix.screen import MDScreen
 
 from core.m3 import S
-from screens.uikit import t, spacer
+from screens.uikit import t, spacer, PAD
 
 
 class SwRow(MDBoxLayout):
@@ -56,77 +56,76 @@ class SettingsScreen(MDScreen):
         bar.add_widget(t("Settings", size=22, bold=True, role="onSurface"))
         root.add_widget(bar)
 
-        panel = MDCard(radius=[dp(28)] * 4, size_hint=(None, None),
-                       size=(dp(392), dp(684)),
-                       pos_hint={"center_x": 0.5},
-                       padding=[dp(14), dp(10), dp(14), dp(16)],
-                       spacing=dp(10), orientation="vertical",
-                       md_bg_color=S["surfaceContainerHighest"])
-        root.add_widget(panel)
+        sc = MDBoxLayout(orientation="vertical", spacing=dp(16),
+                         padding=[dp(12), dp(8), dp(12), dp(8)])
+        root.add_widget(sc)
 
-        inner_bar = MDBoxLayout(orientation="horizontal", padding=[dp(4), 0, dp(4), 0],
-                                size_hint_y=None, height=dp(56), spacing=dp(8))
+        profile = MDCard(style="elevated", radius=[dp(20)] * 4,
+                         size_hint_y=None, height=dp(72),
+                         padding=[dp(16), dp(8)], spacing=dp(8),
+                         orientation="horizontal")
         ic = MDIconButton(icon="account-circle", icon_size=sp(26),
                           theme_icon_color="Custom", icon_color=S["onSurfaceVariant"])
-        inner_bar.add_widget(ic)
-        self.name_lbl = t("Name", size=20, bold=True, role="onSurface")
-        inner_bar.add_widget(self.name_lbl)
-        inner_bar.add_widget(Widget())
+        profile.add_widget(ic)
+        inner = MDBoxLayout(orientation="vertical", spacing=dp(0))
+        self.name_lbl = t("Name", size=18, bold=True, role="onSurface")
+        inner.add_widget(self.name_lbl)
+        self.uid_lbl = t("", size=12, role="onSurfaceVariant")
+        inner.add_widget(self.uid_lbl)
+        profile.add_widget(inner)
         out = MDIconButton(icon="logout", icon_size=sp(26),
                            theme_icon_color="Custom", icon_color=S["error"])
         out.bind(on_release=lambda *a: self._ask_logout())
-        inner_bar.add_widget(out)
-        panel.add_widget(inner_bar)
+        profile.add_widget(out)
+        sc.add_widget(profile)
 
-        self.uid_lbl = t("", size=12, role="onSurfaceVariant")
-        panel.add_widget(self.uid_lbl)
-        panel.add_widget(spacer(6))
-
-        self.row_theme = SwRow("Sáng / Tối", active=bool(self._prefs.get("dark", True)),
+        prefs_card = MDCard(style="filled", radius=[dp(20)] * 4,
+                            size_hint_y=None, adaptive_height=True,
+                            padding=[dp(8), dp(4)], spacing=dp(2),
+                            orientation="vertical",
+                            md_bg_color=S["surfaceContainerHigh"])
+        self.row_theme = SwRow("Sang / Toi", active=bool(self._prefs.get("dark", True)),
                                on_change=lambda v: self._on_theme(v) if self._on_theme else None)
-        panel.add_widget(self.row_theme)
-        self.row_log = SwRow("Nhật ký hoạt động", active=bool(self._prefs.get("log", True)),
+        prefs_card.add_widget(self.row_theme)
+        self.row_log = SwRow("Nhat ky hoat dong", active=bool(self._prefs.get("log", True)),
                              on_change=lambda v: self._on_log(v) if self._on_log else None)
-        panel.add_widget(self.row_log)
-        self.row_auto = SwRow("Tự kết nối server", active=bool(self._prefs.get("auto", True)),
+        prefs_card.add_widget(self.row_log)
+        self.row_auto = SwRow("Tu ket noi server", active=bool(self._prefs.get("auto", True)),
                               on_change=lambda v: self._on_auto(v) if self._on_auto else None)
-        panel.add_widget(self.row_auto)
+        prefs_card.add_widget(self.row_auto)
+        sc.add_widget(prefs_card)
 
-        info = MDCard(style="filled", radius=[dp(20)] * 4,
-                      padding=[dp(14), dp(12), dp(14), dp(12)],
-                      spacing=dp(4), size_hint_y=None, adaptive_height=True,
-                      md_bg_color=S["surfaceContainerLow"])
-        r1 = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=dp(30))
-        r1.add_widget(t("Số lượng dự đoán còn lại", size=13, role="onSurfaceVariant"))
+        picks_card = MDCard(style="filled", radius=[dp(20)] * 4,
+                            size_hint_y=None, height=dp(56),
+                            padding=[dp(16), dp(8)],
+                            orientation="horizontal",
+                            md_bg_color=S["surfaceContainerLow"])
+        picks_card.add_widget(t("So luong du doan con lai", size=13, role="onSurfaceVariant"))
         self.a_picks = t("--", size=15, bold=True, role="onSurface", halign="right")
         self.a_picks.size_hint_x = None
         self.a_picks.width = dp(120)
-        r1.add_widget(self.a_picks)
-        info.add_widget(r1)
-        panel.add_widget(info)
+        picks_card.add_widget(self.a_picks)
+        sc.add_widget(picks_card)
 
         log_card = MDCard(style="filled", radius=[dp(20)] * 4,
-                          padding=[dp(14), dp(12), dp(14), dp(12)],
-                          spacing=dp(4), size_hint_y=None, adaptive_height=True,
+                          size_hint_y=None, adaptive_height=True,
+                          padding=[dp(16), dp(12)], spacing=dp(4),
                           md_bg_color=S["surfaceContainerLow"])
-        self.log = t("Chưa có hoạt động.", size=12, role="onSurfaceVariant", wrap=True)
+        self.log = t("Chua co hoat dong.", size=12, role="onSurfaceVariant", wrap=True)
         log_card.add_widget(self.log)
         self._log_card = log_card
-        panel.add_widget(log_card)
-
-        panel.add_widget(spacer(6))
+        sc.add_widget(log_card)
 
         btn_crash = MDFillRoundFlatButton(
             text="  Gui crash log", icon="bug",
             size_hint=(1, None), height=dp(48),
             md_bg_color=S["tertiaryContainer"], text_color=S["onTertiaryContainer"],
-            font_size=sp(14), pos_hint={"center_x": 0.5})
+            font_size=sp(14))
         btn_crash.bind(on_release=lambda *a: self._share_crash())
-        panel.add_widget(btn_crash)
+        sc.add_widget(btn_crash)
 
-        panel.add_widget(spacer(4))
-        panel.add_widget(t("ToolTX - Gold edition - v1.2", size=11, role="onSurfaceVariant",
-                           halign="center"))
+        sc.add_widget(t("ToolTX - Gold edition - v1.2", size=11, role="onSurfaceVariant",
+                         halign="center"))
 
     def _ask_logout(self):
         if self._dialog:
@@ -154,8 +153,8 @@ class SettingsScreen(MDScreen):
 
     def profile(self, name, letter, uid, role, picks_text):
         self.name_lbl.text = name or "Name"
-        role_txt = (" · " + role) if role else ""
-        self.uid_lbl.text = (uid or "chưa có tài khoản") + role_txt
+        role_txt = (" . " + role) if role else ""
+        self.uid_lbl.text = (uid or "chua co tai khoan") + role_txt
         self.a_picks.text = picks_text or "--"
 
     def picks_text(self, txt):
@@ -163,7 +162,7 @@ class SettingsScreen(MDScreen):
 
     def set_log(self, text):
         if self._prefs.get("log", True):
-            self.log.text = text or "Chưa có hoạt động."
+            self.log.text = text or "Chua co hoat dong."
         self._log_card.opacity = 1.0 if self._prefs.get("log", True) else 0.0
 
     def _share_crash(self):

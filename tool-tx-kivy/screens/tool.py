@@ -8,7 +8,7 @@ from kivymd.uix.card import MDCard
 from kivymd.uix.screen import MDScreen
 
 from core.m3 import S
-from screens.uikit import t, spacer
+from screens.uikit import t, spacer, PAD
 
 
 class ToolScreen(MDScreen):
@@ -30,24 +30,18 @@ class ToolScreen(MDScreen):
         bar.add_widget(t("Tool", size=22, bold=True, role="onSurface"))
         root.add_widget(bar)
 
-        panel = MDCard(radius=[dp(28)] * 4, size_hint=(None, None),
-                       size=(dp(392), dp(684)),
-                       pos_hint={"center_x": 0.5},
-                       padding=[dp(14), dp(14), dp(14), dp(14)],
-                       spacing=dp(14), orientation="vertical",
-                       md_bg_color=S["surfaceContainerHighest"])
-        root.add_widget(panel)
+        body = MDBoxLayout(orientation="vertical", spacing=dp(16),
+                           padding=[PAD, dp(8), PAD, dp(8)])
+        root.add_widget(body)
 
         c1 = MDCard(style="elevated", radius=[dp(20)] * 4,
                     padding=[dp(16), dp(16)], spacing=dp(10),
                     orientation="vertical", size_hint_y=None, adaptive_height=True)
         c1.add_widget(t("Data analysis table", size=16, bold=True, role="onSurface"))
 
-        tbl = MDCard(radius=[dp(7)] * 4,
-                     size_hint=(None, None), size=(dp(348), dp(212)),
-                     pos_hint={"center_x": 0.5},
-                     padding=[dp(16), dp(12), dp(16), dp(12)],
-                     spacing=dp(8), orientation="vertical",
+        tbl = MDCard(radius=[dp(12)] * 4, size_hint_y=None, height=dp(200),
+                     padding=[dp(16), dp(12)], spacing=dp(8),
+                     orientation="vertical",
                      md_bg_color=S["surfaceContainerHigh"])
         row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=dp(54))
         self.big = t("--", size=30, bold=True, role="onSurface", halign="center")
@@ -61,10 +55,10 @@ class ToolScreen(MDScreen):
         self.pbar = MDProgressBar(value=50, size_hint_y=None, height=dp(8),
                                   color=S["primary"], back_color=(1, 1, 1, 0.1))
         tbl.add_widget(self.pbar)
-        self.hist = t("chờ dữ liệu...", size=12, role="onSurfaceVariant", wrap=True)
+        self.hist = t("cho du lieu...", size=12, role="onSurfaceVariant", wrap=True)
         tbl.add_widget(self.hist)
         c1.add_widget(tbl)
-        panel.add_widget(c1)
+        body.add_widget(c1)
 
         c2 = MDCard(style="elevated", radius=[dp(20)] * 4,
                     padding=[dp(16), dp(16)], spacing=dp(8),
@@ -72,17 +66,17 @@ class ToolScreen(MDScreen):
         c2.add_widget(t("Tool", size=16, bold=True, role="onSurface"))
         self.tool_body = t("open tab tool", size=13, role="onSurfaceVariant", wrap=True)
         c2.add_widget(self.tool_body)
-        self.agent_lbl = t("Chưa có agent nào chạy.", size=12, role="onSurfaceVariant")
+        self.agent_lbl = t("Chua co agent nao chay.", size=12, role="onSurfaceVariant")
         c2.add_widget(self.agent_lbl)
+        c2.add_widget(spacer(4))
         btn = MDFillRoundFlatButton(text="  Open Tool", icon="power-settings-new",
-                                    size_hint=(None, None),
-                                    width=dp(344), height=dp(56),
+                                    size_hint=(1, None), height=dp(56),
                                     md_bg_color=S["primary"], text_color=S["onPrimary"],
-                                    font_size=sp(15), pos_hint={"center_x": 0.5})
+                                    font_size=sp(15))
         btn.bind(on_release=lambda *a: self._open())
         c2.add_widget(btn)
-        panel.add_widget(c2)
-        panel.add_widget(spacer(6))
+        body.add_widget(c2)
+        body.add_widget(Widget())
 
     def open_back(self):
         try:
@@ -101,14 +95,14 @@ class ToolScreen(MDScreen):
             return
         pk = str(p["pick"]).upper()
         is_t = pk == "T"
-        self.big.text = "TÀI" if is_t else "XỈU"
+        self.big.text = "TAI" if is_t else "XIU"
         self.big.text_color = S["error"] if is_t else S["primary"]
         pT = float(p.get("pT") or (60 if is_t else 40))
         pX = 100 - pT
-        self.pct.text = "TÀI %02.0f  /  XỈU %02.0f" % (pT, pX)
+        self.pct.text = "TAI %02.0f  /  XIU %02.0f" % (pT, pX)
         self.pbar.value = min(100.0, max(0.0, pT))
         c = p.get("confidence", p.get("conf"))
-        conf = "Độ tin cậy %02.0f%%" % float(c) if c is not None else ""
+        conf = "Do tin cay %02.0f%%" % float(c) if c is not None else ""
         hist = p.get("hist") or p.get("history") or []
         line = "   ".join(str(x)[:1].upper() for x in hist[-16:])
         self.hist.text = " | ".join([x for x in (conf, line) if x])
@@ -118,5 +112,5 @@ class ToolScreen(MDScreen):
         self.tool_body.text_color = col if col else S["onSurfaceVariant"]
 
     def set_agent(self, text, col=None):
-        self.agent_lbl.text = text or "Chưa có agent nào chạy."
+        self.agent_lbl.text = text or "Chua co agent nao chay."
         self.agent_lbl.text_color = col if col else S["onSurfaceVariant"]
