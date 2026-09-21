@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -41,18 +42,11 @@ class TopUpFragment : Fragment() {
 
         binding.btnOpenWeb.setOnClickListener { openWeb() }
 
-        val rows = listOf(
-            binding.rowBank0,
-            binding.rowBank1,
-            binding.rowBank2,
-            binding.rowBank3,
-            binding.rowBank4
-        )
-        rows.forEachIndexed { index, row ->
-            row.setOnClickListener {
-                if (index < banks.size) {
-                    showBankDialog(banks[index])
-                }
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, banks)
+        binding.spinnerBank.setAdapter(adapter)
+        binding.spinnerBank.setOnItemClickListener { _, _, position, _ ->
+            if (position in banks.indices) {
+                showBankDialog(banks[position])
             }
         }
     }

@@ -33,6 +33,10 @@ class SignInFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        binding.tvStatus.visibility = View.GONE
+        binding.etUsername.setText("")
+        binding.etPassword.setText("")
+
         binding.btnSubmit.setOnClickListener { doSignIn() }
         binding.btnSwitch.setOnClickListener {
             (requireActivity() as MainActivity).showFragment(SignUpFragment::class.java, "signup")

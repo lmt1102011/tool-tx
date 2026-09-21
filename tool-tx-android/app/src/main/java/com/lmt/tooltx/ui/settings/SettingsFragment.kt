@@ -1,5 +1,6 @@
 package com.lmt.tooltx.ui.settings
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.os.Environment
@@ -7,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.fragment.app.Fragment
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.lmt.tooltx.MainActivity
@@ -44,8 +46,13 @@ class SettingsFragment : Fragment() {
 
         binding.btnLogout.setOnClickListener { confirmLogout() }
 
-        binding.switchDark.setOnCheckedChangeListener { _, _ ->
-            Toast.makeText(requireContext(), "Coming soon", Toast.LENGTH_SHORT).show()
+        binding.switchDark.setOnCheckedChangeListener { _, isChecked ->
+            AppCompatDelegate.setDefaultNightMode(
+                if (isChecked) AppCompatDelegate.MODE_NIGHT_YES
+                else AppCompatDelegate.MODE_NIGHT_NO
+            )
+            val prefs = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("dark_mode", isChecked).apply()
         }
 
         binding.btnCrash.setOnClickListener { shareCrash() }
@@ -53,7 +60,13 @@ class SettingsFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        loadDarkMode()
         loadProfile()
+    }
+
+    private fun loadDarkMode() {
+        val prefs = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
+        binding.switchDark.isChecked = prefs.getBoolean("dark_mode", true)
     }
 
     private fun loadProfile() {
@@ -89,10 +102,6 @@ class SettingsFragment : Fragment() {
 
     private fun picksText(txt: String) {
         binding.tvPicks.text = txt
-    }
-
-    private fun setLog(text: String) {
-        binding.tvLog.text = text
     }
 
     private fun confirmLogout() {
@@ -141,19 +150,22 @@ class SettingsFragment : Fragment() {
             withContext(Dispatchers.Main) {
                 val b = _binding ?: return@withContext
                 if (found == null || body.isEmpty()) {
-                    setLog("Không có crash log.")
+                    Toast.makeText(requireContext(), "Không có bug log.", Toast.LENGTH_SHORT).show()
                     return@withContext
                 }
                 val send = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
-                    putExtra(Intent.EXTRA_SUBJECT, "ToolTX Crash Log")
+                    putExtra(Intent.EXTRA_SUBJECT, "ToolTX Bug Log")
                     putExtra(Intent.EXTRA_TEXT, body.takeLast(3000))
                 }
                 try {
-                    startActivity(Intent.createChooser(send, "Gửi crash log"))
-                    setLog("Crash log: " + found.name)
+                    startActivity(Intent.createChooser(send, "Gửi bug log"))
                 } catch (e: Exception) {
-                    setLog("Lỗi gửi crash log: " + (e.message ?: "unknown"))
+                    Toast.makeText(
+                        requireContext(),
+                        "Lỗi gửi bug log: " + (e.message ?: "unknown"),
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }

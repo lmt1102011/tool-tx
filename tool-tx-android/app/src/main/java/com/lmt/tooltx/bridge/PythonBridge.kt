@@ -34,6 +34,12 @@ class PythonBridge(private val context: Context) {
         }
     }
 
+    fun setSessionPath(path: String) {
+        try {
+            py.getModule("auth").callAttr("set_session_path", path)
+        } catch (_: Exception) {}
+    }
+
     fun logout() {
         try {
             py.getModule("auth").callAttr("logout")

@@ -13,6 +13,24 @@ except ImportError:
     FIREBASE_DB = ""
     SESSION_PATH = ""
 
+if not SESSION_PATH:
+    SESSION_PATH = os.path.join(
+        os.environ.get("ANDROID_PRIVATE", "/data/data/com.lmt.tooltx"), "session.json"
+    )
+
+_FIREBASE_ERRORS = {
+    "INVALID_LOGIN_CREDENTIALS": "Sai tên đăng nhập hoặc mật khẩu",
+    "EMAIL_NOT_FOUND": "Không tìm thấy tài khoản",
+    "INVALID_PASSWORD": "Sai mật khẩu",
+    "USER_DISABLED": "Tài khoản đã bị khóa",
+    "EMAIL_EXISTS": "Tài khoản đã tồn tại",
+    "WEAK_PASSWORD": "Mật khẩu quá yếu (≥ 6 ký tự)",
+}
+
+def _firebase_message(data, default="Đăng nhập thất bại"):
+    code = (data.get("error") or {}).get("message", "")
+    return _FIREBASE_ERRORS.get(code, default)
+
 _session = {}
 
 def _save_session():
@@ -35,7 +53,8 @@ def _load_session():
         _session = {}
 
 def set_session_path(path):
-    global _session
+    global _session, SESSION_PATH
+    SESSION_PATH = path
     try:
         with open(path) as f:
             _session = json.load(f)
@@ -51,7 +70,7 @@ def login(username, password):
     }, timeout=30)
     data = r.json()
     if "error" in data:
-        raise Exception(data["error"].get("message", "Login failed"))
+        raise Exception(_firebase_message(data))
     global _session
     _session = {
         "uid": data["localId"],
@@ -72,7 +91,7 @@ def register(username, password, name):
     }, timeout=30)
     data = r.json()
     if "error" in data:
-        raise Exception(data["error"].get("message", "Register failed"))
+        raise Exception(_firebase_message(data, default="Đăng ký thất bại"))
     return {"uid": data["localId"]}
 
 def logout():

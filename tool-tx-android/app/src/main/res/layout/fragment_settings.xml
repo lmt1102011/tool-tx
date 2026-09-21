@@ -180,43 +180,6 @@
                             <TextView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:text="@string/activity_log"
-                                android:textColor="@color/onSurface"
-                                android:textSize="16sp" />
-
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:text="Ghi lại toàn bộ hoạt động trên máy"
-                                android:textColor="@color/onSurfaceVariant"
-                                android:textSize="12sp" />
-
-                        </LinearLayout>
-
-                        <com.google.android.material.materialswitch.MaterialSwitch
-                            android:id="@+id/switch_log"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="@dimen/spacing_md" />
-
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingVertical="@dimen/spacing_sm">
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
                                 android:text="@string/auto_connect"
                                 android:textColor="@color/onSurface"
                                 android:textSize="16sp" />
@@ -278,33 +241,12 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/card_log"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/spacing_lg"
-                app:cardBackgroundColor="@color/surfaceContainerLow"
-                app:cardCornerRadius="@dimen/card_radius"
-                app:cardElevation="0dp"
-                app:strokeWidth="0dp">
-
-                <TextView
-                    android:id="@+id/tv_log"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:padding="@dimen/card_padding"
-                    android:text="@string/no_activity"
-                    android:textColor="@color/onSurfaceVariant"
-                    android:textSize="12sp" />
-
-            </com.google.android.material.card.MaterialCardView>
-
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_crash"
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/btn_height"
                 android:layout_marginTop="@dimen/spacing_lg"
-                android:text="@string/send_crash_log"
+                android:text="Gửi bug log (nếu có)"
                 android:textColor="@color/onTertiaryContainer"
                 android:textSize="16sp"
                 app:backgroundTint="@color/tertiaryContainer"

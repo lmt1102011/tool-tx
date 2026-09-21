@@ -59,223 +59,25 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:orientation="vertical"
+                    android:padding="@dimen/spacing_lg">
 
-                    <LinearLayout
-                        android:id="@+id/row_bank_0"
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                         android:layout_width="match_parent"
-                        android:layout_height="64dp"
-                        android:background="?attr/selectableItemBackground"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingHorizontal="@dimen/spacing_lg">
+                        android:layout_height="wrap_content"
+                        android:hint="Chọn ngân hàng">
 
-                        <com.google.android.material.card.MaterialCardView
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            app:cardBackgroundColor="@color/primaryContainer"
-                            app:cardCornerRadius="20dp"
-                            app:cardElevation="0dp"
-                            app:strokeWidth="0dp">
-
-                            <ImageView
-                                android:layout_width="22dp"
-                                android:layout_height="22dp"
-                                android:layout_gravity="center"
-                                android:contentDescription="@string/bank_transfer"
-                                android:src="@drawable/ic_account_balance"
-                                android:tint="@color/onPrimaryContainer" />
-                        </com.google.android.material.card.MaterialCardView>
-
-                        <TextView
-                            android:layout_width="0dp"
+                        <AutoCompleteTextView
+                            android:id="@+id/spinner_bank"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="@dimen/spacing_lg"
-                            android:layout_weight="1"
-                            android:text="Techcombank"
+                            android:minHeight="@dimen/field_height"
+                            android:inputType="none"
                             android:textColor="@color/onSurface"
-                            android:textSize="16sp" />
+                            android:textColorHint="@color/onSurfaceVariant" />
 
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:contentDescription="@string/top_up"
-                            android:src="@drawable/ic_arrow_down"
-                            android:tint="@color/onSurfaceVariant" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:id="@+id/row_bank_1"
-                        android:layout_width="match_parent"
-                        android:layout_height="64dp"
-                        android:background="?attr/selectableItemBackground"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingHorizontal="@dimen/spacing_lg">
-
-                        <com.google.android.material.card.MaterialCardView
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            app:cardBackgroundColor="@color/primaryContainer"
-                            app:cardCornerRadius="20dp"
-                            app:cardElevation="0dp"
-                            app:strokeWidth="0dp">
-
-                            <ImageView
-                                android:layout_width="22dp"
-                                android:layout_height="22dp"
-                                android:layout_gravity="center"
-                                android:contentDescription="@string/bank_transfer"
-                                android:src="@drawable/ic_account_balance"
-                                android:tint="@color/onPrimaryContainer" />
-                        </com.google.android.material.card.MaterialCardView>
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="@dimen/spacing_lg"
-                            android:layout_weight="1"
-                            android:text="Vietcombank"
-                            android:textColor="@color/onSurface"
-                            android:textSize="16sp" />
-
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:contentDescription="@string/top_up"
-                            android:src="@drawable/ic_arrow_down"
-                            android:tint="@color/onSurfaceVariant" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:id="@+id/row_bank_2"
-                        android:layout_width="match_parent"
-                        android:layout_height="64dp"
-                        android:background="?attr/selectableItemBackground"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingHorizontal="@dimen/spacing_lg">
-
-                        <com.google.android.material.card.MaterialCardView
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            app:cardBackgroundColor="@color/primaryContainer"
-                            app:cardCornerRadius="20dp"
-                            app:cardElevation="0dp"
-                            app:strokeWidth="0dp">
-
-                            <ImageView
-                                android:layout_width="22dp"
-                                android:layout_height="22dp"
-                                android:layout_gravity="center"
-                                android:contentDescription="@string/bank_transfer"
-                                android:src="@drawable/ic_account_balance"
-                                android:tint="@color/onPrimaryContainer" />
-                        </com.google.android.material.card.MaterialCardView>
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="@dimen/spacing_lg"
-                            android:layout_weight="1"
-                            android:text="BIDV"
-                            android:textColor="@color/onSurface"
-                            android:textSize="16sp" />
-
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:contentDescription="@string/top_up"
-                            android:src="@drawable/ic_arrow_down"
-                            android:tint="@color/onSurfaceVariant" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:id="@+id/row_bank_3"
-                        android:layout_width="match_parent"
-                        android:layout_height="64dp"
-                        android:background="?attr/selectableItemBackground"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingHorizontal="@dimen/spacing_lg">
-
-                        <com.google.android.material.card.MaterialCardView
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            app:cardBackgroundColor="@color/primaryContainer"
-                            app:cardCornerRadius="20dp"
-                            app:cardElevation="0dp"
-                            app:strokeWidth="0dp">
-
-                            <ImageView
-                                android:layout_width="22dp"
-                                android:layout_height="22dp"
-                                android:layout_gravity="center"
-                                android:contentDescription="@string/bank_transfer"
-                                android:src="@drawable/ic_account_balance"
-                                android:tint="@color/onPrimaryContainer" />
-                        </com.google.android.material.card.MaterialCardView>
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="@dimen/spacing_lg"
-                            android:layout_weight="1"
-                            android:text="MB Bank"
-                            android:textColor="@color/onSurface"
-                            android:textSize="16sp" />
-
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:contentDescription="@string/top_up"
-                            android:src="@drawable/ic_arrow_down"
-                            android:tint="@color/onSurfaceVariant" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:id="@+id/row_bank_4"
-                        android:layout_width="match_parent"
-                        android:layout_height="64dp"
-                        android:background="?attr/selectableItemBackground"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingHorizontal="@dimen/spacing_lg">
-
-                        <com.google.android.material.card.MaterialCardView
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            app:cardBackgroundColor="@color/primaryContainer"
-                            app:cardCornerRadius="20dp"
-                            app:cardElevation="0dp"
-                            app:strokeWidth="0dp">
-
-                            <ImageView
-                                android:layout_width="22dp"
-                                android:layout_height="22dp"
-                                android:layout_gravity="center"
-                                android:contentDescription="@string/bank_transfer"
-                                android:src="@drawable/ic_account_balance"
-                                android:tint="@color/onPrimaryContainer" />
-                        </com.google.android.material.card.MaterialCardView>
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="@dimen/spacing_lg"
-                            android:layout_weight="1"
-                            android:text="VPBank"
-                            android:textColor="@color/onSurface"
-                            android:textSize="16sp" />
-
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:contentDescription="@string/top_up"
-                            android:src="@drawable/ic_arrow_down"
-                            android:tint="@color/onSurfaceVariant" />
-                    </LinearLayout>
-
+                    </com.google.android.material.textfield.TextInputLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
