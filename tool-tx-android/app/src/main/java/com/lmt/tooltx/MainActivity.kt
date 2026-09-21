@@ -1,6 +1,7 @@
 package com.lmt.tooltx
 
 import android.os.Bundle
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -42,7 +43,7 @@ class MainActivity : AppCompatActivity() {
                 bottomNav.menu.findItem(R.id.nav_home).isChecked = true
             } else {
                 showFragment(SignInFragment::class.java, "signin")
-                bottomNav.visibility = android.view.View.GONE
+                bottomNav.visibility = View.GONE
             }
         }
     }
@@ -62,19 +63,20 @@ class MainActivity : AppCompatActivity() {
         val shown = fm.findFragmentByTag(tag)
         if (shown != null) {
             ft.show(shown)
+            ft.setPrimaryNavigationFragment(shown)
         } else {
-            val frag = cls.newInstance()
+            val frag = cls.getDeclaredConstructor().newInstance()
             ft.add(R.id.fragment_container, frag, tag)
+            ft.setPrimaryNavigationFragment(frag)
         }
-        ft.setPrimaryNavigationFragment(shown ?: fm.findFragmentByTag(tag))
         ft.commitAllowingStateLoss()
 
         val isAuth = tag == "signin" || tag == "signup"
-        bottomNav.visibility = if (isAuth) android.view.View.GONE else android.view.View.VISIBLE
+        bottomNav.visibility = if (isAuth) View.GONE else View.VISIBLE
     }
 
     fun showNav(show: Boolean) {
-        bottomNav.visibility = if (show) android.view.View.VISIBLE else android.view.View.GONE
+        bottomNav.visibility = if (show) View.VISIBLE else View.GONE
     }
 
     fun showAdmin(show: Boolean) {
@@ -87,6 +89,7 @@ class MainActivity : AppCompatActivity() {
 
     fun getBridge(): PythonBridge = bridge
 
+    @Suppress("DEPRECATION")
     override fun onBackPressed() {
         val fm = supportFragmentManager
         if (fm.backStackEntryCount > 0) {

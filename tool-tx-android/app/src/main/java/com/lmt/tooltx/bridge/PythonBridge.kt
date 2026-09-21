@@ -14,11 +14,12 @@ class PythonBridge(private val context: Context) {
 
     private val py by lazy { Python.getInstance() }
 
-    // ── Auth ──
     fun login(username: String, password: String): Map<String, Any?> {
         return try {
             val result = py.getModule("auth").callAttr("login", username, password)
-            mapOf("ok" to true, "uid" to result["uid"].toString(), "data" to parseMap(result["data"]))
+            val uid = result.callAttr("__getitem__", "uid").toString()
+            val data = parseMap(result.callAttr("__getitem__", "data"))
+            mapOf("ok" to true, "uid" to uid, "data" to data)
         } catch (e: Exception) {
             mapOf("ok" to false, "error" to e.message)
         }
@@ -42,7 +43,7 @@ class PythonBridge(private val context: Context) {
     fun getSession(): Map<String, Any?>? {
         return try {
             val s = py.getModule("auth").callAttr("get_session")
-            if (s.isNone) null else parseMap(s)
+            if (s == null) null else parseMap(s)
         } catch (_: Exception) {
             null
         }
@@ -56,7 +57,6 @@ class PythonBridge(private val context: Context) {
         }
     }
 
-    // ── User Data ──
     fun getUserData(): Map<String, Any?> {
         return try {
             val data = py.getModule("auth").callAttr("user_data")
@@ -74,7 +74,6 @@ class PythonBridge(private val context: Context) {
         }
     }
 
-    // ── Socket ──
     fun connectSocket(url: String, token: String) {
         try {
             py.getModule("socket_client").callAttr("connect", url, token)
@@ -95,17 +94,15 @@ class PythonBridge(private val context: Context) {
         }
     }
 
-    // ── Server ──
     fun discoverServer(): String? {
         return try {
             val url = py.getModule("config").callAttr("discover_server")
-            if (url.isNone) null else url.toString()
+            if (url == null) null else url.toString()
         } catch (_: Exception) {
             null
         }
     }
 
-    // ── Agent ──
     fun startFork(serverUrl: String, code: String): Boolean {
         return try {
             py.getModule("agent").callAttr("start_fork", serverUrl, code).toBoolean()
@@ -131,13 +128,12 @@ class PythonBridge(private val context: Context) {
     fun getAgentPair(serverUrl: String): String? {
         return try {
             val code = py.getModule("socket_client").callAttr("agent_pair", serverUrl)
-            if (code.isNone) null else code.toString()
+            if (code == null) null else code.toString()
         } catch (_: Exception) {
             null
         }
     }
 
-    // ── Admin ──
     fun listUsers(): Map<String, Any?> {
         return try {
             val users = py.getModule("auth").callAttr("list_users")
@@ -185,13 +181,13 @@ class PythonBridge(private val context: Context) {
         } catch (_: Exception) {}
     }
 
-    // ── Helper ──
     private fun parseMap(obj: com.chaquo.python.PyObject?): Map<String, Any?> {
-        if (obj == null || obj.isNone) return mapOf()
+        if (obj == null) return mapOf()
         return try {
             val result = mutableMapOf<String, Any?>()
-            val keys = obj.callAttr("keys")
-            for (key in keys) {
+            val keys = obj.callAttr("keys").asList()
+            for (i in 0 until keys.size) {
+                val key = keys[i]
                 result[key.toString()] = obj.callAttr("__getitem__", key)
             }
             result
