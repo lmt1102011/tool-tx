@@ -2,7 +2,7 @@ from kivy.metrics import dp, sp
 from kivy.clock import Clock
 from kivy.uix.widget import Widget
 from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.button import MDIconButton, MDTextButton
+from kivymd.uix.button import MDIconButton, MDTextButton, MDFillRoundFlatButton
 from kivymd.uix.label import MDIcon
 from kivymd.uix.selectioncontrol import MDSwitch
 from kivymd.uix.card import MDCard
@@ -115,6 +115,16 @@ class SettingsScreen(MDScreen):
         panel.add_widget(log_card)
 
         panel.add_widget(spacer(6))
+
+        btn_crash = MDFillRoundFlatButton(
+            text="  Gui crash log", icon="bug",
+            size_hint=(1, None), height=dp(48),
+            md_bg_color=S["tertiaryContainer"], text_color=S["onTertiaryContainer"],
+            font_size=sp(14), pos_hint={"center_x": 0.5})
+        btn_crash.bind(on_release=lambda *a: self._share_crash())
+        panel.add_widget(btn_crash)
+
+        panel.add_widget(spacer(4))
         panel.add_widget(t("ToolTX - Gold edition - v1.2", size=11, role="onSurfaceVariant",
                            halign="center"))
 
@@ -155,3 +165,40 @@ class SettingsScreen(MDScreen):
         if self._prefs.get("log", True):
             self.log.text = text or "Chưa có hoạt động."
         self._log_card.opacity = 1.0 if self._prefs.get("log", True) else 0.0
+
+    def _share_crash(self):
+        import os
+        from core.config import IS_ANDROID
+        paths = [
+            "/sdcard/Download/crash.log",
+            "/storage/emulated/0/Download/crash.log",
+            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "crash.log"),
+        ]
+        found = ""
+        for p in paths:
+            if os.path.isfile(p) and os.path.getsize(p) > 0:
+                found = p
+                break
+        if not found:
+            self.log.text = "Khong co crash log."
+            return
+        if not IS_ANDROID:
+            self.log.text = "Crash log: " + found
+            return
+        try:
+            from jnius import autoclass
+            PyA = autoclass("org.kivy.android.PythonActivity")
+            File = autoclass("java.io.File")
+            Uri = autoclass("android.net.Uri")
+            Intent = autoclass("android.content.Intent")
+            act = PyA.mActivity
+            f = File(found)
+            uri = Uri.fromFile(f)
+            i = Intent(Intent.ACTION_SEND)
+            i.setType("text/plain")
+            i.putExtra(Intent.EXTRA_STREAM, uri)
+            i.putExtra(Intent.EXTRA_SUBJECT, "ToolTX Crash Log")
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            act.startActivity(Intent.createChooser(i, "Gui crash log"))
+        except Exception as e:
+            self.log.text = "Loi gui crash log: " + str(e)[:80]
