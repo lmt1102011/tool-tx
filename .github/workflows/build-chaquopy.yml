@@ -58,7 +58,7 @@ jobs:
         working-directory: tool-tx-android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew compileDebugKotlin --no-daemon --console=plain 2>&1
 
       - name: Build Release APK
         if: success()
