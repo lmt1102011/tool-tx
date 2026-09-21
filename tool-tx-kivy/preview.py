@@ -3,12 +3,46 @@ preview.py - Desktop simulator + crash catcher.
 Mo'i lo'i (PC lo'i mobile) deu duoc bat va ghi ra preview_crash.log.
 
 Run: .venv\\Scripts\\python.exe preview.py
+     hoac: python preview.py (tu thu muc co .venv)
 Phim: 1-4 chuyen tab, d-toggle dark, q-thoat.
 """
-import os, sys, time, traceback
+import os, sys, time, traceback, subprocess
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_PATH = os.path.join(APP_DIR, "preview_crash.log")
+
+# ── Auto-venv: tim va su dung .venv neu co ────────────────
+def _ensure_venv():
+    if "kivy" in sys.modules:
+        return
+    # Tim .venv trong APP_DIR hoac cha (repo copy)
+    for check_dir in [APP_DIR, os.path.dirname(APP_DIR)]:
+        for sub in ["Scripts/python.exe", "bin/python3"]:
+            venv_python = os.path.join(check_dir, ".venv", sub)
+            if os.path.isfile(venv_python):
+                exe = sys.executable
+                if exe.lower() != os.path.abspath(venv_python).lower():
+                    print("[preview] Dang chuyen sang .venv: %s" % venv_python)
+                    os.execv(venv_python, [venv_python] + sys.argv)
+                    sys.exit(0)
+    # Kiem tra kivy co san khong
+    try:
+        import kivy
+    except ImportError:
+        msg = (
+            "\n[LOI] Khong tim thay kivy!\n"
+            "  Ban dang chay tu: %s\n"
+            "  Can chay tu thu muc chinh: C:\\Users\\Tri\\Desktop\\Tool\\tool-tx-kivy\n\n"
+            "  Cach fix:\n"
+            "    cd C:\\Users\\Tri\\Desktop\\Tool\\tool-tx-kivy\n"
+            "    .venv\\Scripts\\python.exe preview.py\n"
+        ) % APP_DIR
+        print(msg)
+        with open(LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(msg)
+        sys.exit(1)
+
+_ensure_venv()
 
 os.environ["KIVY_LOG_LEVEL"] = "warning"
 os.environ["KIVY_WINDOW"] = "sdl2"
