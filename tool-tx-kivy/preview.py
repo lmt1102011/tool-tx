@@ -17,7 +17,7 @@ from kivy.uix.widget import Widget
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 
-from core.config import FB as _fb, FORK_PACKAGE
+from core.config import FORK_PACKAGE
 from core.m3 import S, set_dark
 from screens.login import SignInScreen, SignUpScreen
 from screens.home import HomeScreen
@@ -32,9 +32,9 @@ class DevShell(MDApp):
         self._going = True
         super().__init__(**kw)
         self.title = "Dev Preview"
-        self.theme_cls.theme_style = "Dark"
 
     def build(self):
+        self.theme_cls.theme_style = "Dark"
         root = MDBoxLayout(orientation="vertical")
         self.sm = ScreenManager()
         root.add_widget(self.sm)
@@ -116,11 +116,11 @@ def toggle_dark():
     except Exception:
         pass
     from kivy.core.window import Window
-    Window.clearcolor = S["background"]
+    Window.clearcolor = S["surface"]
 
 
 if __name__ == "__main__":
     set_dark(True)
     from kivy.core.window import Window
-    Window.clearcolor = S["background"]
+    Window.clearcolor = S["surface"]
     DevShell().run()

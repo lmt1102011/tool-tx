@@ -5,6 +5,7 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDFillRoundFlatButton, MDTextButton
 from kivymd.uix.scrollview import MDScrollView
 from kivymd.uix.screen import MDScreen
+from kivymd.uix.card import MDCard
 
 from core.m3 import S
 from screens.uikit import t, gap, spacer, field, M3Field
