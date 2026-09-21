@@ -24,6 +24,10 @@ def spacer(h=None):
     return w
 
 
+def gap(h=14):
+    return spacer(h)
+
+
 def field(hint="", leading="", password=False):
     box = MDBoxLayout(orientation="horizontal", size_hint=(1, None), height=dp(56),
                       padding=[dp(4), dp(4)], spacing=dp(4))
@@ -91,3 +95,14 @@ def pill_btn(text, icon="", **kw):
     row.add_widget(lbl)
     btn.add_widget(row)
     return btn
+
+
+# ── compat aliases (admin.py / browser.py use old names) ──
+label = t
+Chip = MDBoxLayout
+Column = MDBoxLayout
+GlassCard = MDCard
+
+
+def chip(text="", **kw):
+    return MDBoxLayout(**kw)

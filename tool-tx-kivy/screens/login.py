@@ -8,7 +8,7 @@ from kivymd.uix.screen import MDScreen
 from kivymd.uix.card import MDCard
 
 from core.m3 import S
-from screens.uikit import t, gap, spacer, field, M3Field
+from screens.uikit import t, gap, spacer, field
 
 
 def _logo(size=dp(124)):
