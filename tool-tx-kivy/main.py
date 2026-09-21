@@ -126,7 +126,7 @@ class ToolApp(App):
     # ────────────────── build: CHỈ nhóm kivy đã chứng minh (Label/ScrollView) ──────────────────
     def build(self):
         _mark("build")
-        sv = ScrollView()
+        sv = ScrollView(do_scroll_x=False, do_scroll_y=False)
         lbl = Label(text="TOOLTX\nLoading app...", font_size="13sp", halign="left",
                     valign="top", size_hint_y=None, padding=(14, 14), color=(1, 1, 1, 1))
         lbl.bind(width=lambda i, w: setattr(i, "text_size", (w * 0.97, None)))
@@ -272,13 +272,12 @@ class ToolApp(App):
         self.root_box.add_widget(self.nav)
         self.goto("login")
 
-        # Thay màn hình loading bằng UI thật: đẩy thẳng vào cửa sổ (không giữ
-        # ScrollView gốc — vì nó nuốt cú chạm của tab điều hướng bên dưới).
-        self.root_box.size_hint = (1, 1)
+        # gắn UI thật vào gốc (thay màn loading). ScrollView gốc đã tắt
+        # do_scroll nên không nuốt cú chạm của tab điều hướng bên dưới.
         try:
-            Window.clear_widgets()
-            Window.add_widget(self.root_box)
-            self.root = self.root_box
+            self.root.clear_widgets()
+            self.root_box.size_hint = (1, 1)
+            self.root.add_widget(self.root_box)
         except Exception:
             pass
 
@@ -731,14 +730,18 @@ def _thread_exc(args):
 def _boot():
     prev = _PREV_STEP
     if _gate_read() == "START":
-        # lần chạy trước chết bên trong run() (native hay python) — hiện báo lỗi
-        _show_error("", prev=prev)
-        _gate_write("OK")
-        try:
-            os.remove(CRASH_PATH)
-        except Exception:
-            pass
-        return
+        # Lần chạy trước chết nửa chừng. Nếu nó chết SAU khi ladder đã hoàn thành
+        # (all-ok / ...=ok) thì toàn bộ việc khởi tạo đã ngon — chỉ là sự cố hiển
+        # thị cuối — nên TỰ HỒI PHỤC, không hiện màn xám kẹt vĩnh viễn.
+        died_after_ok = prev.startswith("all-ok") or prev.endswith("=ok")
+        if not died_after_ok:
+            _show_error("", prev=prev)
+            _gate_write("OK")
+            try:
+                os.remove(CRASH_PATH)
+            except Exception:
+                pass
+            return
     _mark("boot")
     app = ToolApp()
     _mark("app-created")
