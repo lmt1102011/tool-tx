@@ -18,7 +18,7 @@ import com.lmt.tooltx.bridge.PythonBridge
 class MainActivity : AppCompatActivity() {
 
     private lateinit var bottomNav: BottomNavigationView
-    private val bridge by lazy { PythonBridge(this) }
+    private val pythonBridge by lazy { PythonBridge(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,7 +37,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (savedInstanceState == null) {
-            val session = bridge.getSession()
+            val session = pythonBridge.getSession()
             if (session != null) {
                 showFragment(HomeFragment::class.java, "home")
                 bottomNav.menu.findItem(R.id.nav_home).isChecked = true
@@ -87,7 +87,7 @@ class MainActivity : AppCompatActivity() {
         showFragment(BrowserFragment::class.java, "browser")
     }
 
-    fun getBridge(): PythonBridge = bridge
+    fun getBridge(): PythonBridge = pythonBridge
 
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
