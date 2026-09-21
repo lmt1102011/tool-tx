@@ -8,10 +8,10 @@ from core.m3 import S
 
 NAV_NAMES = ["home", "topup", "tool", "settings"]
 NAV_ITEMS = [
-    ("home", "home", "Home"),
-    ("credit-card", "credit-card", "Top Up"),
-    ("wrench", "wrench", "Tool"),
-    ("cog", "cog", "Settings"),
+    ("home", "home", "home"),
+    ("credit-card", "topup", "Top Up"),
+    ("wrench", "tool", "Tool"),
+    ("cog", "settings", "Settings"),
 ]
 
 
@@ -77,8 +77,8 @@ class BottomNav(MDBoxLayout):
         self._selected = ""
         self._on_select = on_select
 
-        for ic, _, txt in NAV_ITEMS:
-            ni = NavItem(ic, txt, nav_name=NAV_ITEMS[len(self._items)][0],
+        for ic, screen_name, txt in NAV_ITEMS:
+            ni = NavItem(ic, txt, nav_name=screen_name,
                          on_tap=self._item_tap)
             self.add_widget(ni)
             self._items.append(ni)
