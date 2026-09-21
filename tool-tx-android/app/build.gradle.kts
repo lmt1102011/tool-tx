@@ -50,8 +50,6 @@ chaquopy {
         version = "3.12"
 
         pip {
-            install("firebase-admin==6.5.0")
-            install("python-socketio[client]==5.11.0")
             install("requests==2.32.3")
         }
     }
