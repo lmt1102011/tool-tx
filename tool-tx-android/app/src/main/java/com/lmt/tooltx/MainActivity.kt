@@ -11,6 +11,7 @@ import com.lmt.tooltx.ui.topup.TopUpFragment
 import com.lmt.tooltx.ui.tool.ToolFragment
 import com.lmt.tooltx.ui.settings.SettingsFragment
 import com.lmt.tooltx.ui.admin.AdminFragment
+import com.lmt.tooltx.ui.browser.BrowserFragment
 import com.lmt.tooltx.bridge.PythonBridge
 
 class MainActivity : AppCompatActivity() {
@@ -29,6 +30,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_topup -> { showFragment(TopUpFragment::class.java, "topup"); true }
                 R.id.nav_tool -> { showFragment(ToolFragment::class.java, "tool"); true }
                 R.id.nav_settings -> { showFragment(SettingsFragment::class.java, "settings"); true }
+                R.id.nav_admin -> { showFragment(AdminFragment::class.java, "admin"); true }
                 else -> false
             }
         }
@@ -76,12 +78,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun showAdmin(show: Boolean) {
-        if (show) {
-            bottomNav.menu.add(0, R.id.nav_admin, 4, R.string.nav_admin)
-                .setIcon(R.drawable.ic_settings)
-        } else {
-            bottomNav.menu.removeItem(R.id.nav_admin)
-        }
+        bottomNav.menu.findItem(R.id.nav_admin)?.isVisible = show
+    }
+
+    fun openBrowser() {
+        showFragment(BrowserFragment::class.java, "browser")
     }
 
     fun getBridge(): PythonBridge = bridge
