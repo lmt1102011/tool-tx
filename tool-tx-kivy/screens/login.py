@@ -1,120 +1,169 @@
-# screens/login.py — đăng nhập / đăng ký (Firebase Auth REST qua AuthManager).
+# screens/login.py — Màn Sign In / Sign Up (M3): ảnh 124dp, panel bo 29dp, 2 field.
 import os
 from kivy.metrics import dp, sp
 from kivy.uix.image import Image
-from kivy.graphics import Color, RoundedRectangle
 from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.textfield import MDTextField
 from kivymd.uix.button import MDFillRoundFlatButton, MDTextButton
 from kivymd.uix.scrollview import MDScrollView
 from kivymd.uix.screen import MDScreen
 
-from core.config import GOLD, DIM, NIGHT, TXT, RED_T, LOGO
-from screens.uikit import label, GlassCard, Column
+from core.config import LOGO
+from core.m3 import S
+from screens.uikit import label, field, round_clip, Spacer
 
 
-class LoginScreen(MDScreen):
-    def __init__(self, **kw):
+def _logo(size=dp(124)):
+    b = MDBoxLayout(size_hint=(None, None), size=(size, size),
+                    pos_hint={"center_x": 0.5})
+    if os.path.exists(LOGO):
+        img = Image(source=LOGO, keep_ratio=True, allow_stretch=True)
+        round_clip(b, radius=dp(20))
+        b.add_widget(img)
+    else:
+        b.md_bg_color = S["surfaceContainerHighest"]
+    return b
+
+
+class _AuthBase(MDScreen):
+    """Chung: logo + 'Made By LMT' + panel giữa + liên kết đổi màn."""
+
+    def __init__(self, on_goto=None, **kw):
         super().__init__(**kw)
         self.md_bg_color = (0, 0, 0, 0)
-        self.mode = "login"
+        self._on_goto = on_goto
         self._build()
 
+    def _head(self, root):
+        root.add_widget(Spacer(height=dp(8), size_hint_y=None))
+        root.add_widget(_logo())
+        root.add_widget(label("Made By LMT", role="onSurfaceVariant", size=12,
+                              halign="center"))
+        root.add_widget(Spacer(height=dp(18), size_hint_y=None))
+
+    def _panel(self, root, title, width=dp(380), radius=dp(29)):
+        p = MDBoxLayout(orientation="vertical", size_hint=(None, None),
+                        width=width, pos_hint={"center_x": 0.5})
+        self._panel = p
+        self._radius = radius
+        self._bg_role = "surfaceContainerHigh"
+        self._panel_layout = None
+        root.add_widget(p)
+        return p
+
+    def get_account(self):
+        return (self.uname.text or "").strip()
+
+    def get_password(self):
+        return self.passw.text or ""
+
+    def set_status(self, msg, err=False):
+        if getattr(self, "status", None) is None:
+            return
+        self.status.text = msg or ""
+        self.status.text_color = S["error"] if err else S["onSurfaceVariant"]
+
+    def focus_first(self):
+        try:
+            self.uname.focus = True
+        except Exception:
+            pass
+
+
+class SignInScreen(_AuthBase):
     def _build(self):
+        from screens.uikit import Panel
         sc = MDScrollView(size_hint=(1, 1))
-        col = Column(spacing=dp(16), padding=[dp(24), dp(52), dp(24), dp(24)])
+        col = MDBoxLayout(orientation="vertical", spacing=dp(6),
+                          padding=[dp(16), dp(28), dp(16), dp(24)], size_hint_y=None)
+        col.bind(minimum_height=col.setter("height"))
         sc.add_widget(col)
         self.add_widget(sc)
 
-        if os.path.exists(LOGO):
-            lcard = MDBoxLayout(size_hint=(None, None), size=(dp(132), dp(132)),
-                                pos_hint={"center_x": 0.5},
-                                padding=[dp(8)] * 4)
-            with lcard.canvas.before:
-                Color(1, 1, 1, 0.97)
-                lcard._r = RoundedRectangle(radius=[dp(30)] * 4)
-            lcard.bind(pos=_lcard_draw, size=_lcard_draw)
-            lcard.add_widget(Image(source=LOGO, keep_ratio=True, allow_stretch=True))
-            col.add_widget(lcard)
-        col.add_widget(label("TOOLTX", style="H4", color=GOLD, size=34,
-                             halign="center", bold=True))
-        col.add_widget(label("Dự đoán Tài/Xỉu tự động - Gold edition",
-                             color=DIM, size=13, halign="center"))
+        self._head(col)
+        p = Panel(bg="surfaceContainerHigh", radius=29, padding=[dp(20), dp(24), dp(20), dp(24)],
+                  width=dp(380), spacing=dp(16))
+        p.size_hint_x = None
+        p.pos_hint = {"center_x": 0.5}
+        col.add_widget(p)
 
-        card = GlassCard(spacing=dp(14), padding=[dp(18), dp(22), dp(18), dp(18)])
-        col.add_widget(card)
+        p.add_widget(label("Sign In", role="onSurface", size=28, bold=True, halign="center"))
+        self.uname = field("Tên đăng nhập", leading="person")
+        p.add_widget(self.uname)
+        self.passw = field("Mật khẩu", leading="lock", password=True)
+        p.add_widget(self.passw)
+        self.status = label("", role="onSurfaceVariant", size=13, halign="center", wrap=True)
+        p.add_widget(self.status)
 
-        self.title = label("ĐĂNG NHẬP", style="H6", color=GOLD, halign="center", bold=True)
-        card.add_widget(self.title)
+        btn = MDFillRoundFlatButton(text="Sign In", size_hint=(1, None), height=dp(56),
+                                    md_bg_color=S["primary"], text_color=S["onPrimary"],
+                                    font_size=sp(16))
+        btn.bind(on_release=lambda *a: self._submit())
+        p.add_widget(btn)
 
-        self.name_field = MDTextField(hint_text="Tên hiển thị", mode="rectangle",
-                                      size_hint=(1, None), height=dp(54),
-                                      font_size=sp(16), hint_text_color_normal=DIM)
-        card.add_widget(self.name_field)
+        link = MDTextButton(text="Don't have an account? Sign Up",
+                            theme_text_color="Custom", text_color=S["primary"],
+                            font_size=sp(16), pos_hint={"center_x": 0.5},
+                            size_hint_y=None, height=dp(32))
+        link.bind(on_release=lambda *a: self._to("signup"))
+        p.add_widget(link)
 
-        self.uname_field = MDTextField(hint_text="Tên đăng nhập", mode="rectangle",
-                                       size_hint=(1, None), height=dp(54),
-                                       font_size=sp(16), hint_text_color_normal=DIM)
-        card.add_widget(self.uname_field)
+        col.add_widget(Spacer(height=dp(20), size_hint_y=None))
 
-        self.pass_field = MDTextField(hint_text="Mật khẩu", mode="rectangle",
-                                      password=True, size_hint=(1, None),
-                                      height=dp(54), font_size=sp(16),
-                                      hint_text_color_normal=DIM)
-        card.add_widget(self.pass_field)
-
-        self.status = label("", wrap=True)
-        self.status.text_color = DIM
-        card.add_widget(self.status)
-
-        self.btn = MDFillRoundFlatButton(text="VÀO TOOLTX", size_hint=(1, None),
-                                         height=dp(52), md_bg_color=GOLD,
-                                         text_color=NIGHT, font_size=sp(16))
-        self.btn.bind(on_release=lambda *a: self._submit())
-        card.add_widget(self.btn)
-
-        self.toggle = MDTextButton(text="Chưa có tài khoản? Đăng ký",
-                                   theme_text_color="Custom", text_color=GOLD,
-                                   font_size=sp(13), pos_hint={"center_x": 0.5},
-                                   size_hint_y=None, height=dp(30))
-        self.toggle.bind(on_release=lambda *a: self._toggle_mode())
-        card.add_widget(self.toggle)
-
-        self._apply_mode()
-        self.set_status("")
-
-    def _apply_mode(self):
-        reg = self.mode == "register"
-        self.title.text = "ĐĂNG KÝ TÀI KHOẢN" if reg else "ĐĂNG NHẬP"
-        self.name_field.height = dp(54) if reg else 0
-        self.name_field.opacity = 1 if reg else 0
-        self.name_field.disabled = not reg
-        self.btn.text = "TẠO TÀI KHOẢN" if reg else "VÀO TOOLTX"
-        self.toggle.text = "Đã có tài khoản? Đăng nhập" if reg else "Chưa có tài khoản? Đăng ký"
-        self.status.text = ""
-
-    def _toggle_mode(self):
-        self.mode = "register" if self.mode == "login" else "login"
-        self._apply_mode()
+    def _to(self, name):
+        if self._on_goto:
+            self._on_goto(name)
 
     def _submit(self):
-        from kivymd.app import MDApp
-        app = MDApp.get_running_app()
-        u = (self.uname_field.text or "").strip()
-        p = self.pass_field.text or ""
-        if self.mode == "login":
-            self.set_status("Đang đăng nhập...")
-            app.do_login(u, p)
-        else:
-            d = (self.name_field.text or "").strip()
-            self.set_status("Đang tạo tài khoản...")
-            app.do_register(u, p, d)
-
-    def set_status(self, msg, err=False):
-        self.status.text = msg
-        self.status.text_color = RED_T if err else DIM
+        if self._on_goto:
+            self._on_goto("submit-signin")
 
 
-def _lcard_draw(inst, *a):
-    inst._r.pos = inst.pos
-    inst._r.size = inst.size
+class SignUpScreen(_AuthBase):
+    def _build(self):
+        from screens.uikit import Panel
+        sc = MDScrollView(size_hint=(1, 1))
+        col = MDBoxLayout(orientation="vertical", spacing=dp(6),
+                          padding=[dp(16), dp(20), dp(16), dp(16)], size_hint_y=None)
+        col.bind(minimum_height=col.setter("height"))
+        sc.add_widget(col)
+        self.add_widget(sc)
+
+        self._head(col)
+        p = Panel(bg="surfaceContainerHigh", radius=29, padding=[dp(20), dp(24), dp(20), dp(24)],
+                  width=dp(380), spacing=dp(14))
+        p.size_hint_x = None
+        p.pos_hint = {"center_x": 0.5}
+        col.add_widget(p)
+
+        p.add_widget(label("Sign Up", role="onSurface", size=28, bold=True, halign="center"))
+        self.uname = field("Tên đăng nhập", leading="person")
+        p.add_widget(self.uname)
+        self.passw = field("Mật khẩu", leading="lock", password=True)
+        p.add_widget(self.passw)
+        self.conf = field("Nhập lại mật khẩu", leading="lock", password=True)
+        p.add_widget(self.conf)
+        self.status = label("", role="onSurfaceVariant", size=13, halign="center", wrap=True)
+        p.add_widget(self.status)
+
+        btn = MDFillRoundFlatButton(text="Sign Up", size_hint=(1, None), height=dp(56),
+                                    md_bg_color=S["primary"], text_color=S["onPrimary"],
+                                    font_size=sp(16))
+        btn.bind(on_release=lambda *a: self._submit())
+        p.add_widget(btn)
+
+        link = MDTextButton(text="Already have an account? Sign In",
+                            theme_text_color="Custom", text_color=S["primary"],
+                            font_size=sp(16), pos_hint={"center_x": 0.5},
+                            size_hint_y=None, height=dp(32))
+        link.bind(on_release=lambda *a: self._to("signin"))
+        p.add_widget(link)
+
+        col.add_widget(Spacer(height=dp(20), size_hint_y=None))
+
+    def _to(self, name):
+        if self._on_goto:
+            self._on_goto(name)
+
+    def _submit(self):
+        if self._on_goto:
+            self._on_goto("submit-signup")

@@ -1,16 +1,7 @@
-﻿# main.py — App KivyMD: đăng nhập/đăng ký (Firebase Auth REST) + kết nối tool server
-#                       + agent trình duyệt (Chromium Fork / Chrome CDP).
-#
+﻿# main.py — App KivyMD restyle M3 Expressive: Sign In/Sign Up/Home/Top Up/Tool/Settings.
 # QUAN TRỌNG (bug Android đã bắt được):
 #   Import kivymd/kivy.core.window/... ở module-top là chết native lặng lẽ.
-#   Toàn bộ import nặng phải nằm TRONG build() — sau khi kivy App + GL context
-#   đã khởi động (LIVE DIAG đã chứng minh cùng import đó chạy ngon).
-#
-# Kiến trúc theo mẫu module:
-#   ToolApp(App).build()  →  MDScreenManager + LoginScreen/HomeScreen/BrowserScreen/SettingsScreen
-#   core/auth.py            →  AuthManager (Firebase)
-#   core/theme.py, config.py→  màu brand + nền gradient
-#   widgets/bottomnav.py    →  thanh điều hướng dưới
+#   Toàn bộ import nặng phải nằm TRONG build()/ladder sau frame đầu.
 
 import os
 import sys
@@ -83,7 +74,7 @@ def _gate_write(v):
         pass
 
 
-# BẮT prev TRƯỚC khi ghi marker của lần chạy này, để màn hình xám đọc đúng dữ liệu lần trước.
+# BẮT prev TRƯỚC khi ghi marker lần này.
 _PREV_STEP = _last_step()
 
 _mark("main-start")
@@ -92,8 +83,7 @@ import threading  # noqa: E402
 from functools import partial  # noqa: E402
 import traceback  # noqa: E402
 
-# ── CHỈ import nhóm ĐÃ CHỨNG MINH chạy ở module-top (app tối giản + LIVE DIAG).
-#    Không được đưa kivymd / kivy.core.window / screens / fb ... lên đây.
+# ── CHỈ import nhóm ĐÃ CHỨNG MINH chạy ở module-top.
 import kivy  # noqa: E402
 from kivy.app import App  # noqa: E402
 from kivy.uix.label import Label  # noqa: E402
@@ -119,11 +109,15 @@ class ToolApp(App):
         self.role = ""
         self._tick_handle = None
         self._logs = []
+        self._last_log = ""
         self.admin = None
         self.admin_users = {}
         self._admin_tick = None
+        self._stack = []
+        self._dark = None
+        self._prefs = {}
 
-    # ────────────────── build: CHỈ nhóm kivy đã chứng minh (Label/ScrollView) ──────────────────
+    # ────────────────── build: CHỈ nhóm kivy đã chứng minh ──────────────────
     def build(self):
         _mark("build")
         sv = ScrollView(do_scroll_x=False, do_scroll_y=False)
@@ -153,7 +147,7 @@ class ToolApp(App):
             ("theme+window",      self._st_theme),
             ("services fb/sio",   self._st_services),
             ("nen gradient",      self._st_bg),
-            ("4 man hinh",        self._st_screens),
+            ("6 man hinh",        self._st_screens),
             ("nav+load UI",       self._st_finish),
             ("DONE",              None),
         ]
@@ -195,6 +189,30 @@ class ToolApp(App):
         except Exception:
             pass
 
+    # ────────────────── ladder ──────────────────
+    def _load_prefs(self):
+        import json
+        from core import config as C
+        try:
+            with open(C.PREF_PATH, encoding="utf-8") as f:
+                self._prefs = json.load(f)
+        except Exception:
+            self._prefs = {}
+        default_dark = self._prefs.get("dark")
+        if default_dark is None:
+            from core import m3
+            default_dark = m3.is_dark_default()
+        self._dark = bool(default_dark)
+
+    def _save_prefs(self):
+        import json
+        from core import config as C
+        try:
+            with open(C.PREF_PATH, "w", encoding="utf-8") as f:
+                json.dump(self._prefs, f)
+        except Exception:
+            pass
+
     def _st_imports(self):
         global fb, sio_client, C
         import fb
@@ -202,29 +220,34 @@ class ToolApp(App):
         from core import config as C
         from core.auth import AuthManager
         from core.theme import make_bg
+        from core import m3
         from kivymd.theming import ThemeManager
         from kivymd.uix.boxlayout import MDBoxLayout
         from kivymd.uix.screenmanager import MDScreenManager
-        from screens.login import LoginScreen
+        from screens.login import SignInScreen, SignUpScreen
         from screens.home import HomeScreen
-        from screens.browser import BrowserScreen
+        from screens.topup import TopUpScreen
+        from screens.tool import ToolScreen
         from screens.settings import SettingsScreen
         from widgets.bottomnav import BottomNav
+        # áp theme (đọc cả hệ thống) TRƯỚC khi dựng màn
+        self._load_prefs()
+        m3.set_dark(self._dark)
 
     def _st_theme(self):
         from kivy.core.window import Window
         from kivymd.theming import ThemeManager
+        from core.m3 import S
         self.theme_cls = ThemeManager()
-        self.theme_cls.theme_style = "Dark"
-        self.theme_cls.primary_palette = "Amber"
-        self.theme_cls.accent_palette = "Amber"
-        self.theme_cls.primary_hue = "700"
-        Window.clearcolor = (0.10, 0.14, 0.22, 1)
-        # bàn phím không che ô nhập nữa: tự cuộn vùng nhập lên trên bàn phím
+        self.theme_cls.theme_style = "Dark" if self._dark else "Light"
+        self.theme_cls.primary_palette = "Sky"
+        self.theme_cls.primary_hue = "400"
+        Window.clearcolor = S["surface"]
         try:
             Window.softinput_mode = "below_target"
         except Exception:
             pass
+        Clock.schedule_once(lambda dt: self._immersive(), 1.2)
 
     def _st_services(self):
         from core.auth import AuthManager
@@ -236,73 +259,37 @@ class ToolApp(App):
             on_log=self._log_ui,
             on_connected=lambda: (self._log_ui("Socket đã kết nối."),
                                   self._set_conn("ONLINE", ok=True)),
-            on_disconnected=lambda r: (self._log_ui("Mất kết nối socket: %s" % r, err=True),
+            on_disconnected=lambda r: (self._log_ui("Mất kết nối socket: " + str(r), err=True),
                                        self._set_conn("OFFLINE", warn=True)),
         )
 
     def _st_bg(self):
         from core.theme import make_bg
-        from kivy.graphics import Color, Rectangle
-        self.bg_texture = make_bg()
+        from core.m3 import S
+        self.bg_texture = make_bg(self._dark)
         from kivymd.uix.boxlayout import MDBoxLayout
         self.root_box = MDBoxLayout(orientation="vertical", md_bg_color=(0, 0, 0, 0))
         self._apply_bg(self.root_box)
 
-    def _st_screens(self):
-        from kivy.uix.screenmanager import FadeTransition
-        from kivymd.uix.screenmanager import MDScreenManager
-        from screens.login import LoginScreen
-        from screens.home import HomeScreen
-        from screens.browser import BrowserScreen
-        from screens.settings import SettingsScreen
-        self.sm = MDScreenManager(transition=FadeTransition(duration=0.22))
-        self.login = LoginScreen(name="login")
-        self.home = HomeScreen(name="home")
-        self.browser = BrowserScreen(name="browser")
-        self.settings = SettingsScreen(name="settings")
-        for s in (self.login, self.home, self.browser, self.settings):
-            self.sm.add_widget(s)
-        self.root_box.add_widget(self.sm)
-
-    def _st_finish(self):
-        from kivy.metrics import dp
-        from kivy.core.window import Window
-        from widgets.bottomnav import BottomNav
-        self.nav = BottomNav(on_select=self.goto, height=dp(64))
-        self.root_box.add_widget(self.nav)
-        self.goto("login")
-
-        # gắn UI thật vào gốc (thay màn loading). ScrollView gốc đã tắt
-        # do_scroll nên không nuốt cú chạm của tab điều hướng bên dưới.
-        try:
-            self.root.clear_widgets()
-            self.root_box.size_hint = (1, 1)
-            self.root.add_widget(self.root_box)
-        except Exception:
-            pass
-
-        # logic phiên đăng nhập (vốn nằm trong on_start)
-        try:
-            Window.clearcolor = (0.10, 0.14, 0.22, 1)
-            self.auth.set_session_path(C.SESSION_PATH)
-            if self.auth.logged_in():
-                self.goto("home")
-                self.recheck()
-            else:
-                self.goto("login")
-        except BaseException as e:
-            _mark("session-fail:" + repr(e)[:80])
-
     def _apply_bg(self, w):
-        """Nền gradient + lớp nền đậm dự phòng (tránh ô trắng nếu thiếu texture)."""
         from kivy.graphics import Color, Rectangle
         with w.canvas.before:
-            self._bg_solid = Color(0.10, 0.14, 0.22, 1)
+            self._bg_solid = Color(*(0, 0, 0, 1))
             self._bg_solid_r = Rectangle()
             self._bg_tex = Color(1, 1, 1, 1)
             self._bg_tex_r = Rectangle(texture=self.bg_texture)
         w.bind(pos=self._bg_draw, size=self._bg_draw)
         self._bg_draw(w)
+
+    def _refresh_bg(self):
+        from core.theme import make_bg
+        from core.m3 import S
+        try:
+            self.bg_texture = make_bg(self._dark)
+            self._bg_solid.rgba = S["surface"]
+            self._bg_tex_r.texture = self.bg_texture
+        except Exception:
+            pass
 
     def _bg_draw(self, inst, *a):
         self._bg_solid_r.pos = inst.pos
@@ -310,31 +297,265 @@ class ToolApp(App):
         self._bg_tex_r.pos = inst.pos
         self._bg_tex_r.size = inst.size
 
-    def on_stop(self):
+    def _st_screens(self):
+        from kivy.uix.screenmanager import FadeTransition, SlideTransition
+        from kivymd.uix.screenmanager import MDScreenManager
+        from screens.login import SignInScreen, SignUpScreen
+        from screens.home import HomeScreen
+        from screens.topup import TopUpScreen
+        from screens.tool import ToolScreen
+        from screens.settings import SettingsScreen
+        self.sm = MDScreenManager(transition=FadeTransition(duration=0.25))
+        self.signin = SignInScreen(name="signin", on_goto=self._auth_nav)
+        self.signup = SignUpScreen(name="signup", on_goto=self._auth_nav)
+        self.home = HomeScreen(name="home", on_profile=lambda: self.goto("settings"))
+        self.topup = TopUpScreen(name="topup", on_open_web=self._open_web,
+                                 on_done=self.refresh_picks)
+        self.tool = ToolScreen(name="tool", on_open=self.start_fork)
+        self.settings = SettingsScreen(name="settings", on_back=self.back,
+                                       on_theme=self.apply_theme,
+                                       on_log=self.set_log_pref,
+                                       on_auto=self.set_auto_pref,
+                                       on_logout=self.do_logout,
+                                       prefs=self._prefs)
+        for s in (self.signin, self.signup, self.home, self.topup, self.tool, self.settings):
+            self.sm.add_widget(s)
+        self.root_box.add_widget(self.sm)
+
+    def _st_finish(self):
+        from kivy.core.window import Window
+        from widgets.bottomnav import BottomNav
+        from core.m3 import S
+        self.nav = BottomNav(on_select=self.goto)
+        self.root_box.add_widget(self.nav)
+
+        # gắn UI thật vào gốc (thay màn loading).
         try:
-            super().on_stop()
+            self.root.clear_widgets()
+            self.root_box.size_hint = (1, 1)
+            self.root.add_widget(self.root_box)
         except Exception:
             pass
-        _gate_write("OK")
 
-    # ────────────────── điều hướng ──────────────────
-    def goto(self, name):
+        # back hệ thống: không thoát app
+        try:
+            Window.bind(on_keyboard=self._on_key)
+        except Exception:
+            pass
+
+        try:
+            self.auth.set_session_path(C.SESSION_PATH)
+            if self.auth.logged_in():
+                self.goto("home", push=False)
+                self._set_user(self.auth.current())
+                self.recheck()
+            else:
+                self.goto("signin", push=False)
+        except BaseException as e:
+            _mark("session-fail:" + repr(e)[:80])
+
+    # ────────────────── điều hướng M3 ──────────────────
+    def _set_trans(self, to, via_back=False):
+        from kivy.uix.screenmanager import SlideTransition, FadeTransition
+        if to == "signup":
+            self.sm.transition = SlideTransition(duration=0.2, direction="right")
+        elif to == "signin":
+            self.sm.transition = SlideTransition(duration=0.2, direction="left")
+        elif to == "home":
+            if via_back:
+                self.sm.transition = SlideTransition(duration=0.2, direction="right")
+            else:
+                self.sm.transition = FadeTransition(duration=0.25)
+        else:
+            self.sm.transition = SlideTransition(duration=0.2, direction="left")
+
+    def goto(self, name, push=True, via_back=False):
+        try:
+            cur = self.sm.current
+        except Exception:
+            cur = ""
+        if name == cur:
+            return
+        if name not in {w.name for w in self.sm.screens}:
+            return
+        if push and cur in ("signin", "signup") and name not in ("signin", "signup"):
+            self._stack = []
+        if push and name != self.sm.current_name:
+            self._stack.append(cur)
+        self._set_trans(name, via_back=via_back)
         try:
             self.sm.current = name
         except Exception:
             return
-        show = name != "login"
+        show = name not in ("signin", "signup")
         self.nav.show(show)
         self.nav.set_active(name if show else "")
-        if name == "admin":
-            threading.Thread(
-                target=lambda: Clock.schedule_once(lambda dt: self.admin_refresh()),
-                daemon=True,
-            ).start()
+        if name == "admin" and getattr(self, "admin", None) is not None:
+            self.admin_refresh()
+
+    def goto_settings(self, *a):
+        self.goto("settings")
+
+    def back(self):
+        if self._stack:
+            prev = self._stack.pop()
+            try:
+                self.goto(prev, push=False, via_back=True)
+            except Exception:
+                pass
+
+    def _auth_nav(self, action):
+        if action in ("signin", "signup"):
+            self.goto(action)
+            return
+        if action == "submit-signin":
+            u = self.signin.get_account()
+            p = self.signin.get_password()
+            if not u or not p:
+                self.signin.set_status("Nhập tên đăng nhập và mật khẩu.", True)
+                return
+            self.signin.set_status("Đang đăng nhập...")
+            self.do_login(u, p)
+        elif action == "submit-signup":
+            u = self.signup.get_account()
+            p = self.signup.get_password()
+            cf = getattr(self.signup, "conf", None)
+            c = (cf.text or "") if cf is not None else p
+            if not u or not p:
+                self.signup.set_status("Nhập tên đăng nhập và mật khẩu.", True)
+                return
+            if p != c:
+                self.signup.set_status("Mật khẩu nhập lại không khớp.", True)
+                return
+            self.signup.set_status("Đang tạo tài khoản...")
+            self.do_register(u, p, u)
+
+    def _focused_field(self):
+        try:
+            cur = self.sm.current_screen
+            if cur is None:
+                return None
+            from kivymd.uix.textfield import MDTextField
+            found = []
+
+            def walk(w):
+                if isinstance(w, MDTextField) and w.focus:
+                    found.append(w)
+                for ch in w.children:
+                    walk(ch)
+            walk(cur)
+            return found[0] if found else None
+        except Exception:
+            return None
+
+    def _on_key(self, window, key, scancode, codepoint, modifiers):
+        if key in (27, 4, "escape"):
+            f = self._focused_field()
+            if f is not None:
+                f.focus = False
+            else:
+                self.back()
+            return True  # luôn nuốt: nút back không thoát app
+        return True
+
+    # ────────────────── immersive + mở web ──────────────────
+    def _immersive(self):
+        if not _ON_ANDROID:
+            return
+        try:
+            from jnius import autoclass
+            PyA = autoclass("org.kivy.android.PythonActivity")
+            act = PyA.mActivity
+            View = autoclass("android.view.View")
+            decor = act.getWindow().getDecorView()
+            flags = (View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
+                     View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                     View.SYSTEM_UI_FLAG_FULLSCREEN |
+                     View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+                     View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+                     View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN)
+            decor.setSystemUiVisibility(flags)
+        except Exception:
+            pass
+
+    def _open_web(self):
+        from core.config import WEB_TOPUP
+        if not _ON_ANDROID:
+            try:
+                import webbrowser
+                webbrowser.open(WEB_TOPUP)
+                return
+            except Exception:
+                pass
+        try:
+            from jnius import autoclass
+            PyA = autoclass("org.kivy.android.PythonActivity")
+            Intent = autoclass("android.content.Intent")
+            Uri = autoclass("android.net.Uri")
+            act = PyA.mActivity
+            i = Intent(Intent.ACTION_VIEW, Uri.parse(WEB_TOPUP))
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            act.startActivity(i)
+        except Exception:
+            self._log_ui("Không mở được trang nạp tiền: " + WEB_TOPUP, err=True)
+
+    # ────────────────── theme & tuỳ chọn ──────────────────
+    def apply_theme(self, dark):
+        self._dark = bool(dark)
+        self._prefs["dark"] = self._dark
+        self._save_prefs()
+        from core import m3
+        from kivy.core.window import Window
+        m3.set_dark(self._dark)
+        try:
+            Window.clearcolor = m3.S["surface"]
+        except Exception:
+            pass
+        self._rebuild_ui()
+
+    def _rebuild_ui(self):
+        """Dựng lại sm + nav theo scheme mới (giữ phiên đăng nhập)."""
+        try:
+            self._stack = []
+            self._refresh_bg()
+            if getattr(self, "nav", None) is not None:
+                try:
+                    self.root_box.remove_widget(self.nav)
+                except Exception:
+                    pass
+            self.nav = None
+            try:
+                self.root_box.remove_widget(self.sm)
+            except Exception:
+                pass
+            self._st_screens()
+            from widgets.bottomnav import BottomNav
+            self.nav = BottomNav(on_select=self.goto)
+            self.root_box.add_widget(self.nav)
+            if getattr(self, "auth", None) is not None and self.auth.logged_in():
+                self.goto("home", push=False)
+                self._set_user(self.auth.current())
+                if self.role == "admin":
+                    self.ensure_admin()
+            else:
+                self.goto("signin", push=False)
+        except BaseException:
+            pass
+
+    def set_log_pref(self, v):
+        self._prefs["log"] = bool(v)
+        self._save_prefs()
+        try:
+            self.settings.set_log(self._last_log)
+        except Exception:
+            pass
+
+    def set_auto_pref(self, v):
+        self._prefs["auto"] = bool(v)
+        self._save_prefs()
 
     # ────────────────── admin (role=admin) ──────────────────
     def ensure_admin(self):
-        """Khi đăng nhập admin: thêm màn Quản trị + tab nav, bật auto-refresh."""
         if self.role != "admin":
             return
         if getattr(self, "admin", None) is not None:
@@ -355,7 +576,6 @@ class ToolApp(App):
             )
 
     def discard_admin(self):
-        """Khi thoát phiên admin: gỡ màn + tab + auto-refresh."""
         if getattr(self, "_admin_tick", None) is not None:
             try:
                 Clock.unschedule(self._admin_tick)
@@ -397,33 +617,34 @@ class ToolApp(App):
         self._run(
             lambda: self.auth.login(user, password),
             lambda v: self._login_ok(v),
-            lambda e: self.login.set_status("Lỗi: " + str(e), err=True),
+            lambda e: self.signin.set_status("Lỗi: " + str(e), err=True),
         )
 
     def _login_ok(self, res):
         self._set_user(self.auth.current())
         self._log_ui("Đã đăng nhập: " + str(res["data"].get("displayName", res["uid"])))
-        self.goto("home")
+        self.goto("home", push=False)
         threading.Thread(target=self._connect_socket, daemon=True).start()
 
     def do_register(self, user, password, name):
         self._run(
             lambda: self.auth.register(user, password, name),
             lambda v: self._reg_ok(v, user, password),
-            lambda e: self.login.set_status("Lỗi: " + str(e), err=True),
+            lambda e: self.signup.set_status("Lỗi: " + str(e), err=True),
         )
 
     def _reg_ok(self, res, user, password):
-        self.login.set_status("Đăng ký thành công — tự động đăng nhập")
+        self.signup.set_status("Đăng ký thành công — tự động đăng nhập")
         Clock.schedule_once(lambda dt: self._run(
             lambda: self.auth.login(user, password),
             lambda v: self._login_ok(v),
-            lambda e: self.login.set_status("Đã tạo tài khoản, đăng nhập lại.", err=True),
+            lambda e: self.signup.set_status("Đã tạo tài khoản, đăng nhập lại.", err=True),
         ), 0.6)
 
     def do_logout(self):
         threading.Thread(target=self._shutdown, daemon=True).start()
-        self.goto("login")
+        self._stack = []
+        self.goto("signin", push=False)
 
     def _shutdown(self):
         if self._tick_handle is not None:
@@ -444,17 +665,21 @@ class ToolApp(App):
         self.auth.logout()
         self.discard_admin()
 
-    # ────────────────── hiển thị ──────────────────
+    # ────────────────── hiển thị dữ liệu ──────────────────
+    def _pick_str(self):
+        if self.role == "admin":
+            return "vô hạn"
+        return str(self.picks) if self.picks >= 0 else "--"
+
     def _set_user(self, sess):
         d = sess or {}
         name = d.get("displayName") or d.get("username") or "Khách"
         letter = (name or "K")[:1].upper()
         self.home.greet(name)
-        self.settings.profile(name, letter, d.get("uid"), d.get("role"), "--")
+        self.settings.profile(name, letter, d.get("uid"), d.get("role"), self._pick_str())
         self.refresh_picks()
 
     def refresh_picks(self):
-        """Đọc số lượt đoán còn lại từ RTDB (giống tool web) để quản lý lượt cho từng user."""
         sess = self.auth.current()
         uid = sess.get("uid")
         if not uid:
@@ -471,13 +696,9 @@ class ToolApp(App):
 
         def upd(dt):
             try:
-                if self.role == "admin":
-                    txt = "vô hạn"
-                    warn = False
-                else:
-                    txt = str(self.picks)
-                    warn = self._check_gate()
-                self.home.picks_text("Lượt: " + txt, warn=warn)
+                txt = "vô hạn" if self.role == "admin" else str(self.picks)
+                warn = self._check_gate()
+                self.home.credit(txt, warn=warn)
                 self.settings.picks_text(txt)
                 if self._check_gate():
                     self.home.gate("BẠN ĐÃ HẾT LƯỢT ĐOÁN — nạp thêm tại trang web để tiếp tục.")
@@ -501,11 +722,10 @@ class ToolApp(App):
         return True
 
     def _agent_stopped(self):
-        """Server từ chối (hết lượt) hoặc mất kết nối → reset UI + đọc lại lượt."""
         self.agent_running = False
         Clock.schedule_once(
             lambda dt: (self._log_ui("Agent đã dừng — kiểm tra số lượt đoán."),
-                        self.browser.set_agent("Agent đã dừng.")),
+                        self.tool.set_agent("Agent đã dừng.")),
         )
         threading.Thread(target=self.refresh_picks, daemon=True).start()
 
@@ -513,6 +733,7 @@ class ToolApp(App):
         self._logs.append((str(msg), err))
         self._logs = self._logs[-80:]
         text = "\n".join("- " + m if e else m for m, e in self._logs)
+        self._last_log = text
         Clock.schedule_once(partial(self._apply_log, text))
 
     def _apply_log(self, text, dt):
@@ -523,6 +744,9 @@ class ToolApp(App):
 
     # ────────────────── socket server ──────────────────
     def _connect_socket(self, attempts=0):
+        if not self._prefs.get("auto", True):
+            self._log_ui("Đã tắt 'Tự kết nối server' trong Cài đặt.")
+            return
         try:
             tok = self.auth.refresh_id_token()
             srv = sio_client.SioClient.discover_server(C.CFG_PATH)
@@ -558,29 +782,33 @@ class ToolApp(App):
             msg = (d.get("msg") or "")[:60]
             if self.is_agent_mode:
                 self._set_conn("AGENT", ok=True)
-                self.home.agent(msg, col=(0.35, 0.85, 0.55, 1))
-                self.browser.set_agent("Đang chạy agent: " + msg, col=(0.35, 0.85, 0.55, 1))
+                self.tool.set_agent("Đang chạy agent: " + msg,
+                                    col=self._mk(0.35, 0.85, 0.55, 1))
             else:
                 self._set_conn("ONLINE")
-                self.home.agent("")
-                self.browser.set_agent("Chưa có agent nào chạy.")
+                self.tool.set_agent("Chưa có agent nào chạy.")
         except Exception:
             pass
+
+    @staticmethod
+    def _mk(r, g, b, a):
+        return (r, g, b, a)
 
     def _update_pred(self, p, last=None):
         def upd(dt):
             try:
-                self.home.prediction(p)
+                self.tool.prediction(p)
             except Exception:
                 pass
         Clock.schedule_once(upd)
 
     def _set_conn(self, text, ok=False, warn=False):
-        col = (0.35, 0.85, 0.55, 1) if ok else ((0.97, 0.62, 0.24, 1) if warn else (0.60, 0.66, 0.78, 1))
-        try:
-            self.home.conn(text, col)
-        except Exception:
-            pass
+        if text == "ONLINE":
+            self.home.server("Server is on", ok=True)
+        elif text == "AGENT":
+            self.home.server("Server is on - agent", ok=True)
+        else:
+            self.home.server("Server is off", warn=warn)
 
     def recheck(self):
         self._set_user(self.auth.current())
@@ -592,7 +820,7 @@ class ToolApp(App):
             self._log_ui("Agent đang chạy — dừng trước khi khởi động lại.", err=True)
             return
         if C.IS_ANDROID:
-            self._log_ui("Trên Android không mở được Chrome CDP. Dùng START BROWSER.", err=True)
+            self._log_ui("Trên Android không mở được Chrome CDP. Dùng Open Tool.", err=True)
             return
         if self.is_agent_mode:
             self._log_ui("Bạn đang ở chế độ agent — ngắt để quay lại máy chủ.", err=True)
@@ -604,35 +832,29 @@ class ToolApp(App):
                 self._log_ui("Chưa lấy được mã liên kết.", err=True)
                 return
             self.agent_code = code
-            self.browser.set_code(code)
             srv = self.sio.server_url or "http://localhost:8787"
             self._log_ui("Mã liên kết: %s — mở Chrome và nối server..." % code)
-            self.browser.set_status("Đang mở Chrome và nối server...", col=(0.97, 0.62, 0.24, 1))
             try:
                 from agent import Agent
                 self.agent = Agent(on_log=self._log_ui, on_stopped=self._agent_stopped)
                 ok = self.agent.start(server=srv, code=code)
                 self.agent_running = ok
-                self.browser.set_agent("Agent Chrome đang chạy." if ok else "Khởi động agent thất bại.",
-                                   col=(0.35, 0.85, 0.55, 1) if ok else (0.96, 0.42, 0.46, 1))
+                self.tool.set_agent("Agent Chrome đang chạy." if ok else "Khởi động agent thất bại.",
+                                    col=(0.35, 0.85, 0.55, 1) if ok else (0.96, 0.42, 0.46, 1))
             except Exception as e:
                 self._log_ui("Lỗi agent: " + str(e), err=True)
-                self.browser.set_status("Lỗi agent: " + str(e), col=(0.96, 0.42, 0.46, 1))
 
         self.sio.agent_pair(on_code)
 
-    # ────────────────── START BROWSER — Chromium Fork trên Android ──────────────────
+    # ────────────────── Open Tool — Chromium Fork trên Android ──────────────────
     def start_fork(self):
-        """Mở Chromium Fork (APK tự build) thành 1 tab riêng trên điện thoại,
-        rồi nối CDP 127.0.0.1:9222 làm agent cho server.
-        Số lượt vẫn do server quản lý như web."""
         if self.agent_running:
             self._log_ui("Agent đang chạy — dừng trước khi khởi động lại.", err=True)
             return
         if not self._picks_ok():
             return
         if not C.IS_ANDROID:
-            self._log_ui("START BROWSER dành cho Android. Trên máy tính dùng CHROME MÁY BẠN.", err=True)
+            self._log_ui("Open Tool dành cho Android. Trên máy tính dùng agent_tx.", err=True)
             return
         if not self.sio.connected:
             self._log_ui("Chưa kết nối server. Đang nối lại...", err=True)
@@ -654,12 +876,11 @@ class ToolApp(App):
                 self._log_ui("Chưa lấy được mã liên kết.", err=True)
                 return
             self.agent_code = code
-            self.browser.set_code(code)
             try:
                 hcdp.start_browser(url="", package=C.FORK_PACKAGE, activity=C.FORK_ACTIVITY)
                 self._log_ui("Đã mở Chromium Fork — kết nối CDP 127.0.0.1:9222...")
-                self.browser.set_status("Đã mở Chromium Fork — kết nối CDP...",
-                                    col=(0.97, 0.62, 0.24, 1))
+                self.tool.set_status("Đang kết nối Chromium Fork...",
+                                     col=(0.97, 0.62, 0.24, 1))
                 from agent import Agent
                 bridge = hcdp.ForkCdpBridge(on_log=self._log_ui)
                 self.agent = Agent(on_log=self._log_ui, cdp_backend=bridge,
@@ -668,18 +889,26 @@ class ToolApp(App):
                 self.agent_running = ok
                 if ok:
                     self._log_ui("Agent fork đang chạy — vào game đăng nhập trên tab vừa mở.")
-                    self.browser.set_agent("Agent fork đang chạy trên điện thoại.",
-                                       col=(0.35, 0.85, 0.55, 1))
+                    self.tool.set_agent("Agent fork đang chạy trên điện thoại.",
+                                        col=(0.35, 0.85, 0.55, 1))
                     if self._tick_handle is None:
                         self._tick_handle = Clock.schedule_interval(self._tick_picks, 30)
                 else:
-                    self.browser.set_agent("Khởi động agent fork thất bại.",
-                                       col=(0.96, 0.42, 0.46, 1))
+                    self.tool.set_agent("Khởi động agent fork thất bại.",
+                                        col=(0.96, 0.42, 0.46, 1))
             except Exception as e:
                 self._log_ui("Lỗi start fork: " + str(e), err=True)
-                self.browser.set_status("Lỗi start fork: " + str(e), col=(0.96, 0.42, 0.46, 1))
+                self.tool.set_status("Lỗi mở tool: " + str(e),
+                                     col=(0.96, 0.42, 0.46, 1))
 
         self.sio.agent_pair(on_code)
+
+    def on_stop(self):
+        try:
+            super().on_stop()
+        except Exception:
+            pass
+        _gate_write("OK")
 
 
 def _write_crash(tb):
@@ -691,7 +920,7 @@ def _write_crash(tb):
 
 
 def _show_error(tb, prev=None):
-    """Hiện traceback trên màn hình xám đen để chụp ảnh gửi lại."""
+    """Hiện traceback trên màn hình xám để chụp ảnh gửi lại."""
     try:
         from kivy.app import App
         from kivy.uix.label import Label
@@ -730,9 +959,7 @@ def _thread_exc(args):
 def _boot():
     prev = _PREV_STEP
     if _gate_read() == "START":
-        # Lần chạy trước chết nửa chừng. Nếu nó chết SAU khi ladder đã hoàn thành
-        # (all-ok / ...=ok) thì toàn bộ việc khởi tạo đã ngon — chỉ là sự cố hiển
-        # thị cuối — nên TỰ HỒI PHỤC, không hiện màn xám kẹt vĩnh viễn.
+        # chết sau khi ladder xong → tự hồi phục, không kẹt màn xám.
         died_after_ok = prev.startswith("all-ok") or prev.endswith("=ok")
         if not died_after_ok:
             _show_error("", prev=prev)

@@ -8,6 +8,20 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SESSION_PATH = os.path.join(BASE_DIR, "session.json")
 CFG_PATH = os.path.join(BASE_DIR, "config.txt")
+PREF_PATH = os.path.join(BASE_DIR, "prefs.json")
+
+# web app (GitHub Pages) — dùng cho màn Top Up mở trang nạp tiền
+WEB_TOPUP = "https://lmt1102011.github.io/tool-tx/user.html"
+ACTIVITY = None  # dự phòng
+
+# danh sách ngân hàng mục tiêu trên màn Top Up
+BANKS = [
+    ("Vietcombank", "vcb"),
+    ("MB Bank", "mbbank"),
+    ("Techcombank", "tcb"),
+    ("BIDV", "bidv"),
+    ("VPBank", "vpb"),
+]
 
 # nơi chứa file dữ liệu đóng gói trong APK (p4a đặt cúng chỗ với source).
 ASSET_ROOT = os.getcwd()

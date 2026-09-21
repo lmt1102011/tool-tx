@@ -1,10 +1,16 @@
-# core/theme.py — nền gradient xanh đen → xanh dương (kivy Texture, không cần Pillow), các màu brand.
+# core/theme.py — nền gradient (kivy Texture, không cần Pillow), đổi màu theo light/dark.
 from kivy.graphics.texture import Texture
 
 
-def make_bg(top=(18, 30, 52), bottom=(54, 98, 165)):
-    """Texture gradient dọc 2x384 — tự dựng byte, không phụ thuộc Pillow (tránh build jpeg)."""
+def make_bg(dark=True):
+    """Texture gradient dọc 8x384 — dựng byte trực tiếp, không phụ thuộc Pillow."""
     try:
+        if dark:
+            top = (9, 13, 17)
+            bottom = (13, 25, 42)
+        else:
+            top = (238, 245, 248)
+            bottom = (186, 219, 234)
         w, h = 8, 384
         buf = bytearray()
         for y in range(h):
