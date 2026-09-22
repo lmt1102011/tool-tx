@@ -8,8 +8,8 @@ API_KEY = "AIzaSyCN8VEuBWsnXrZqSWJYrFkZd7ckdFIqbCg"
 FIREBASE_DB = "https://tool-tx-by-lmt-default-rtdb.firebaseio.com"
 SESSION_PATH = os.path.join(os.environ.get("ANDROID_PRIVATE", "."), "session.json")
 WEB_TOPUP = "https://lmt1102011.github.io/tool-tx/user.html"
-FORK_PACKAGE = "org.lmt1102011.chromefork"
-FORK_ACTIVITY = "org.chromium.chrome.browser.ChromeLauncherActivity"
+FORK_PACKAGE = "org.cromite.cromite"
+FORK_ACTIVITY = "org.chromium.chrome.browser.ChromeTabbedActivity"
 SERVER_URL_JSON = "https://lmt1102011.github.io/tool-tx/server-url.json"
 
 

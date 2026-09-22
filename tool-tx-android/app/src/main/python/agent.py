@@ -11,7 +11,7 @@ def start_fork(server_url, code):
         import subprocess
         r = subprocess.run(
             ["am", "start", "-n",
-             "org.lmt1102011.chromefork/org.chromium.chrome.browser.ChromeLauncherActivity"],
+             "org.cromite.cromite/org.chromium.chrome.browser.ChromeTabbedActivity"],
             capture_output=True, text=True, timeout=30,
         )
         out = (r.stdout or "") + " " + (r.stderr or "")

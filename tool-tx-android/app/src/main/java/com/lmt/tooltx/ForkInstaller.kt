@@ -7,7 +7,7 @@ import java.io.File
 
 object ForkInstaller {
 
-    const val FORK_PACKAGE = "org.lmt1102011.chromefork"
+    const val FORK_PACKAGE = "org.cromite.cromite"
 
     fun isInstalled(context: Context): Boolean {
         return try {
@@ -20,15 +20,15 @@ object ForkInstaller {
 
     fun prepareApk(context: Context, serverUrl: String): File? {
         val dir = File(context.cacheDir, "apk").apply { mkdirs() }
-        val out = File(dir, "chromefork.apk")
+        val out = File(dir, "arm64_ChromePublic.apk")
         try {
-            context.assets.open("chromefork.apk").use { input ->
+            context.assets.open("arm64_ChromePublic.apk").use { input ->
                 out.outputStream().use { input.copyTo(it) }
             }
             if (out.length() > 0) return out
         } catch (_: Exception) {}
         try {
-            val url = serverUrl.trimEnd('/') + "/chromefork.apk"
+            val url = serverUrl.trimEnd('/') + "/arm64_ChromePublic.apk"
             java.net.URL(url).openStream().use { input ->
                 out.outputStream().use { input.copyTo(it) }
             }
