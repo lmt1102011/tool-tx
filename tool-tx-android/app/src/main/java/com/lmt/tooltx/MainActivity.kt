@@ -4,8 +4,11 @@ import android.animation.ValueAnimator
 import android.content.Context
 import android.os.Build
 import android.os.Bundle
+import android.view.MotionEvent
 import android.view.View
 import android.view.animation.DecelerateInterpolator
+import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -34,6 +37,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var navPill: View
     private lateinit var navWrap: View
+    private lateinit var fragmentContainer: View
     private lateinit var navItems: List<View>
     private val pythonBridge by lazy { PythonBridge(this) }
     private val navStack = ArrayDeque<String>()
@@ -65,6 +69,7 @@ class MainActivity : AppCompatActivity() {
 
         navPill = findViewById(R.id.nav_pill)
         navWrap = findViewById(R.id.nav_wrap)
+        fragmentContainer = findViewById(R.id.fragment_container)
         navItems = navItemIds.map { findViewById<View>(it) }
         for (i in navItems.indices) {
             navItems[i].setOnClickListener { _ ->
@@ -95,12 +100,41 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupImmersive() {
-        ViewCompat.setOnApplyWindowInsetsListener(navWrap) { v, insets ->
-            val bottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
-            v.setPadding(0, 0, 0, bottom)
+        val root = findViewById<View>(R.id.main_root)
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val sys = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val imeBottom = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            } else {
+                0
+            }
+            fragmentContainer.setPadding(0, sys.top, 0, imeBottom)
+            navWrap.setPadding(0, 0, 0, sys.bottom)
             WindowInsetsCompat.CONSUMED
         }
         hideSystemBars()
+    }
+
+    override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
+        if (ev?.action == MotionEvent.ACTION_DOWN) {
+            val focused = currentFocus
+            if (focused is EditText) {
+                val pos = IntArray(2)
+                focused.getLocationOnScreen(pos)
+                val x = ev.rawX
+                val y = ev.rawY
+                val inside = x >= pos[0] && x <= pos[0] + focused.width &&
+                    y >= pos[1] && y <= pos[1] + focused.height
+                if (!inside) {
+                    try {
+                        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                        imm.hideSoftInputFromWindow(focused.windowToken, 0)
+                        focused.clearFocus()
+                    } catch (_: Exception) {}
+                }
+            }
+        }
+        return super.dispatchTouchEvent(ev)
     }
 
     private fun hideSystemBars() {

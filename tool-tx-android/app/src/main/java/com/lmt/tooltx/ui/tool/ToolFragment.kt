@@ -13,6 +13,7 @@ import com.lmt.tooltx.databinding.FragmentToolBinding
 import com.lmt.tooltx.ui.home.HomeFragment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
@@ -40,21 +41,51 @@ class ToolFragment : Fragment() {
         }
 
         binding.btnOpenTool.setOnClickListener { startTool() }
+
+        val bridge = (requireActivity() as MainActivity).getBridge()
+        if (bridge.isLoggedIn()) startTool()
     }
 
     private fun startTool() {
-        setStatus("Đang khởi động tool...")
+        setStatus("Đang kết nối server...")
         setCode(null)
 
         GlobalScope.launch(Dispatchers.IO) {
             val bridge: PythonBridge = (requireActivity() as MainActivity).getBridge()
+            val session = bridge.getSession()
+            if (session == null) {
+                withContext(Dispatchers.Main) {
+                    if (_binding == null) return@withContext
+                    setStatus("Chưa đăng nhập — đăng nhập trước.")
+                }
+                return@launch
+            }
             val server = bridge.discoverServer() ?: "http://localhost:8787"
+            val token = session["idToken"]?.toString().orEmpty()
+
+            for (attempt in 1..2) {
+                try {
+                    if (!bridge.isSocketConnected()) bridge.connectSocket(server, token)
+                } catch (_: Exception) {}
+                val connected = bridge.isSocketConnected()
+                withContext(Dispatchers.Main) {
+                    if (_binding == null) return@withContext
+                    setStatus(
+                        if (connected) "Server: $server — lấy mã liên kết..."
+                        else "Đang thử kết nối server... ($attempt/2)"
+                    )
+                }
+                if (connected) break
+                delay(2500)
+            }
 
             if (!bridge.isSocketConnected()) {
-                val token = bridge.getSession()?.get("idToken")?.toString().orEmpty()
-                try {
-                    bridge.connectSocket(server, token)
-                } catch (_: Exception) {}
+                withContext(Dispatchers.Main) {
+                    if (_binding == null) return@withContext
+                    setStatus("Không kết nối được server: $server")
+                    setAgent("Kiểm tra: server đã bật trên PC, điện thoại cùng mạng Wi-Fi với PC, và địa chỉ server đúng.")
+                }
+                return@launch
             }
 
             val code = bridge.getAgentPair(server)
@@ -62,7 +93,7 @@ class ToolFragment : Fragment() {
                 withContext(Dispatchers.Main) {
                     if (_binding == null) return@withContext
                     setStatus("Không lấy được mã liên kết (đã chờ 10s).")
-                    setAgent("Kiểm tra server đã bật và đã kết nối socket.")
+                    setAgent("Server bật nhưng không trả mã — bấm MỞ TOOL lại.")
                 }
                 return@launch
             }

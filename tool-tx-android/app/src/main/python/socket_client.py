@@ -15,8 +15,11 @@ def connect(url, token):
     _locking = True
     try:
         import socketio
-        _sio = socketio.Client(logger=False, engineio_logger=False)
-        _sio.connect(url, auth={"token": token}, wait_timeout=15)
+        _sio = socketio.Client(
+            logger=False, engineio_logger=False,
+            reconnection=True, reconnection_attempts=5, reconnection_delay=2,
+        )
+        _sio.connect(url, auth={"token": token or ""}, wait_timeout=20, retry=True)
         _connected = True
     except Exception as e:
         _connected = False
