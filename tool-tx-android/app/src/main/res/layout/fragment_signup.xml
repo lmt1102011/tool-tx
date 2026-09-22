@@ -15,7 +15,7 @@
         android:orientation="vertical"
         android:paddingHorizontal="@dimen/spacing_lg"
         android:paddingTop="48dp"
-        android:paddingBottom="@dimen/spacing_xl">
+        android:paddingBottom="128dp">
 
         <ImageView
             android:id="@+id/logo"

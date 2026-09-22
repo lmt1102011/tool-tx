@@ -21,6 +21,10 @@ import kotlin.math.roundToInt
 
 class ToolFragment : Fragment() {
 
+    @Volatile
+    private var running = false
+    private var lastCode: String? = null
+
     private var _binding: FragmentToolBinding? = null
     private val binding get() = _binding!!
 
@@ -47,68 +51,74 @@ class ToolFragment : Fragment() {
     }
 
     private fun startTool() {
+        if (running) return
+        running = true
         setStatus("Đang kết nối server...")
         setCode(null)
 
         GlobalScope.launch(Dispatchers.IO) {
-            val bridge: PythonBridge = (requireActivity() as MainActivity).getBridge()
-            val session = bridge.getSession()
-            if (session == null) {
+            try {
+                val bridge: PythonBridge = (requireActivity() as MainActivity).getBridge()
+                val session = bridge.getSession()
+                if (session == null) {
+                    withContext(Dispatchers.Main) {
+                        if (_binding == null) return@withContext
+                        setStatus("Chưa đăng nhập — đăng nhập trước.")
+                    }
+                    return@launch
+                }
+                val server = bridge.discoverServer() ?: "http://localhost:8787"
+                val token = session["idToken"]?.toString().orEmpty()
+
+                for (attempt in 1..2) {
+                    try {
+                        if (!bridge.isSocketConnected()) bridge.connectSocket(server, token)
+                    } catch (_: Exception) {}
+                    val connected = bridge.isSocketConnected()
+                    withContext(Dispatchers.Main) {
+                        if (_binding == null) return@withContext
+                        setStatus(
+                            if (connected) "Server: $server — lấy mã liên kết..."
+                            else "Đang thử kết nối server... ($attempt/2)"
+                        )
+                    }
+                    if (connected) break
+                    delay(2500)
+                }
+
+                if (!bridge.isSocketConnected()) {
+                    withContext(Dispatchers.Main) {
+                        if (_binding == null) return@withContext
+                        setStatus("Không kết nối được server: $server")
+                        setAgent("Kiểm tra: server đã bật trên PC, điện thoại cùng mạng Wi-Fi với PC, và địa chỉ server đúng.")
+                    }
+                    return@launch
+                }
+
+                val code = bridge.getAgentPair(server)
+                if (code.isNullOrEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        if (_binding == null) return@withContext
+                        setStatus("Không lấy được mã liên kết — bấm MỞ TOOL lại.")
+                        setAgent("Server bật nhưng không trả mã trong 10s.")
+                    }
+                    return@launch
+                }
+                lastCode = code
+                val ok = bridge.startFork(server, code)
                 withContext(Dispatchers.Main) {
                     if (_binding == null) return@withContext
-                    setStatus("Chưa đăng nhập — đăng nhập trước.")
+                    setCode("Mã liên kết: $code")
+                    if (ok) {
+                        setStatus("Đã mở Chromium Fork — chờ kết nối CDP...")
+                        setAgent("Agent fork đang chạy trên điện thoại.")
+                    } else {
+                        setStatus("Khởi động Chrome Fork thất bại.")
+                        setAgent("Cài Chromium Fork rồi thử lại.")
+                    }
                 }
-                return@launch
-            }
-            val server = bridge.discoverServer() ?: "http://localhost:8787"
-            val token = session["idToken"]?.toString().orEmpty()
-
-            for (attempt in 1..2) {
-                try {
-                    if (!bridge.isSocketConnected()) bridge.connectSocket(server, token)
-                } catch (_: Exception) {}
-                val connected = bridge.isSocketConnected()
-                withContext(Dispatchers.Main) {
-                    if (_binding == null) return@withContext
-                    setStatus(
-                        if (connected) "Server: $server — lấy mã liên kết..."
-                        else "Đang thử kết nối server... ($attempt/2)"
-                    )
-                }
-                if (connected) break
-                delay(2500)
-            }
-
-            if (!bridge.isSocketConnected()) {
-                withContext(Dispatchers.Main) {
-                    if (_binding == null) return@withContext
-                    setStatus("Không kết nối được server: $server")
-                    setAgent("Kiểm tra: server đã bật trên PC, điện thoại cùng mạng Wi-Fi với PC, và địa chỉ server đúng.")
-                }
-                return@launch
-            }
-
-            val code = bridge.getAgentPair(server)
-            if (code.isNullOrEmpty()) {
-                withContext(Dispatchers.Main) {
-                    if (_binding == null) return@withContext
-                    setStatus("Không lấy được mã liên kết (đã chờ 10s).")
-                    setAgent("Server bật nhưng không trả mã — bấm MỞ TOOL lại.")
-                }
-                return@launch
-            }
-
-            val ok = bridge.startFork(server, code)
-            withContext(Dispatchers.Main) {
-                if (_binding == null) return@withContext
-                setCode("Mã liên kết: $code")
-                if (ok) {
-                    setStatus("Đã mở Chromium Fork — chờ kết nối CDP...")
-                    setAgent("Agent fork đang chạy trên điện thoại.")
-                } else {
-                    setStatus("Khởi động Chrome Fork thất bại.")
-                    setAgent("Cài Chromium Fork rồi thử lại.")
-                }
+            } finally {
+                running = false
             }
         }
     }

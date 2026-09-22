@@ -103,14 +103,8 @@ class MainActivity : AppCompatActivity() {
         val root = findViewById<View>(R.id.main_root)
         ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             val sys = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            val imeBottom = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
-            } else {
-                0
-            }
-            fragmentContainer.setPadding(0, sys.top, 0, imeBottom)
-            navWrap.setPadding(0, 0, 0, sys.bottom)
-            WindowInsetsCompat.CONSUMED
+            fragmentContainer.setPadding(0, sys.top, 0, 0)
+            insets
         }
         hideSystemBars()
     }
