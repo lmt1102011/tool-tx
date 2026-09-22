@@ -1,6 +1,7 @@
 package com.lmt.tooltx.ui.home
 
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -20,6 +21,7 @@ class HomeFragment : Fragment() {
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
+    private var lastRefresh = 0L
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -44,6 +46,9 @@ class HomeFragment : Fragment() {
     }
 
     private fun refresh() {
+        val now = SystemClock.elapsedRealtime()
+        if (lastRefresh != 0L && now - lastRefresh < 6000) return
+        lastRefresh = now
         GlobalScope.launch(Dispatchers.IO) {
             val bridge: PythonBridge = (requireActivity() as MainActivity).getBridge()
             val session = bridge.getSession()
@@ -59,6 +64,7 @@ class HomeFragment : Fragment() {
 
                 val role = user["role"]?.toString().orEmpty()
                 if (role == "admin") {
+                    (requireActivity() as MainActivity).showAdmin(true)
                     credit("vô hạn", warn = false)
                     gate(null)
                 } else if (picks >= 0) {

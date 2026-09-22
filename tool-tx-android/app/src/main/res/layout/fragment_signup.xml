@@ -17,10 +17,11 @@
 
         <ImageView
             android:id="@+id/logo"
-            android:layout_width="100dp"
-            android:layout_height="100dp"
+            android:layout_width="112dp"
+            android:layout_height="112dp"
             android:layout_marginBottom="@dimen/spacing_sm"
-            android:padding="12dp"
+            android:background="@drawable/bg_logo"
+            android:padding="14dp"
             android:scaleType="centerInside"
             android:src="@mipmap/ic_launcher" />
 

@@ -36,7 +36,7 @@ class ToolFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.btnBack.setOnClickListener {
-            (requireActivity() as MainActivity).showFragment(HomeFragment::class.java, "home")
+            (requireActivity() as MainActivity).showFragment(HomeFragment::class.java, "home", push = false)
         }
 
         binding.btnOpenTool.setOnClickListener { startTool() }

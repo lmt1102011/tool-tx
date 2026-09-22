@@ -92,6 +92,14 @@ def register(username, password, name):
     data = r.json()
     if "error" in data:
         raise Exception(_firebase_message(data, default="Đăng ký thất bại"))
+    global _session
+    _session = {
+        "uid": data["localId"],
+        "idToken": data["idToken"],
+        "refreshToken": data["refreshToken"],
+        "displayName": name or username,
+    }
+    _save_session()
     return {"uid": data["localId"]}
 
 def logout():

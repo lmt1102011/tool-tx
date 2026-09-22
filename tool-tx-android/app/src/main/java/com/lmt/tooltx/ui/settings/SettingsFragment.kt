@@ -41,7 +41,7 @@ class SettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.btnBack.setOnClickListener {
-            (requireActivity() as MainActivity).showFragment(HomeFragment::class.java, "home")
+            (requireActivity() as MainActivity).showFragment(HomeFragment::class.java, "home", push = false)
         }
 
         binding.btnLogout.setOnClickListener { confirmLogout() }
@@ -55,18 +55,57 @@ class SettingsFragment : Fragment() {
             prefs.edit().putBoolean("dark_mode", isChecked).apply()
         }
 
+        binding.switchAuto.setOnCheckedChangeListener { _, isChecked ->
+            val prefs = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("auto_connect", isChecked).apply()
+            toggleAutoConnect(isChecked)
+        }
+
         binding.btnCrash.setOnClickListener { shareCrash() }
     }
 
     override fun onResume() {
         super.onResume()
         loadDarkMode()
+        loadAutoConnect()
         loadProfile()
     }
 
     private fun loadDarkMode() {
         val prefs = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
+        binding.switchDark.setOnCheckedChangeListener(null)
         binding.switchDark.isChecked = prefs.getBoolean("dark_mode", true)
+        binding.switchDark.setOnCheckedChangeListener { _, isChecked ->
+            AppCompatDelegate.setDefaultNightMode(
+                if (isChecked) AppCompatDelegate.MODE_NIGHT_YES
+                else AppCompatDelegate.MODE_NIGHT_NO
+            )
+            prefs.edit().putBoolean("dark_mode", isChecked).apply()
+        }
+    }
+
+    private fun loadAutoConnect() {
+        val prefs = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
+        binding.switchAuto.setOnCheckedChangeListener(null)
+        binding.switchAuto.isChecked = prefs.getBoolean("auto_connect", true)
+        binding.switchAuto.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("auto_connect", isChecked).apply()
+            toggleAutoConnect(isChecked)
+        }
+    }
+
+    private fun toggleAutoConnect(enabled: Boolean) {
+        GlobalScope.launch(Dispatchers.IO) {
+            val bridge: PythonBridge = (requireActivity() as MainActivity).getBridge()
+            if (enabled) {
+                val url = bridge.discoverServer()
+                if (!url.isNullOrEmpty()) {
+                    bridge.connectSocket(url, "")
+                }
+            } else {
+                bridge.disconnectSocket()
+            }
+        }
     }
 
     private fun loadProfile() {
@@ -86,6 +125,9 @@ class SettingsFragment : Fragment() {
                     role == "admin" -> "vô hạn"
                     picks >= 0 -> picks.toString()
                     else -> "--"
+                }
+                if (role == "admin") {
+                    (requireActivity() as MainActivity).showAdmin(true)
                 }
                 profile(name, uid, role, picksTxt)
                 picksText(picksTxt)
@@ -118,6 +160,7 @@ class SettingsFragment : Fragment() {
             val bridge: PythonBridge = (requireActivity() as MainActivity).getBridge()
             bridge.logout()
             withContext(Dispatchers.Main) {
+                (requireActivity() as MainActivity).showAdmin(false)
                 (requireActivity() as MainActivity)
                     .showFragment(SignInFragment::class.java, "signin")
             }

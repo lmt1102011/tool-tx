@@ -78,7 +78,9 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@color/surface"
-        android:fillViewport="true">
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:paddingBottom="@dimen/nav_height">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -88,7 +90,7 @@
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
-                android:layout_height="300dp"
+                android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_sm"
                 app:cardCornerRadius="@dimen/card_radius"
                 app:cardElevation="2dp">
@@ -102,10 +104,10 @@
                         android:id="@+id/iv_hero"
                         android:layout_width="match_parent"
                         android:layout_height="200dp"
-                        android:background="@color/surfaceContainerHighest"
+                        android:background="@color/surfaceContainerHigh"
                         android:contentDescription="@string/made_by"
                         android:padding="48dp"
-                        android:scaleType="centerCrop"
+                        android:scaleType="centerInside"
                         android:src="@drawable/ic_tool" />
 
                     <LinearLayout

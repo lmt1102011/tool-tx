@@ -190,11 +190,10 @@ class PythonBridge(private val context: Context) {
     private fun parseMap(obj: com.chaquo.python.PyObject?): Map<String, Any?> {
         if (obj == null) return mapOf()
         return try {
+            val src = obj.asMap()
             val result = mutableMapOf<String, Any?>()
-            val keys = obj.callAttr("keys").asList()
-            for (i in 0 until keys.size) {
-                val key = keys[i]
-                result[key.toString()] = obj.callAttr("__getitem__", key)
+            for ((k, v) in src) {
+                result[k] = v
             }
             result
         } catch (_: Exception) {
