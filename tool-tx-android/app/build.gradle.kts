@@ -62,7 +62,7 @@ chaquopy {
         version = "3.12"
 
         pip {
-            install("requests==2.32.3")
+            install("requests==2.32.3", "python-socketio==5.13.0")
         }
     }
 }
@@ -73,4 +73,5 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.fragment:fragment-ktx:1.8.2")
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 }

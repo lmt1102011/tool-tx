@@ -3,6 +3,9 @@ package com.lmt.tooltx
 import android.content.Context
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup
+import android.widget.Checkable
+import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.fragment.app.Fragment
@@ -17,6 +20,10 @@ import com.lmt.tooltx.ui.settings.SettingsFragment
 import com.lmt.tooltx.ui.tool.ToolFragment
 import com.lmt.tooltx.ui.topup.TopUpFragment
 import java.util.ArrayDeque
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
@@ -38,11 +45,11 @@ class MainActivity : AppCompatActivity() {
         bottomNav = findViewById(R.id.bottom_nav)
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
-                R.id.nav_home -> { showFragment(HomeFragment::class.java, "home"); true }
-                R.id.nav_topup -> { showFragment(TopUpFragment::class.java, "topup"); true }
-                R.id.nav_tool -> { showFragment(ToolFragment::class.java, "tool"); true }
-                R.id.nav_settings -> { showFragment(SettingsFragment::class.java, "settings"); true }
-                R.id.nav_admin -> { showFragment(AdminFragment::class.java, "admin"); true }
+                R.id.nav_home -> { showFragment(HomeFragment::class.java, "home"); animateNavItem(item.itemId); true }
+                R.id.nav_topup -> { showFragment(TopUpFragment::class.java, "topup"); animateNavItem(item.itemId); true }
+                R.id.nav_tool -> { showFragment(ToolFragment::class.java, "tool"); animateNavItem(item.itemId); true }
+                R.id.nav_settings -> { showFragment(SettingsFragment::class.java, "settings"); animateNavItem(item.itemId); true }
+                R.id.nav_admin -> { showFragment(AdminFragment::class.java, "admin"); animateNavItem(item.itemId); true }
                 else -> false
             }
         }
@@ -58,6 +65,8 @@ class MainActivity : AppCompatActivity() {
                 bottomNav.visibility = View.GONE
             }
         }
+
+        startAutoConnect()
     }
 
     fun showFragment(cls: Class<out Fragment>, tag: String) {
@@ -72,8 +81,8 @@ class MainActivity : AppCompatActivity() {
         val ft = fm.beginTransaction()
             .setReorderingAllowed(true)
             .setCustomAnimations(
-                android.R.anim.fade_in, android.R.anim.fade_out,
-                android.R.anim.fade_in, android.R.anim.fade_out
+                R.anim.nav_enter, R.anim.nav_exit,
+                R.anim.nav_enter, R.anim.nav_exit
             )
         if (current != null) {
             ft.hide(current)
@@ -132,6 +141,57 @@ class MainActivity : AppCompatActivity() {
 
     fun openBrowser() {
         showFragment(BrowserFragment::class.java, "browser")
+    }
+
+    private fun startAutoConnect() {
+        GlobalScope.launch {
+            while (isActive) {
+                try {
+                    val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+                    if (prefs.getBoolean("auto_connect", true) && !pythonBridge.isSocketConnected()) {
+                        val url = pythonBridge.discoverServer()
+                        if (!url.isNullOrEmpty()) {
+                            pythonBridge.connectSocket(url, "")
+                        }
+                    }
+                } catch (_: Exception) {}
+                delay(10_000)
+            }
+        }
+    }
+
+    private fun animateNavItem(itemId: Int) {
+        bottomNav.post {
+            try {
+                val menuView = bottomNav.getChildAt(0) as? ViewGroup ?: return@post
+                for (i in 0 until menuView.childCount) {
+                    val itemView = menuView.getChildAt(i)
+                    if (itemView is Checkable && itemView.isChecked) {
+                        val icon = findIconView(itemView)
+                        if (icon != null) {
+                            icon.animate().scaleX(1.22f).scaleY(1.22f)
+                                .setDuration(120)
+                                .withEndAction {
+                                    icon.animate().scaleX(1f).scaleY(1f).setDuration(150).start()
+                                }
+                                .start()
+                        }
+                        break
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    private fun findIconView(root: View): ImageView? {
+        if (root is ImageView) return root
+        if (root is ViewGroup) {
+            for (i in 0 until root.childCount) {
+                val found = findIconView(root.getChildAt(i))
+                if (found != null) return found
+            }
+        }
+        return null
     }
 
     fun getBridge(): PythonBridge = pythonBridge

@@ -84,6 +84,7 @@
                             android:id="@+id/tv_profile_name"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:ellipsize="end"
                             android:maxLines="1"
                             android:textColor="@color/onSurface"
                             android:textSize="18sp"
@@ -189,7 +190,7 @@
                             <TextView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:text="Tự động kết nối lại máy chủ khi mất mạng"
+                                android:text="Tự động kết nối/kết nối lại máy chủ khi máy chủ sẵn sàng"
                                 android:textColor="@color/onSurfaceVariant"
                                 android:textSize="12sp" />
 

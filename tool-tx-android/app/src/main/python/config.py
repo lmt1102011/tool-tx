@@ -11,12 +11,24 @@ FORK_PACKAGE = "org.lmt1102011.chromefork"
 FORK_ACTIVITY = "org.chromium.chrome.browser.ChromeLauncherActivity"
 
 def discover_server(cfg_path=None):
-    try:
-        path = cfg_path or os.path.join(os.environ.get("ANDROID_PRIVATE", "."), "config.txt")
-        with open(path) as f:
-            for line in f:
-                if "server-url" in line.lower() or "SERVER_URL" in line:
-                    return line.split("=", 1)[1].strip()
-    except Exception:
-        pass
+    import os
+    base = os.environ.get("ANDROID_PRIVATE", "/data/data/com.lmt.tooltx")
+    candidates = []
+    if cfg_path:
+        candidates.append(cfg_path)
+    candidates += [
+        os.path.join(base, "config.txt"),
+        os.path.join(base, "files", "config.txt"),
+        "/storage/emulated/0/Download/config.txt",
+        "/storage/emulated/0/config.txt",
+        os.path.join(os.path.expanduser("~"), "Download", "config.txt"),
+    ]
+    for path in candidates:
+        try:
+            with open(path) as f:
+                for line in f:
+                    if "server-url" in line.lower() or "SERVER_URL" in line:
+                        return line.split("=", 1)[1].strip()
+        except Exception:
+            continue
     return None

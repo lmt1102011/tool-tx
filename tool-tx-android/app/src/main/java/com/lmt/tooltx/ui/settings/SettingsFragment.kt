@@ -126,8 +126,10 @@ class SettingsFragment : Fragment() {
                     picks >= 0 -> picks.toString()
                     else -> "--"
                 }
-                if (role == "admin") {
+                if (role.equals("admin", ignoreCase = true)) {
                     (requireActivity() as MainActivity).showAdmin(true)
+                } else {
+                    (requireActivity() as MainActivity).showAdmin(false)
                 }
                 profile(name, uid, role, picksTxt)
                 picksText(picksTxt)
@@ -158,6 +160,7 @@ class SettingsFragment : Fragment() {
     private fun doLogout() {
         GlobalScope.launch(Dispatchers.IO) {
             val bridge: PythonBridge = (requireActivity() as MainActivity).getBridge()
+            bridge.disconnectSocket()
             bridge.logout()
             withContext(Dispatchers.Main) {
                 (requireActivity() as MainActivity).showAdmin(false)

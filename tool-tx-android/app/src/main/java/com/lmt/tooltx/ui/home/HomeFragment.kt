@@ -38,6 +38,9 @@ class HomeFragment : Fragment() {
         binding.btnProfile.setOnClickListener {
             (requireActivity() as MainActivity).showFragment(SettingsFragment::class.java, "settings")
         }
+
+        binding.swipeRefresh.setOnRefreshListener { refresh(force = true) }
+        binding.swipeRefresh.setColorSchemeResources(R.color.primary)
     }
 
     override fun onResume() {
@@ -45,9 +48,9 @@ class HomeFragment : Fragment() {
         refresh()
     }
 
-    private fun refresh() {
+    private fun refresh(force: Boolean = false) {
         val now = SystemClock.elapsedRealtime()
-        if (lastRefresh != 0L && now - lastRefresh < 6000) return
+        if (!force && lastRefresh != 0L && now - lastRefresh < 6000) return
         lastRefresh = now
         GlobalScope.launch(Dispatchers.IO) {
             val bridge: PythonBridge = (requireActivity() as MainActivity).getBridge()
@@ -57,27 +60,31 @@ class HomeFragment : Fragment() {
             val connected = bridge.isSocketConnected()
             withContext(Dispatchers.Main) {
                 val b = _binding ?: return@withContext
+                b.swipeRefresh.isRefreshing = false
                 val name = session?.get("displayName")?.toString()
                     ?: session?.get("username")?.toString()
                     ?: "Name"
                 greet(name)
 
                 val role = user["role"]?.toString().orEmpty()
-                if (role == "admin") {
+                if (role.equals("admin", ignoreCase = true)) {
                     (requireActivity() as MainActivity).showAdmin(true)
                     credit("vô hạn", warn = false)
                     gate(null)
-                } else if (picks >= 0) {
-                    val warn = picks <= 0
-                    credit(picks.toString(), warn)
-                    if (warn) {
-                        gate("BẠN ĐÃ HẾT LƯỢT ĐOÁN — nạp thêm tại trang web để tiếp tục.")
+                } else {
+                    (requireActivity() as MainActivity).showAdmin(false)
+                    if (picks >= 0) {
+                        val warn = picks <= 0
+                        credit(picks.toString(), warn)
+                        if (warn) {
+                            gate("BẠN ĐÃ HẾT LƯỢT SỬ DỤNG TOOL — nạp thêm tại trang web để tiếp tục.")
+                        } else {
+                            gate(null)
+                        }
                     } else {
+                        credit("--", warn = false)
                         gate(null)
                     }
-                } else {
-                    credit("--", warn = false)
-                    gate(null)
                 }
 
                 if (connected) {

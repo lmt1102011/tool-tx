@@ -43,7 +43,7 @@
     <string name="activity_log">Nhật ký hoạt động</string>
     <string name="auto_connect">Tự kết nối máy chủ</string>
     <string name="no_activity">Chưa có hoạt động.</string>
-    <string name="predictions_left">Số lượng dự đoán còn lại</string>
+    <string name="predictions_left">Số lượt sử dụng tool còn lại</string>
     <string name="send_crash_log">Gửi crash log</string>
     <string name="version">ToolTX — Gold edition — v2.0</string>
     <string name="logout">Đăng xuất</string>
@@ -51,10 +51,10 @@
 
     <!-- Admin -->
     <string name="admin">Quản trị</string>
-    <string name="admin_desc">Chào admin — quản lý tài khoản, lượt đoán và giá mỗi lượt.</string>
+    <string name="admin_desc">Chào admin — quản lý tài khoản, lượt sử dụng tool và giá mỗi lượt.</string>
     <string name="total_users">Tổng người dùng (không admin)</string>
-    <string name="total_picks">Tổng lượt đoán đã cấp</string>
-    <string name="price_per_pick">Giá / lượt đoán (VNĐ)</string>
+    <string name="total_picks">Tổng lượt sử dụng tool đã cấp</string>
+    <string name="price_per_pick">Giá / lượt sử dụng tool (VNĐ)</string>
     <string name="add_user">THÊM USER MỚI</string>
     <string name="user_list">DANH SÁCH USER</string>
     <string name="create_account">TẠO TÀI KHOẢN</string>
