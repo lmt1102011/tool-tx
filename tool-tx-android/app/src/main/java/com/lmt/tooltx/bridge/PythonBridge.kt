@@ -163,9 +163,9 @@ class PythonBridge(private val context: Context) {
         } catch (_: Exception) {}
     }
 
-    fun addUser(username: String, password: String, picks: Int) {
+    fun addUser(username: String, password: String, picks: Int, role: String = "user") {
         try {
-            py.getModule("auth").callAttr("register_with_picks", username, password, "", picks)
+            py.getModule("auth").callAttr("register_with_picks", username, password, "", picks, role)
         } catch (_: Exception) {}
     }
 

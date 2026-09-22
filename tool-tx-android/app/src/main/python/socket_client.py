@@ -43,18 +43,25 @@ def is_connected():
     return _connected
 
 def agent_pair(url):
-    global _sio
-    if not _sio:
+    global _sio, _connected
+    if not _sio or not _connected:
         return None
     result = [None]
     done = threading.Event()
 
     def on_code(data):
-        result[0] = data.get("code") if isinstance(data, dict) else None
+        if isinstance(data, dict):
+            result[0] = data.get("code")
+        elif isinstance(data, (list, tuple)) and data:
+            first = data[0]
+            if isinstance(first, dict):
+                result[0] = first.get("code")
+            else:
+                result[0] = str(first)
         done.set()
 
     try:
-        _sio.emit("agent:pair", callback=on_code)
+        _sio.emit("agent-pair", {}, callback=on_code)
         done.wait(timeout=10)
     except Exception:
         pass

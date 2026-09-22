@@ -98,7 +98,7 @@
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
-                    android:layout_height="@dimen/field_height"
+                    android:layout_height="wrap_content"
                     android:layout_marginTop="@dimen/spacing_lg"
                     app:boxBackgroundColor="@color/surfaceContainerHighest"
                     app:boxCornerRadiusBottomEnd="@dimen/spacing_lg"
@@ -113,10 +113,12 @@
                         android:id="@+id/et_rate"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/price_per_pick"
+                        android:importantForAutofill="no"
                         android:inputType="number"
+                        android:minHeight="56dp"
                         android:textColor="@color/onSurface"
-                        android:textColorHint="@color/onSurfaceVariant" />
+                        android:textColorHint="@color/onSurfaceVariant"
+                        android:textSize="16sp" />
 
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -135,116 +137,49 @@
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_add_user"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="64dp"
             android:layout_marginTop="@dimen/spacing_lg"
-            app:cardCornerRadius="@dimen/card_radius"
-            app:cardElevation="2dp">
+            android:clickable="true"
+            android:focusable="true"
+            app:cardBackgroundColor="@color/surfaceContainerHigh"
+            app:cardCornerRadius="32dp"
+            app:cardElevation="0dp"
+            app:rippleColor="@color/primaryContainer"
+            app:strokeWidth="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="@dimen/card_padding">
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="@dimen/spacing_lg">
 
                 <TextView
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:text="@string/add_user"
-                    android:textColor="@color/gold"
-                    android:textSize="14sp"
+                    android:textColor="@color/onSurface"
+                    android:textSize="15sp"
                     android:textStyle="bold" />
 
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="@dimen/field_height"
-                    android:layout_marginTop="@dimen/spacing_lg"
-                    app:boxBackgroundColor="@color/surfaceContainerHighest"
-                    app:boxCornerRadiusBottomEnd="@dimen/spacing_lg"
-                    app:boxCornerRadiusBottomStart="@dimen/spacing_lg"
-                    app:boxCornerRadiusTopEnd="@dimen/spacing_lg"
-                    app:boxCornerRadiusTopStart="@dimen/spacing_lg"
-                    app:hintTextColor="@color/onSurfaceVariant"
-                    app:startIconDrawable="@drawable/ic_person"
-                    app:startIconTint="@color/onSurfaceVariant">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_new_user"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="@string/username_hint"
-                        android:inputType="text"
-                        android:textColor="@color/onSurface"
-                        android:textColorHint="@color/onSurfaceVariant" />
-
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="@dimen/field_height"
-                    android:layout_marginTop="@dimen/spacing_sm"
-                    app:boxBackgroundColor="@color/surfaceContainerHighest"
-                    app:boxCornerRadiusBottomEnd="@dimen/spacing_lg"
-                    app:boxCornerRadiusBottomStart="@dimen/spacing_lg"
-                    app:boxCornerRadiusTopEnd="@dimen/spacing_lg"
-                    app:boxCornerRadiusTopStart="@dimen/spacing_lg"
-                    app:endIconMode="password_toggle"
-                    app:hintTextColor="@color/onSurfaceVariant"
-                    app:startIconDrawable="@drawable/ic_lock"
-                    app:startIconTint="@color/onSurfaceVariant">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_new_pass"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="@string/password_hint"
-                        android:inputType="textPassword"
-                        android:textColor="@color/onSurface"
-                        android:textColorHint="@color/onSurfaceVariant" />
-
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="@dimen/field_height"
-                    android:layout_marginTop="@dimen/spacing_sm"
-                    app:boxBackgroundColor="@color/surfaceContainerHighest"
-                    app:boxCornerRadiusBottomEnd="@dimen/spacing_lg"
-                    app:boxCornerRadiusBottomStart="@dimen/spacing_lg"
-                    app:boxCornerRadiusTopEnd="@dimen/spacing_lg"
-                    app:boxCornerRadiusTopStart="@dimen/spacing_lg"
-                    app:hintTextColor="@color/onSurfaceVariant"
-                    app:startIconDrawable="@drawable/ic_credit_card"
-                    app:startIconTint="@color/onSurfaceVariant">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_new_picks"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="@string/balance"
-                        android:inputType="number"
-                        android:textColor="@color/onSurface"
-                        android:textColorHint="@color/onSurfaceVariant" />
-
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_create_user"
-                    android:layout_width="match_parent"
-                    android:layout_height="@dimen/btn_height"
-                    android:layout_marginTop="@dimen/spacing_lg"
-                    android:text="@string/create_account"
-                    android:textColor="@color/onPrimary"
-                    android:textSize="16sp"
-                    app:backgroundTint="@color/primary"
-                    app:cornerRadius="@dimen/btn_height" />
+                <ImageView
+                    android:id="@+id/btn_add_user"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="@drawable/bg_circle"
+                    android:contentDescription="@string/add_user"
+                    android:padding="10dp"
+                    android:src="@drawable/ic_add" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
-            android:layout_height="@dimen/field_height"
+            android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacing_lg"
             app:boxBackgroundColor="@color/surfaceContainerHighest"
             app:boxCornerRadiusBottomEnd="@dimen/spacing_lg"
@@ -261,6 +196,7 @@
                 android:layout_height="wrap_content"
                 android:hint="@string/search_hint"
                 android:inputType="text"
+                android:minHeight="56dp"
                 android:textColor="@color/onSurface"
                 android:textColorHint="@color/onSurfaceVariant" />
 

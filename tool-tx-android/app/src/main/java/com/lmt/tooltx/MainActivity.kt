@@ -1,13 +1,16 @@
 package com.lmt.tooltx
 
+import android.animation.ValueAnimator
 import android.content.Context
+import android.os.Build
 import android.os.Bundle
 import android.view.View
-import android.view.ViewGroup
-import android.widget.Checkable
-import android.widget.ImageView
+import android.view.animation.DecelerateInterpolator
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.lmt.tooltx.bridge.PythonBridge
@@ -28,6 +31,7 @@ import kotlinx.coroutines.launch
 class MainActivity : AppCompatActivity() {
 
     private lateinit var bottomNav: BottomNavigationView
+    private lateinit var navPill: View
     private val pythonBridge by lazy { PythonBridge(this) }
     private val navStack = ArrayDeque<String>()
 
@@ -43,30 +47,70 @@ class MainActivity : AppCompatActivity() {
         pythonBridge.setSessionPath(filesDir.absolutePath + "/session.json")
 
         bottomNav = findViewById(R.id.bottom_nav)
+        navPill = findViewById(R.id.nav_pill)
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
-                R.id.nav_home -> { showFragment(HomeFragment::class.java, "home"); animateNavItem(item.itemId); true }
-                R.id.nav_topup -> { showFragment(TopUpFragment::class.java, "topup"); animateNavItem(item.itemId); true }
-                R.id.nav_tool -> { showFragment(ToolFragment::class.java, "tool"); animateNavItem(item.itemId); true }
-                R.id.nav_settings -> { showFragment(SettingsFragment::class.java, "settings"); animateNavItem(item.itemId); true }
-                R.id.nav_admin -> { showFragment(AdminFragment::class.java, "admin"); animateNavItem(item.itemId); true }
+                R.id.nav_home -> { showFragment(HomeFragment::class.java, "home"); true }
+                R.id.nav_topup -> { showFragment(TopUpFragment::class.java, "topup"); true }
+                R.id.nav_tool -> { showFragment(ToolFragment::class.java, "tool"); true }
+                R.id.nav_settings -> { showFragment(SettingsFragment::class.java, "settings"); true }
+                R.id.nav_admin -> { showFragment(AdminFragment::class.java, "admin"); true }
                 else -> false
             }
         }
         bottomNav.menu.findItem(R.id.nav_admin).isVisible = false
+
+        setupImmersive()
 
         if (savedInstanceState == null) {
             val session = pythonBridge.getSession()
             if (session != null) {
                 showFragment(HomeFragment::class.java, "home")
                 bottomNav.menu.findItem(R.id.nav_home).isChecked = true
+                positionPill(R.id.nav_home)
             } else {
                 showFragment(SignInFragment::class.java, "signin")
                 bottomNav.visibility = View.GONE
+                navPill.visibility = View.GONE
             }
         }
 
         startAutoConnect()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) hideSystemBars()
+    }
+
+    private fun setupImmersive() {
+        val navWrap = findViewById<View>(R.id.nav_wrap)
+        ViewCompat.setOnApplyWindowInsetsListener(navWrap) { v, insets ->
+            val bottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
+            v.setPadding(0, 0, 0, bottom)
+            WindowInsetsCompat.CONSUMED
+        }
+        hideSystemBars()
+    }
+
+    private fun hideSystemBars() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                window.setDecorFitsSystemWindows(false)
+                val controller = WindowInsetsControllerCompat(window, window.decorView)
+                controller.hide(WindowInsetsCompat.Type.navigationBars())
+                controller.systemBarsBehavior =
+                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            } else {
+                @Suppress("DEPRECATION")
+                window.decorView.systemUiVisibility = (
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    )
+            }
+        } catch (_: Exception) {}
     }
 
     fun showFragment(cls: Class<out Fragment>, tag: String) {
@@ -102,6 +146,7 @@ class MainActivity : AppCompatActivity() {
 
         val isAuth = tag == "signin" || tag == "signup"
         bottomNav.visibility = if (isAuth) View.GONE else View.VISIBLE
+        navPill.visibility = if (isAuth) View.GONE else View.VISIBLE
         if (isAuth) {
             if (tag == "signin") {
                 navStack.clear()
@@ -127,11 +172,15 @@ class MainActivity : AppCompatActivity() {
             "admin" -> R.id.nav_admin
             else -> -1
         }
-        if (id != -1) bottomNav.menu.findItem(id).isChecked = true
+        if (id != -1) {
+            bottomNav.menu.findItem(id).isChecked = true
+            animatePill(id)
+        }
     }
 
     fun showNav(show: Boolean) {
         bottomNav.visibility = if (show) View.VISIBLE else View.GONE
+        navPill.visibility = if (show) View.VISIBLE else View.GONE
     }
 
     fun showAdmin(show: Boolean) {
@@ -161,38 +210,49 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun animateNavItem(itemId: Int) {
+    private fun positionPill(itemId: Int) {
         bottomNav.post {
-            try {
-                val menuView = bottomNav.getChildAt(0) as? ViewGroup ?: return@post
-                for (i in 0 until menuView.childCount) {
-                    val itemView = menuView.getChildAt(i)
-                    if (itemView is Checkable && itemView.isChecked) {
-                        val icon = findIconView(itemView)
-                        if (icon != null) {
-                            icon.animate().scaleX(1.22f).scaleY(1.22f)
-                                .setDuration(120)
-                                .withEndAction {
-                                    icon.animate().scaleX(1f).scaleY(1f).setDuration(150).start()
-                                }
-                                .start()
-                        }
-                        break
-                    }
-                }
-            } catch (_: Exception) {}
+            if (navPill.width <= 0) return@post
+            navPill.translationX = targetFor(itemId)
         }
     }
 
-    private fun findIconView(root: View): ImageView? {
-        if (root is ImageView) return root
-        if (root is ViewGroup) {
-            for (i in 0 until root.childCount) {
-                val found = findIconView(root.getChildAt(i))
-                if (found != null) return found
+    private fun animatePill(itemId: Int) {
+        bottomNav.post {
+            if (navPill.width <= 0) return@post
+            val target = targetFor(itemId)
+            if (navPill.translationX == target) return@post
+            val anim = ValueAnimator.ofFloat(navPill.translationX, target).apply {
+                duration = 220
+                interpolator = DecelerateInterpolator()
+                addUpdateListener { a -> navPill.translationX = a.animatedValue as Float }
             }
+            anim.start()
         }
-        return null
+    }
+
+    private fun targetFor(itemId: Int): Float {
+        val width = bottomNav.width
+        val count = visibleNavCount()
+        if (width <= 0 || count <= 0) return navPill.translationX
+        val colWidth = width.toFloat() / count
+        var idx = 0
+        for (i in 0 until bottomNav.menu.size()) {
+            val item = bottomNav.menu.getItem(i)
+            if (!item.isVisible) continue
+            if (item.itemId == itemId) break
+            idx++
+        }
+        val center = (idx + 0.5f) * colWidth
+        return center - navPill.width / 2f
+    }
+
+    private fun visibleNavCount(): Int {
+        var c = 0
+        for (i in 0 until bottomNav.menu.size()) {
+            if (bottomNav.menu.getItem(i).isVisible) c++
+        }
+        return c
     }
 
     fun getBridge(): PythonBridge = pythonBridge

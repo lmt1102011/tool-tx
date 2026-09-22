@@ -218,7 +218,7 @@ def set_rate(rate):
     url = "%s/settings/config.json?auth=%s" % (FIREBASE_DB, token)
     _http_json("PATCH", url, json={"vndPerPick": int(rate)})
 
-def register_with_picks(username, password, name, picks):
+def register_with_picks(username, password, name, picks, role="user"):
     result = register(username, password, name)
     uid = result["uid"]
     token = refresh_token()
@@ -227,7 +227,7 @@ def register_with_picks(username, password, name, picks):
         "username": username,
         "email": username + "@tooltx.app",
         "displayName": (name or "").strip() or username,
-        "role": "user",
+        "role": role or "user",
         "balanceFields": max(0, int(picks or 0)),
         "createdAt": now,
         "lastSeen": now,

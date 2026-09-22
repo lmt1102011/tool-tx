@@ -4,7 +4,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/surface">
+    android:background="@color/surface"
+    android:fitsSystemWindows="false">
 
     <FrameLayout
         android:id="@+id/fragment_container"
@@ -12,16 +13,32 @@
         android:layout_height="match_parent"
         android:clipToPadding="false" />
 
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/bottom_nav"
+    <FrameLayout
+        android:id="@+id/nav_wrap"
         android:layout_width="match_parent"
         android:layout_height="@dimen/nav_height"
         android:layout_gravity="bottom"
-        android:background="@color/surfaceContainer"
-        app:itemActiveIndicatorStyle="@style/Widget.ToolTX.NavIndicator"
-        app:itemIconTint="@color/bottom_nav_colors"
-        app:itemTextColor="@color/bottom_nav_colors"
-        app:labelVisibilityMode="labeled"
-        app:menu="@menu/bottom_nav" />
+        android:fitsSystemWindows="false">
+
+        <com.google.android.material.bottomnavigation.BottomNavigationView
+            android:id="@+id/bottom_nav"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/surfaceContainer"
+            app:itemIconTint="@color/bottom_nav_colors"
+            app:itemTextColor="@color/bottom_nav_colors"
+            app:labelVisibilityMode="labeled"
+            app:menu="@menu/bottom_nav" />
+
+        <View
+            android:id="@+id/nav_pill"
+            android:layout_width="56dp"
+            android:layout_height="36dp"
+            android:layout_gravity="bottom|center_horizontal"
+            android:layout_marginBottom="40dp"
+            android:background="@drawable/bg_pill"
+            android:elevation="2dp" />
+
+    </FrameLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
