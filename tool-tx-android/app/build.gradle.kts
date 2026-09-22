@@ -62,7 +62,8 @@ chaquopy {
         version = "3.12"
 
         pip {
-            install("requests==2.32.3", "python-socketio==5.13.0")
+            install("requests==2.32.3")
+            install("python-socketio==5.13.0")
         }
     }
 }
