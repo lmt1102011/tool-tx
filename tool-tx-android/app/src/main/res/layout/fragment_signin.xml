@@ -24,7 +24,7 @@
             android:background="@drawable/bg_logo"
             android:padding="14dp"
             android:scaleType="centerInside"
-            android:src="@mipmap/ic_launcher" />
+            android:src="@drawable/ic_tx" />
 
         <TextView
             android:layout_width="wrap_content"

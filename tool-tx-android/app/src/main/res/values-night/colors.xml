@@ -49,4 +49,8 @@
     <color name="navBackground">#FF1B2023</color>
     <color name="pillBackground">#FF314A58</color>
     <color name="pillText">#FFCBEAFF</color>
+
+    <!-- Skeleton -->
+    <color name="skeletonBase">#FF252B2F</color>
+    <color name="skeletonHi">#FF3A444C</color>
 </resources>

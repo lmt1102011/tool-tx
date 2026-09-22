@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import com.chaquo.python.PyObject
 import com.lmt.tooltx.MainActivity
 import com.lmt.tooltx.R
 import com.lmt.tooltx.bridge.PythonBridge
@@ -51,22 +52,31 @@ class HomeFragment : Fragment() {
     private fun refresh(force: Boolean = false) {
         val now = SystemClock.elapsedRealtime()
         if (!force && lastRefresh != 0L && now - lastRefresh < 6000) return
+        val first = lastRefresh == 0L
         lastRefresh = now
+        if (first) {
+            try {
+                binding.skeleton.visibility = View.VISIBLE
+                binding.skeleton.startShimmer()
+            } catch (_: Exception) {}
+        }
         GlobalScope.launch(Dispatchers.IO) {
             val bridge: PythonBridge = (requireActivity() as MainActivity).getBridge()
             val session = bridge.getSession()
             val user = bridge.getUserData()
-            val picks = bridge.getPicks()
+            val picks = if (user.isEmpty() || user.containsKey("error")) -1 else pickCount(user)
             val connected = bridge.isSocketConnected()
             withContext(Dispatchers.Main) {
                 val b = _binding ?: return@withContext
                 b.swipeRefresh.isRefreshing = false
+                b.skeleton.stopShimmer()
+                b.skeleton.visibility = View.GONE
                 val name = session?.get("displayName")?.toString()
                     ?: session?.get("username")?.toString()
                     ?: "Name"
                 greet(name)
 
-                val role = user["role"]?.toString().orEmpty()
+                val role = (user["role"] ?: session?.get("role"))?.toString().orEmpty()
                 if (role.equals("admin", ignoreCase = true)) {
                     (requireActivity() as MainActivity).showAdmin(true)
                     credit("vô hạn", warn = false)
@@ -98,6 +108,22 @@ class HomeFragment : Fragment() {
 
     private fun greet(name: String) {
         binding.tvName.text = name
+    }
+
+    private fun pickCount(user: Map<String, Any?>): Int {
+        val bal = user["balanceFields"]
+        if (bal != null) {
+            val n = pickNum(bal)
+            if (n != null) return maxOf(0, n)
+        }
+        val sec = user["balanceSeconds"]?.let { pickNum(it) } ?: 0
+        return if (sec > 0) maxOf(1, sec / 60) else 0
+    }
+
+    private fun pickNum(v: Any?): Int? = when (v) {
+        is PyObject -> try { v.toFloat().toInt() } catch (_: Exception) { null }
+        is Number -> v.toInt()
+        else -> v?.toString()?.trim()?.toFloatOrNull()?.toInt()
     }
 
     private fun credit(txt: String, warn: Boolean) {

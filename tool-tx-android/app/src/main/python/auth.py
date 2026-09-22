@@ -4,6 +4,7 @@ Called from Kotlin via Python.getModule("auth").
 """
 import json
 import os
+import time
 import requests
 from requests.exceptions import (RequestException, ConnectionError as _ConnError,
                                  Timeout as _Timeout, SSLError as _SSLError)
@@ -60,6 +61,14 @@ def _http_json(method, url, **kw):
 
 _session = {}
 
+# cache idToken trong RAM: tránh gọi POST lên securetoken mỗi lần tải dữ liệu.
+_token_exp = 0.0
+
+def _cache_token(hint_lifetime=3600):
+    global _token_exp
+    _token_exp = time.time() + int(hint_lifetime or 3600)
+    return _session.get("idToken")
+
 def _save_session():
     if not SESSION_PATH:
         return
@@ -97,15 +106,26 @@ def login(username, password):
     })
     if "error" in data:
         raise Exception(_firebase_message(data))
+    uid = data["localId"]
+    du = "%s/users/%s.json?auth=%s" % (FIREBASE_DB, uid, data["idToken"])
+    rec = _http_json("GET", du)
+    rec = rec if isinstance(rec, dict) else {}
+    if not rec:
+        raise Exception("Tài khoản không tồn tại")
+    if rec.get("role") == "disabled":
+        raise Exception("Tài khoản đã bị khóa")
+    role = rec.get("role", "user")
     global _session
     _session = {
-        "uid": data["localId"],
+        "uid": uid,
         "idToken": data["idToken"],
         "refreshToken": data["refreshToken"],
         "displayName": username,
+        "role": role,
     }
     _save_session()
-    return {"uid": data["localId"], "data": {"displayName": username}}
+    _cache_token(3600)
+    return {"uid": uid, "data": {"displayName": username, "role": role}}
 
 def register(username, password, name):
     url = "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + API_KEY
@@ -125,6 +145,7 @@ def register(username, password, name):
         "displayName": name or username,
     }
     _save_session()
+    _cache_token(3600)
     return {"uid": data["localId"]}
 
 def logout():
@@ -146,6 +167,9 @@ def current():
     return _session or {}
 
 def refresh_token():
+    global _token_exp
+    if _session.get("idToken") and _token_exp > time.time() + 60:
+        return _session["idToken"]
     if not _session.get("refreshToken"):
         raise Exception("No refresh token")
     url = "https://securetoken.googleapis.com/v1/token?key=" + API_KEY
@@ -158,6 +182,7 @@ def refresh_token():
     _session["idToken"] = data["id_token"]
     _session["refreshToken"] = data["refresh_token"]
     _save_session()
+    _token_exp = time.time() + int(data.get("expires_in") or 3600)
     return _session["idToken"]
 
 def user_data():
@@ -182,28 +207,38 @@ def list_users():
 def get_rate():
     try:
         token = refresh_token()
-        url = "%s/config/rate.json?auth=%s" % (FIREBASE_DB, token)
+        url = "%s/settings/config.json?auth=%s" % (FIREBASE_DB, token)
         r = _http_json("GET", url)
-        return int(r or 5000)
+        return int(r.get("vndPerPick") or 5000)
     except Exception:
         return 5000
 
 def set_rate(rate):
     token = refresh_token()
-    url = "%s/config/rate.json?auth=%s" % (FIREBASE_DB, token)
-    _http_json("PUT", url, json=int(rate))
+    url = "%s/settings/config.json?auth=%s" % (FIREBASE_DB, token)
+    _http_json("PATCH", url, json={"vndPerPick": int(rate)})
 
 def register_with_picks(username, password, name, picks):
     result = register(username, password, name)
     uid = result["uid"]
     token = refresh_token()
+    now = int(time.time() * 1000)
+    data = {
+        "username": username,
+        "email": username + "@tooltx.app",
+        "displayName": (name or "").strip() or username,
+        "role": "user",
+        "balanceFields": max(0, int(picks or 0)),
+        "createdAt": now,
+        "lastSeen": now,
+    }
     url = "%s/users/%s.json?auth=%s" % (FIREBASE_DB, uid, token)
-    _http_json("PATCH", url, json={"balanceFields": int(picks), "username": username})
+    _http_json("PUT", url, json=data)
 
 def update_balance(uid, balance):
     token = refresh_token()
-    url = "%s/users/%s/balanceFields.json?auth=%s" % (FIREBASE_DB, uid, token)
-    _http_json("PUT", url, json=int(balance))
+    url = "%s/users/%s.json?auth=%s" % (FIREBASE_DB, uid, token)
+    _http_json("PATCH", url, json={"balanceFields": int(balance), "lastSeen": int(time.time() * 1000)})
 
 def update_role(uid, role):
     token = refresh_token()

@@ -151,7 +151,8 @@ class MainActivity : AppCompatActivity() {
                     if (prefs.getBoolean("auto_connect", true) && !pythonBridge.isSocketConnected()) {
                         val url = pythonBridge.discoverServer()
                         if (!url.isNullOrEmpty()) {
-                            pythonBridge.connectSocket(url, "")
+                            val token = pythonBridge.getSession()?.get("idToken")?.toString().orEmpty()
+                            pythonBridge.connectSocket(url, token)
                         }
                     }
                 } catch (_: Exception) {}

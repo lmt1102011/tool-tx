@@ -10,6 +10,7 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.fragment.app.Fragment
+import com.chaquo.python.PyObject
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.lmt.tooltx.MainActivity
 import com.lmt.tooltx.R
@@ -100,7 +101,8 @@ class SettingsFragment : Fragment() {
             if (enabled) {
                 val url = bridge.discoverServer()
                 if (!url.isNullOrEmpty()) {
-                    bridge.connectSocket(url, "")
+                    val token = bridge.getSession()?.get("idToken")?.toString().orEmpty()
+                    bridge.connectSocket(url, token)
                 }
             } else {
                 bridge.disconnectSocket()
@@ -113,14 +115,14 @@ class SettingsFragment : Fragment() {
             val bridge: PythonBridge = (requireActivity() as MainActivity).getBridge()
             val session = bridge.getSession()
             val user = bridge.getUserData()
-            val picks = bridge.getPicks()
+            val picks = if (user.isEmpty() || user.containsKey("error")) -1 else pickCount(user)
             withContext(Dispatchers.Main) {
                 val b = _binding ?: return@withContext
                 val name = session?.get("displayName")?.toString()
                     ?: session?.get("username")?.toString()
                     ?: "Khách"
                 val uid = session?.get("uid")?.toString().orEmpty()
-                val role = user["role"]?.toString().orEmpty()
+                val role = (user["role"] ?: session?.get("role"))?.toString().orEmpty()
                 val picksTxt = when {
                     role == "admin" -> "vô hạn"
                     picks >= 0 -> picks.toString()
@@ -146,6 +148,22 @@ class SettingsFragment : Fragment() {
 
     private fun picksText(txt: String) {
         binding.tvPicks.text = txt
+    }
+
+    private fun pickCount(user: Map<String, Any?>): Int {
+        val bal = user["balanceFields"]
+        if (bal != null) {
+            val n = pickNum(bal)
+            if (n != null) return maxOf(0, n)
+        }
+        val sec = user["balanceSeconds"]?.let { pickNum(it) } ?: 0
+        return if (sec > 0) maxOf(1, sec / 60) else 0
+    }
+
+    private fun pickNum(v: Any?): Int? = when (v) {
+        is PyObject -> try { v.toFloat().toInt() } catch (_: Exception) { null }
+        is Number -> v.toInt()
+        else -> v?.toString()?.trim()?.toFloatOrNull()?.toInt()
     }
 
     private fun confirmLogout() {
