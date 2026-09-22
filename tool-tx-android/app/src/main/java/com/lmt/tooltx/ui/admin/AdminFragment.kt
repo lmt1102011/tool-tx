@@ -1,7 +1,6 @@
 package com.lmt.tooltx.ui.admin
 
 import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.text.Editable
 import android.text.InputType
@@ -11,21 +10,20 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
-import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.RadioGroup
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.chaquo.python.PyObject
-import com.google.android.material.card.MaterialCardView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
-import com.google.android.material.textfield.TextInputLayout
 import com.lmt.tooltx.MainActivity
 import com.lmt.tooltx.R
 import com.lmt.tooltx.bridge.PythonBridge
 import com.lmt.tooltx.databinding.FragmentAdminBinding
+import com.lmt.tooltx.databinding.ItemUserPillBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -124,87 +122,39 @@ class AdminFragment : Fragment() {
         }
     }
 
-    // ── Danh sách user dạng thanh ngang bo tròn ────────────────
     private fun buildUserRow(uid: String, user: PyObject): View {
-        val activity = requireActivity()
+        val inflater = LayoutInflater.from(requireContext())
+        val row = ItemUserPillBinding.inflate(inflater, binding.layoutUserList, false)
+
         val username = user.str("username").ifEmpty { "?" }
-        val display = user.str("displayName").ifEmpty { "" }
+        val display = user.str("displayName")
         val picks = user.balance()
+
+        row.pillUsername.text = username
+        row.pillUsername.setTypeface(row.pillUsername.typeface, Typeface.BOLD)
+        if (display.isNotEmpty()) {
+            row.pillDisplay.text = display
+        } else {
+            row.pillDisplay.visibility = View.GONE
+        }
+
         val hasPicks = picks > 0
-
-        val row = MaterialCardView(activity).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = dp(8) }
-            radius = dp(22).toFloat()
-            cardElevation = 0f
-            strokeWidth = 0
-            setCardBackgroundColor(ContextCompat.getColor(activity, R.color.surfaceContainerHigh))
-            isClickable = true
-            isFocusable = true
-            foreground = ctxRipple(activity)
-        }
-
-        val inner = LinearLayout(activity).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-        }
-        row.addView(inner)
-
-        val initial = username.take(1).uppercase(Locale.ROOT)
-        val avatar = TextView(activity).apply {
-            text = initial
-            textSize = 16f
-            setTypeface(typeface, Typeface.BOLD)
-            gravity = Gravity.CENTER
-            setTextColor(ContextCompat.getColor(activity, R.color.primary))
-            background = rounded(activity, dp(22).toFloat(), R.color.primaryContainer)
-            layoutParams = LinearLayout.LayoutParams(dp(44), dp(44))
-        }
-        inner.addView(avatar)
-
-        val nameBox = LinearLayout(activity).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginStart = dp(12)
-            }
-        }
-        val name = TextView(activity).apply {
-            text = username
-            setTextColor(ContextCompat.getColor(activity, R.color.onSurface))
-            textSize = 15f
-            setTypeface(typeface, Typeface.BOLD)
-        }
-        val sub = TextView(activity).apply {
-            text = if (display.isNotEmpty()) display else ""
-            setTextColor(ContextCompat.getColor(activity, R.color.onSurfaceVariant))
-            textSize = 12f
-        }
-        nameBox.addView(name)
-        if (display.isNotEmpty()) nameBox.addView(sub)
-        inner.addView(nameBox)
-
-        val picksChip = chip(
-            activity,
-            text = if (hasPicks) picks.toString() else "HẾT LƯỢT",
-            textColor = ContextCompat.getColor(activity, if (hasPicks) R.color.green else R.color.red),
-            bgColor = ContextCompat.getColor(
-                activity,
-                if (hasPicks) R.color.greenContainer else R.color.errorContainer
-            )
+        row.pillPicks.text = if (hasPicks) picks.toString() else "HẾT LƯỢT"
+        row.pillPicks.setTextColor(
+            ContextCompat.getColor(requireContext(), if (hasPicks) R.color.green else R.color.error)
         )
-        inner.addView(picksChip)
+        row.pillPicks.setBackgroundResource(
+            if (hasPicks) R.drawable.bg_chip_green else R.drawable.bg_chip_red
+        )
 
-        row.setOnClickListener { showUserDialog(uid, user) }
-        return row
+        row.root.setOnClickListener { showUserDialog(uid, user) }
+        return row.root
     }
 
-    // ── Popup chi tiết user ────────────────────────────────────
+    // ── Popup chi tiết user ───────────────────────────────────
     private fun showUserDialog(uid: String, user: PyObject) {
         val username = user.str("username").ifEmpty { "?" }
-        val display = user.str("displayName").ifEmpty { "" }
+        val display = user.str("displayName")
         val role = user.str("role").ifEmpty { "user" }
         val picks = user.balance()
         val created = fmtTime(user.str("createdAt").toLongOrNull() ?: 0L)
@@ -231,28 +181,28 @@ class AdminFragment : Fragment() {
     }
 
     private fun showBalanceDialog(uid: String, username: String, current: Int) {
-        val activity = requireActivity()
-        val box = LinearLayout(activity).apply {
+        val context = requireContext()
+        val box = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(4), dp(24), dp(0))
         }
-        val info = TextView(activity).apply {
+        val info = TextView(context).apply {
             text = "Hiện tại: $current lượt  •  Mỗi lượt = ${fmtMoney(rate)} VNĐ"
-            setTextColor(ContextCompat.getColor(activity, R.color.onSurfaceVariant))
+            setTextColor(ContextCompat.getColor(context, R.color.onSurfaceVariant))
             textSize = 13f
             setPadding(dp(2), dp(0), dp(2), dp(12))
         }
         box.addView(info)
-        val input = EditText(activity).apply {
+        val input = EditText(context).apply {
             hint = "vd: 10 (thêm) hoặc -5 (trừ)"
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_SIGNED
-            setTextColor(ContextCompat.getColor(activity, R.color.onSurface))
-            setHintTextColor(ContextCompat.getColor(activity, R.color.onSurfaceVariant))
+            setTextColor(ContextCompat.getColor(context, R.color.onSurface))
+            setHintTextColor(ContextCompat.getColor(context, R.color.onSurfaceVariant))
             setTextSize(16f)
         }
         box.addView(input)
 
-        MaterialAlertDialogBuilder(activity)
+        MaterialAlertDialogBuilder(context)
             .setTitle("Cộng / trừ lượt - $username")
             .setView(box)
             .setPositiveButton("Áp dụng") { _, _ ->
@@ -260,7 +210,6 @@ class AdminFragment : Fragment() {
                 val b = _binding ?: return@setPositiveButton
                 if (delta == null || delta == 0) {
                     b.tvAdminSub.text = "Nhập số lượt cần thêm/trừ"
-                    showBalanceDialog(uid, username, current)
                 } else {
                     applyBalance(uid, maxOf(0, current + delta))
                 }
@@ -269,41 +218,45 @@ class AdminFragment : Fragment() {
             .show()
     }
 
-    // ── Popup tạo user / admin ─────────────────────────────────
+    // ── Popup tạo user / admin ────────────────────────────────
     private fun showCreateUserDialog() {
-        val activity = requireActivity()
-        val box = LinearLayout(activity).apply {
+        val context = requireContext()
+        val box = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(4), dp(24), dp(0))
         }
 
-        val userField = field(activity, "Username (3-20 ký tự)", InputType.TYPE_CLASS_TEXT)
-        val passField = field(activity, "Mật khẩu (>= 6 ký tự)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
-        val picksField = field(activity, "Số lượt đoán cấp", InputType.TYPE_CLASS_NUMBER)
+        val userField = field(context, "Username (3-20 ký tự)", InputType.TYPE_CLASS_TEXT)
+        val passField = field(
+            context,
+            "Mật khẩu (>= 6 ký tự)",
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        )
+        val picksField = field(context, "Số lượt đoán cấp", InputType.TYPE_CLASS_NUMBER)
         picksField.setText("10")
         box.addView(userField)
         box.addView(passField)
         box.addView(picksField)
 
-        val roleGroup = RadioGroup(activity).apply {
+        val roleGroup = RadioGroup(context).apply {
             orientation = RadioGroup.HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply { topMargin = dp(8) }
         }
-        val rbUser = RadioButton(activity).apply {
+        val rbUser = RadioButton(context).apply {
             text = "USER"
             isChecked = true
         }
-        val rbAdmin = RadioButton(activity).apply {
+        val rbAdmin = RadioButton(context).apply {
             text = "ADMIN"
         }
         roleGroup.addView(rbUser)
         roleGroup.addView(rbAdmin)
         box.addView(roleGroup)
 
-        MaterialAlertDialogBuilder(activity)
+        MaterialAlertDialogBuilder(context)
             .setTitle("Tạo tài khoản mới")
             .setView(box)
             .setPositiveButton("Tạo") { _, _ ->
@@ -326,25 +279,23 @@ class AdminFragment : Fragment() {
     private fun createUser(username: String, password: String, picks: Int, role: String) {
         GlobalScope.launch(Dispatchers.IO) {
             val bridge: PythonBridge = (requireActivity() as MainActivity).getBridge()
-            var ok = true
-            var err = ""
             try {
                 bridge.addUser(username, password, picks, role)
+                withContext(Dispatchers.Main) {
+                    val b = _binding ?: return@withContext
+                    b.tvAdminSub.text = "Đã tạo $username + $picks lượt (${role.uppercase()})"
+                    loadData()
+                }
             } catch (e: Exception) {
-                ok = false
-                err = e.message ?: ""
-            }
-            withContext(Dispatchers.Main) {
-                val b = _binding ?: return@withContext
-                b.tvAdminSub.text =
-                    if (ok) "Đã tạo $username + $picks lượt (${role.uppercase()})"
-                    else "Tạo $username thất bại: $err"
-                loadData()
+                withContext(Dispatchers.Main) {
+                    val b = _binding ?: return@withContext
+                    b.tvAdminSub.text = "Tạo $username thất bại: ${e.message}"
+                }
             }
         }
     }
 
-    // ── Hành động tốc độ ───────────────────────────────────────
+    // ── Hành động ─────────────────────────────────────────────
     private fun saveRate() {
         val raw = (binding.etRate.text?.toString() ?: "").trim()
         val r = raw.toIntOrNull()
@@ -415,63 +366,23 @@ class AdminFragment : Fragment() {
         }
     }
 
-    // ── Tiện ích UI ────────────────────────────────────────────
-    private fun field(activity: androidx.fragment.app.FragmentActivity, hint: String, inputType: Int): TextInputEditText {
-        val input = TextInputEditText(activity).apply {
+    // ── Tiện ích ──────────────────────────────────────────────
+    private fun field(context: android.content.Context, hint: String, inputType: Int): TextInputEditText {
+        return TextInputEditText(context).apply {
             this.hint = hint
             this.inputType = inputType
-            setTextColor(ContextCompat.getColor(activity, R.color.onSurface))
-            setHintTextColor(ContextCompat.getColor(activity, R.color.onSurfaceVariant))
+            setTextColor(ContextCompat.getColor(context, R.color.onSurface))
+            setHintTextColor(ContextCompat.getColor(context, R.color.onSurfaceVariant))
             setTextSize(16f)
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply { bottomMargin = dp(12) }
         }
-        return input
     }
 
-    private fun chip(activity: androidx.fragment.app.FragmentActivity, text: String, textColor: Int, bgColor: Int): TextView {
-        return TextView(activity).apply {
-            this.text = text
-            setTextColor(textColor)
-            textSize = 12f
-            setTypeface(typeface, Typeface.BOLD)
-            gravity = Gravity.CENTER
-            background = rounded(activity, dp(14).toFloat(), bgColor)
-            setPadding(dp(12), dp(6), dp(12), dp(6))
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply { marginStart = dp(8) }
-        }
-    }
-
-    private fun rounded(activity: androidx.fragment.app.FragmentActivity, radius: Float, colorRes: Int): GradientDrawable {
-        return GradientDrawable().apply {
-            cornerRadius = radius
-            setColor(ContextCompat.getColor(activity, colorRes))
-        }
-    }
-
-    private fun ctxRipple(activity: androidx.fragment.app.FragmentActivity): android.graphics.drawable.RippleDrawable {
-        val shape = GradientDrawable().apply {
-            cornerRadius = dp(22).toFloat()
-            setColor(ContextCompat.getColor(activity, R.color.surfaceContainerHigh))
-        }
-        return android.graphics.drawable.RippleDrawable(
-            android.content.res.ColorStateList.valueOf(
-                ContextCompat.getColor(activity, R.color.primaryContainer)
-            ),
-            shape,
-            null
-        )
-    }
-
-    private fun fmtMoney(v: Int): String {
-        val s = String.format(Locale.ROOT, "%,d", v).replace(",", ".")
-        return s
-    }
+    private fun fmtMoney(v: Int): String =
+        String.format(Locale.ROOT, "%,d", v).replace(",", ".")
 
     private fun fmtTime(ms: Long): String {
         if (ms <= 0) return ""

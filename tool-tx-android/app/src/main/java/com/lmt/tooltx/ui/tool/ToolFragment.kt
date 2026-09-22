@@ -44,28 +44,39 @@ class ToolFragment : Fragment() {
 
     private fun startTool() {
         setStatus("Đang khởi động tool...")
+        setCode(null)
 
         GlobalScope.launch(Dispatchers.IO) {
             val bridge: PythonBridge = (requireActivity() as MainActivity).getBridge()
             val server = bridge.discoverServer() ?: "http://localhost:8787"
+
+            if (!bridge.isSocketConnected()) {
+                val token = bridge.getSession()?.get("idToken")?.toString().orEmpty()
+                try {
+                    bridge.connectSocket(server, token)
+                } catch (_: Exception) {}
+            }
+
             val code = bridge.getAgentPair(server)
             if (code.isNullOrEmpty()) {
                 withContext(Dispatchers.Main) {
                     if (_binding == null) return@withContext
-                    setStatus("Chưa lấy được mã liên kết.")
-                    setAgent("Khởi động thất bại.")
+                    setStatus("Không lấy được mã liên kết (đã chờ 10s).")
+                    setAgent("Kiểm tra server đã bật và đã kết nối socket.")
                 }
                 return@launch
             }
+
             val ok = bridge.startFork(server, code)
             withContext(Dispatchers.Main) {
                 if (_binding == null) return@withContext
+                setCode("Mã liên kết: $code")
                 if (ok) {
-                    setStatus("Agent đang chạy.")
+                    setStatus("Đã mở Chromium Fork — chờ kết nối CDP...")
                     setAgent("Agent fork đang chạy trên điện thoại.")
                 } else {
-                    setStatus("Khởi động tool thất bại.")
-                    setAgent("Chưa có agent nào chạy.")
+                    setStatus("Khởi động Chrome Fork thất bại.")
+                    setAgent("Cài Chromium Fork rồi thử lại.")
                 }
             }
         }
@@ -111,6 +122,11 @@ class ToolFragment : Fragment() {
 
     private fun setAgent(text: String) {
         binding.tvAgentStatus.text = text
+    }
+
+    private fun setCode(text: String?) {
+        binding.tvCode.text = text.orEmpty()
+        binding.tvCode.visibility = if (text.isNullOrEmpty()) android.view.View.GONE else android.view.View.VISIBLE
     }
 
     override fun onDestroyView() {

@@ -6,13 +6,15 @@ import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.view.animation.DecelerateInterpolator
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.fragment.app.Fragment
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.lmt.tooltx.bridge.PythonBridge
 import com.lmt.tooltx.ui.admin.AdminFragment
 import com.lmt.tooltx.ui.auth.SignInFragment
@@ -30,10 +32,25 @@ import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var bottomNav: BottomNavigationView
     private lateinit var navPill: View
+    private lateinit var navWrap: View
+    private lateinit var navItems: List<View>
     private val pythonBridge by lazy { PythonBridge(this) }
     private val navStack = ArrayDeque<String>()
+
+    private val navItemIds = listOf(
+        R.id.nav_item_home, R.id.nav_item_topup, R.id.nav_item_tool,
+        R.id.nav_item_settings, R.id.nav_item_admin
+    )
+    private val navIconIds = listOf(
+        R.id.nav_icon_home, R.id.nav_icon_topup, R.id.nav_icon_tool,
+        R.id.nav_icon_settings, R.id.nav_icon_admin
+    )
+    private val navLabelIds = listOf(
+        R.id.nav_label_home, R.id.nav_label_topup, R.id.nav_label_tool,
+        R.id.nav_label_settings, R.id.nav_label_admin
+    )
+    private val navTags = listOf("home", "topup", "tool", "settings", "admin")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
@@ -46,32 +63,26 @@ class MainActivity : AppCompatActivity() {
 
         pythonBridge.setSessionPath(filesDir.absolutePath + "/session.json")
 
-        bottomNav = findViewById(R.id.bottom_nav)
         navPill = findViewById(R.id.nav_pill)
-        bottomNav.setOnItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.nav_home -> { showFragment(HomeFragment::class.java, "home"); true }
-                R.id.nav_topup -> { showFragment(TopUpFragment::class.java, "topup"); true }
-                R.id.nav_tool -> { showFragment(ToolFragment::class.java, "tool"); true }
-                R.id.nav_settings -> { showFragment(SettingsFragment::class.java, "settings"); true }
-                R.id.nav_admin -> { showFragment(AdminFragment::class.java, "admin"); true }
-                else -> false
+        navWrap = findViewById(R.id.nav_wrap)
+        navItems = navItemIds.map { findViewById<View>(it) }
+        for (i in navItems.indices) {
+            navItems[i].setOnClickListener { _ ->
+                val tag = navTags[i]
+                showFragment(fragmentClassFor(tag), tag)
             }
         }
-        bottomNav.menu.findItem(R.id.nav_admin).isVisible = false
-
+        setAdminVisible(false)
         setupImmersive()
 
         if (savedInstanceState == null) {
             val session = pythonBridge.getSession()
             if (session != null) {
                 showFragment(HomeFragment::class.java, "home")
-                bottomNav.menu.findItem(R.id.nav_home).isChecked = true
-                positionPill(R.id.nav_home)
+                selectNavIndex(navTags.indexOf("home"), animate = false)
             } else {
                 showFragment(SignInFragment::class.java, "signin")
-                bottomNav.visibility = View.GONE
-                navPill.visibility = View.GONE
+                navWrap.visibility = View.GONE
             }
         }
 
@@ -84,7 +95,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupImmersive() {
-        val navWrap = findViewById<View>(R.id.nav_wrap)
         ViewCompat.setOnApplyWindowInsetsListener(navWrap) { v, insets ->
             val bottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
             v.setPadding(0, 0, 0, bottom)
@@ -145,8 +155,7 @@ class MainActivity : AppCompatActivity() {
         fm.executePendingTransactions()
 
         val isAuth = tag == "signin" || tag == "signup"
-        bottomNav.visibility = if (isAuth) View.GONE else View.VISIBLE
-        navPill.visibility = if (isAuth) View.GONE else View.VISIBLE
+        navWrap.visibility = if (isAuth) View.GONE else View.VISIBLE
         if (isAuth) {
             if (tag == "signin") {
                 navStack.clear()
@@ -164,28 +173,93 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateNavSelection(tag: String) {
-        val id = when (tag) {
-            "home" -> R.id.nav_home
-            "topup" -> R.id.nav_topup
-            "tool" -> R.id.nav_tool
-            "settings" -> R.id.nav_settings
-            "admin" -> R.id.nav_admin
-            else -> -1
+        val idx = navTags.indexOf(tag)
+        if (idx >= 0) {
+            selectNavIndex(idx, animate = true)
         }
-        if (id != -1) {
-            bottomNav.menu.findItem(id).isChecked = true
-            animatePill(id)
+    }
+
+    private fun selectNavIndex(idx: Int, animate: Boolean) {
+        val primary = ContextCompat.getColor(this, R.color.primary)
+        val secondary = ContextCompat.getColor(this, R.color.onSurfaceVariant)
+        for (i in navItems.indices) {
+            val selected = i == idx
+            val icon = findViewById<ImageView>(navIconIds[i])
+            val label = findViewById<TextView>(navLabelIds[i])
+            if (selected) {
+                icon.setColorFilter(primary)
+                label.setTextColor(primary)
+            } else {
+                icon.setColorFilter(secondary)
+                label.setTextColor(secondary)
+            }
         }
+        if (animate) animatePill(idx) else positionPill(idx)
     }
 
     fun showNav(show: Boolean) {
-        bottomNav.visibility = if (show) View.VISIBLE else View.GONE
-        navPill.visibility = if (show) View.VISIBLE else View.GONE
+        navWrap.visibility = if (show) View.VISIBLE else View.GONE
     }
 
     fun showAdmin(show: Boolean) {
-        bottomNav.menu.findItem(R.id.nav_admin)?.isVisible = show
-        if (show) bottomNav.menu.findItem(R.id.nav_admin).isEnabled = true
+        setAdminVisible(show)
+    }
+
+    private fun setAdminVisible(show: Boolean) {
+        val adminItem = findViewById<View>(R.id.nav_item_admin)
+        adminItem.visibility = if (show) View.VISIBLE else View.GONE
+        navPill.post { if (navPill.width > 0) navPill.translationX = pillTargetFor(activeIndex()) }
+    }
+
+    private fun activeIndex(): Int {
+        val cur = supportFragmentManager.primaryNavigationFragment
+        val tag = cur?.tag
+        return navTags.indexOf(tag).let { if (it >= 0) it else 0 }
+    }
+
+    private fun visibleBefore(idx: Int): Int {
+        var v = 0
+        for (i in 0 until idx) {
+            if (i < navItems.size && navItems[i].visibility == View.VISIBLE) v++
+        }
+        return v
+    }
+
+    private fun pillTargetFor(idx: Int): Float {
+        val colWidth = navWrap.width.toFloat() / visibleCount()
+        if (colWidth <= 0f) return navPill.translationX
+        val center = (visibleBefore(idx) + 0.5f) * colWidth
+        return center - navPill.width / 2f
+    }
+
+    private fun visibleCount(): Int {
+        var c = 0
+        for (i in navItems.indices) {
+            if (navItems[i].visibility == View.VISIBLE) c++
+        }
+        return c
+    }
+
+    private fun positionPill(idx: Int) {
+        navItems.firstOrNull()?.post {
+            if (navPill.width > 0) {
+                navPill.translationX = pillTargetFor(idx)
+            }
+        }
+    }
+
+    private fun animatePill(idx: Int) {
+        navItems.firstOrNull()?.post {
+            if (navPill.width <= 0) return@post
+            val target = pillTargetFor(idx)
+            if (navPill.translationX == target) return@post
+            val anim = ValueAnimator.ofFloat(navPill.translationX, target).apply {
+                duration = 220
+                interpolator = DecelerateInterpolator()
+                addUpdateListener { a -> navPill.translationX = a.animatedValue as Float }
+            }
+            anim.start()
+        }
     }
 
     fun openBrowser() {
@@ -208,51 +282,6 @@ class MainActivity : AppCompatActivity() {
                 delay(10_000)
             }
         }
-    }
-
-    private fun positionPill(itemId: Int) {
-        bottomNav.post {
-            if (navPill.width <= 0) return@post
-            navPill.translationX = targetFor(itemId)
-        }
-    }
-
-    private fun animatePill(itemId: Int) {
-        bottomNav.post {
-            if (navPill.width <= 0) return@post
-            val target = targetFor(itemId)
-            if (navPill.translationX == target) return@post
-            val anim = ValueAnimator.ofFloat(navPill.translationX, target).apply {
-                duration = 220
-                interpolator = DecelerateInterpolator()
-                addUpdateListener { a -> navPill.translationX = a.animatedValue as Float }
-            }
-            anim.start()
-        }
-    }
-
-    private fun targetFor(itemId: Int): Float {
-        val width = bottomNav.width
-        val count = visibleNavCount()
-        if (width <= 0 || count <= 0) return navPill.translationX
-        val colWidth = width.toFloat() / count
-        var idx = 0
-        for (i in 0 until bottomNav.menu.size()) {
-            val item = bottomNav.menu.getItem(i)
-            if (!item.isVisible) continue
-            if (item.itemId == itemId) break
-            idx++
-        }
-        val center = (idx + 0.5f) * colWidth
-        return center - navPill.width / 2f
-    }
-
-    private fun visibleNavCount(): Int {
-        var c = 0
-        for (i in 0 until bottomNav.menu.size()) {
-            if (bottomNav.menu.getItem(i).isVisible) c++
-        }
-        return c
     }
 
     fun getBridge(): PythonBridge = pythonBridge
