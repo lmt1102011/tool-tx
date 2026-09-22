@@ -193,7 +193,7 @@ class PythonBridge(private val context: Context) {
             val src = obj.asMap()
             val result = mutableMapOf<String, Any?>()
             for ((k, v) in src) {
-                result[k] = v
+                result[k.toString()] = v
             }
             result
         } catch (_: Exception) {
