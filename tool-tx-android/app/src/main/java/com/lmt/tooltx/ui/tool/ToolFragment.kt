@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import com.lmt.tooltx.ForkInstaller
 import com.lmt.tooltx.MainActivity
 import com.lmt.tooltx.R
 import com.lmt.tooltx.bridge.PythonBridge
@@ -69,6 +70,31 @@ class ToolFragment : Fragment() {
                 }
                 val server = bridge.discoverServer() ?: "http://localhost:8787"
                 val token = session["idToken"]?.toString().orEmpty()
+
+                if (!ForkInstaller.isInstalled(requireContext())) {
+                    val apk = withContext(Dispatchers.IO) {
+                        ForkInstaller.prepareApk(requireContext(), server)
+                    }
+                    if (apk != null) {
+                        val launched = ForkInstaller.install(requireContext(), apk)
+                        withContext(Dispatchers.Main) {
+                            if (_binding == null) return@withContext
+                            if (launched) {
+                                setStatus("Chưa cài Chromium Fork — đang mở màn hình CÀI ĐẶT...")
+                                setAgent("Bấm CÀI ĐẶT (cho phép cài từ nguồn này nếu được hỏi), rồi mở TOOL lại.")
+                            } else {
+                                setStatus("Không mở được màn hình cài đặt.")
+                            }
+                        }
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            if (_binding == null) return@withContext
+                            setStatus("Không tìm thấy file chromefork.apk.")
+                            setAgent("Đặt chromefork.apk vào thư mục assets của app trước khi build, hoặc upload lên thư mục public của server.")
+                        }
+                    }
+                    return@launch
+                }
 
                 for (attempt in 1..2) {
                     try {

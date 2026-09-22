@@ -1,5 +1,6 @@
 package com.lmt.tooltx.ui.auth
 
+import android.graphics.Rect
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -40,10 +41,29 @@ class SignUpFragment : Fragment() {
             (requireActivity() as MainActivity).showFragment(SignInFragment::class.java, "signin")
         }
 
+        listOf(binding.etUsername, binding.etPassword, binding.etConfirm).forEach { field ->
+            field.setOnFocusChangeListener { v, hasFocus ->
+                if (hasFocus) bringIntoView(v)
+            }
+        }
+
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
             v.setPadding(0, 0, 0, ime)
+            v.post {
+                val focused = v.findFocus()
+                if (focused != null) bringIntoView(focused)
+            }
             WindowInsetsCompat.CONSUMED
+        }
+    }
+
+    private fun bringIntoView(focused: View) {
+        focused.post {
+            if (focused.height > 0) {
+                val rect = Rect(0, 0, focused.width, focused.height)
+                focused.requestRectangleOnScreen(rect, true)
+            }
         }
     }
 
