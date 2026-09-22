@@ -18,17 +18,39 @@ object ForkInstaller {
         }
     }
 
+    private fun archName(): String {
+        val abi = android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: return "arm64"
+        return when {
+            abi.startsWith("arm64") -> "arm64"
+            abi == "x86_64" || abi == "x64" -> "x64"
+            abi.startsWith("arm") -> "arm"
+            else -> "arm64"
+        }
+    }
+
     fun prepareApk(context: Context, serverUrl: String): File? {
         val dir = File(context.cacheDir, "apk").apply { mkdirs() }
-        val out = File(dir, "arm64_ChromePublic.apk")
+        val arch = archName()
+        val out = File(dir, "${arch}_ChromePublic.apk")
+        // 1) APK đóng gói sẵn trong assets (nếu có)
         try {
-            context.assets.open("arm64_ChromePublic.apk").use { input ->
+            context.assets.open("${arch}_ChromePublic.apk").use { input ->
                 out.outputStream().use { input.copyTo(it) }
             }
             if (out.length() > 0) return out
         } catch (_: Exception) {}
+        // 2) Cromite official trên GitHub (luôn có bản mới, không phụ thuộc server)
         try {
-            val url = serverUrl.trimEnd('/') + "/arm64_ChromePublic.apk"
+            val url =
+                "https://github.com/uazo/cromite/releases/latest/download/${arch}_ChromePublic.apk"
+            java.net.URL(url).openStream().use { input ->
+                out.outputStream().use { input.copyTo(it) }
+            }
+            if (out.length() > 0) return out
+        } catch (_: Exception) {}
+        // 3) APK tự host trên server riêng (build tùy chỉnh)
+        try {
+            val url = serverUrl.trimEnd('/') + "/${arch}_ChromePublic.apk"
             java.net.URL(url).openStream().use { input ->
                 out.outputStream().use { input.copyTo(it) }
             }
