@@ -47,6 +47,6 @@
 
     <!-- Nav -->
     <color name="navBackground">#FFECECEF</color>
-    <color name="pillBackground">#FFD7E3F8</color>
+    <color name="pillBackground">#FFE3ECF7</color>
     <color name="pillText">#FF27364A</color>
 </resources>
