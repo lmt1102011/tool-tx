@@ -12,11 +12,12 @@ FORK_PACKAGE = "org.cromite.cromite"
 FORK_ACTIVITY = "org.chromium.chrome.browser.ChromeTabbedActivity"
 SERVER_URL_JSON = "https://lmt1102011.github.io/tool-tx/server-url.json"
 
+# Cache địa chỉ server đã tìm được (tránh gọi mạng lại mỗi lần kết nối -> treo kéo dài).
+_CACHED_SERVER = ""
+_CACHE_FRESH_S = 300
 
-def discover_server(cfg_path=None):
-    """Tìm địa chỉ server JSON: config.txt {"server": ...} hoặc server-url.json trên web."""
-    import os
-    import urllib.request
+
+def _read_config_files(cfg_path=None):
     base = os.environ.get("ANDROID_PRIVATE", "/data/data/com.lmt.tooltx")
     candidates = []
     if cfg_path:
@@ -48,9 +49,35 @@ def discover_server(cfg_path=None):
                 return v
         except Exception:
             continue
+    return ""
+
+
+def discover_server(cfg_path=None, force=False):
+    """Tìm địa chỉ server JSON: config.txt {"server": ...} hoặc server-url.json trên web.
+    Có cache ngắn hạn để kết nối lại nhanh, không gọi mạng mỗi lần."""
+    import time
+    global _CACHED_SERVER
+    v = _read_config_files(cfg_path)
+    if v:
+        _CACHED_SERVER = v
+        return v
+    if not force and _CACHED_SERVER:
+        return _CACHED_SERVER
     try:
-        with urllib.request.urlopen(SERVER_URL_JSON, timeout=12) as r:
+        import urllib.request
+        with urllib.request.urlopen(SERVER_URL_JSON, timeout=6) as r:
             data = json.loads(r.read().decode("utf-8"))
-            return (data.get("url") or "").strip().rstrip("/")
+            v = (data.get("url") or "").strip().rstrip("/")
+        if v:
+            _CACHED_SERVER = v
+            return v
     except Exception:
-        return ""
+        pass
+    _CACHED_SERVER = ""
+    return ""
+
+
+def forget_server():
+    """Xoá cache địa chỉ server (dùng khi Reset mã)."""
+    global _CACHED_SERVER
+    _CACHED_SERVER = ""

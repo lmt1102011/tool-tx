@@ -56,12 +56,16 @@ class MainActivity : AppCompatActivity() {
     )
     private val navTags = listOf("home", "topup", "tool", "settings", "admin")
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+    override fun attachBaseContext(newBase: Context) {
+        val prefs = newBase.getSharedPreferences("settings", Context.MODE_PRIVATE)
         AppCompatDelegate.setDefaultNightMode(
             if (prefs.getBoolean("dark_mode", true)) AppCompatDelegate.MODE_NIGHT_YES
             else AppCompatDelegate.MODE_NIGHT_NO
         )
+        super.attachBaseContext(newBase)
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
@@ -304,8 +308,11 @@ class MainActivity : AppCompatActivity() {
         GlobalScope.launch {
             while (isActive) {
                 try {
+                    val onToolPage = supportFragmentManager.primaryNavigationFragment is ToolFragment
                     val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
-                    if (prefs.getBoolean("auto_connect", true) && !pythonBridge.isSocketConnected()) {
+                    if (!onToolPage &&
+                        prefs.getBoolean("auto_connect", true) && !pythonBridge.isSocketConnected()
+                    ) {
                         val url = pythonBridge.discoverServer()
                         if (!url.isNullOrEmpty()) {
                             val token = pythonBridge.refreshToken()

@@ -1,8 +1,9 @@
 """
 socket_client.py — Socket.IO client for Chaquopy.
-Minimal implementation — real logic comes from the existing sio_client.py.
+Kết nối có watchdog: không bao giờ treo quá ~12s; sẽ tự disconnect nếu connect không xong.
 """
 import threading
+import time
 
 _sio = None
 _connected = False
@@ -12,29 +13,44 @@ _panel = {}
 
 
 def connect(url, token):
+    """Kết nối server. Có watchdog 12s để chống treo mãi."""
     global _sio, _connected, _locking
     if _locking:
         return
+    if not url:
+        raise Exception("Thiếu địa chỉ server")
     _locking = True
+    _connected = False
     try:
         import socketio
         _sio = socketio.Client(
             logger=False, engineio_logger=False,
-            reconnection=True, reconnection_attempts=3, reconnection_delay=1,
+            reconnection=True, reconnection_attempts=1, reconnection_delay=1,
+            request_timeout=8,
         )
         _sio.on("kick", _on_kick)
         _sio.on("disconnect", _on_disconnect)
         _sio.on("panel-push", _on_panel)
-        _sio.connect(url, auth={"token": token or ""}, wait_timeout=15)
+
+        def _watchdog():
+            time.sleep(12.0)
+            try:
+                if _sio and not _connected:
+                    _sio.disconnect()
+            except Exception:
+                pass
+
+        threading.Thread(target=_watchdog, daemon=True).start()
+        _sio.connect(url, auth={"token": token or ""}, wait=True, wait_timeout=10)
         _connected = True
-    except Exception as e:
+    except Exception:
         _connected = False
         if _sio is not None:
             try:
                 _sio.disconnect()
             except Exception:
                 pass
-        raise e
+        raise
     finally:
         _locking = False
 

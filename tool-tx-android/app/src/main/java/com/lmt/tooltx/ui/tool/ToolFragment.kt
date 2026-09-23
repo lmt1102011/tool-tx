@@ -1,7 +1,6 @@
 package com.lmt.tooltx.ui.tool
 
 import android.content.pm.ActivityInfo
-import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -52,8 +51,7 @@ class ToolFragment : Fragment() {
 
         binding.btnOpenTool.setOnClickListener { onOpenGameClicked() }
         binding.btnResetToken.setOnClickListener { startTool(forceRefresh = true) }
-        binding.panelHeader.setOnTouchListener(::onDragTouch)
-        binding.btnTogglePanel.setOnClickListener { togglePanel() }
+        binding.btnExitGame.setOnClickListener { closeGame() }
         binding.btnBack.setOnClickListener {
             if (gameOpen) {
                 closeGame()
@@ -61,6 +59,8 @@ class ToolFragment : Fragment() {
                 (requireActivity() as MainActivity).showFragment(HomeFragment::class.java, "home", push = false)
             }
         }
+        binding.panelHeader.setOnTouchListener(::onDragTouch)
+        binding.btnTogglePanel.setOnClickListener { togglePanel() }
         setupWebView()
 
         val bridge = (requireActivity() as MainActivity).getBridge()
@@ -116,17 +116,15 @@ class ToolFragment : Fragment() {
         s.setSupportZoom(false)
         android.webkit.CookieManager.getInstance().setAcceptCookie(true)
         android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(wv, true)
-        wv.setBackgroundColor(Color.parseColor("#000000"))
         WebViewBridge.attach(wv)
     }
 
-    // ── Flow: setup → kết nối → mở game fullscreen ngang ─────
+    // ── Flow: nút MỞ TOOL → MỞ GAME → mở game fullscreen ngang ─
     private fun onOpenGameClicked() {
         if (gameOpen) {
             closeGame()
             return
         }
-        pendingOpen = true
         val bridge = (requireActivity() as MainActivity).getBridge()
         if (bridge.isSocketConnected() && gameUrl != null) {
             openGame()
@@ -141,21 +139,27 @@ class ToolFragment : Fragment() {
         if (gameOpen) return
         gameOpen = true
         pendingOpen = false
+        binding.toolPage.visibility = View.GONE
+        binding.gameOverlay.visibility = View.VISIBLE
         val wv = binding.webView
         wv.visibility = View.VISIBLE
         WebViewBridge.attach(wv)
         gameUrl?.let { WebViewBridge.navigate(it) }
         requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-        binding.btnOpenTool.text = "ĐÓNG GAME"
+        binding.btnOpenTool.text = getString(R.string.close_game)
         setStatus("Đang chơi — cửa sổ dự đoán kéo thả được.")
     }
 
     private fun closeGame() {
         if (!gameOpen) return
         gameOpen = false
-        binding.webView.visibility = View.GONE
+        binding.gameOverlay.visibility = View.GONE
+        binding.toolPage.visibility = View.VISIBLE
+        val wv = binding.webView
+        try { wv.stopLoading() } catch (_: Exception) {}
+        wv.visibility = View.GONE
         requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        binding.btnOpenTool.text = "MỞ GAME"
+        binding.btnOpenTool.text = if (running) getString(R.string.open_game) else getString(R.string.open_tool)
         if (running) setStatus("Server: đã kết nối — bấm MỞ GAME để chơi.")
         else setStatus("Chưa kết nối — bấm MỞ GAME để kết nối.")
     }
@@ -166,9 +170,10 @@ class ToolFragment : Fragment() {
         if (forceRefresh && gameOpen) {
             gameOpen = false
             pendingOpen = true
-            binding.webView.visibility = View.GONE
+            binding.gameOverlay.visibility = View.GONE
+            binding.toolPage.visibility = View.VISIBLE
+            wvGone()
             requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-            binding.btnOpenTool.text = "MỞ GAME"
         }
         setStatus(if (forceRefresh) "Đang làm mới mã và kết nối lại server..." else "Đang kết nối server...")
         setCode(null)
@@ -249,13 +254,14 @@ class ToolFragment : Fragment() {
                         setStatus("Đã kết nối — bấm MỞ GAME để chơi.")
                         setAgent("Chờ game mở rồi chơi ngay trong app.")
                         binding.btnOpenTool.isEnabled = true
+                        binding.btnOpenTool.text = getString(R.string.open_game)
                     } else {
                         setStatus("Không khởi động được agent.")
                         setAgent("Thử bấm RESET MÃ lại.")
                         stopToolButtons()
                     }
                 }
-                if (ok) pollAgentStatus(bridge)
+                if (ok) pollAgentStatus(bridge, gameOpen)
             } finally {
                 running = false
             }
@@ -264,10 +270,10 @@ class ToolFragment : Fragment() {
 
     private fun stopToolButtons() {
         binding.btnOpenTool.isEnabled = false
-        binding.btnOpenTool.text = "MỞ GAME"
+        binding.btnOpenTool.text = getString(R.string.open_game)
     }
 
-    private fun pollAgentStatus(bridge: PythonBridge) {
+    private fun pollAgentStatus(bridge: PythonBridge, gameOpenAtStart: Boolean) {
         GlobalScope.launch(Dispatchers.IO) {
             while (!Thread.currentThread().isInterrupted) {
                 if (_binding == null) return@launch
@@ -289,9 +295,9 @@ class ToolFragment : Fragment() {
                     if (connected) {
                         binding.btnOpenTool.isEnabled = true
                         if (gameOpen) {
-                            binding.btnOpenTool.text = "ĐÓNG GAME"
+                            binding.btnOpenTool.text = getString(R.string.close_game)
                         } else {
-                            binding.btnOpenTool.text = "MỞ GAME"
+                            binding.btnOpenTool.text = getString(R.string.open_game)
                             if (gameUrl != null) {
                                 setStatus("Đã kết nối — bấm MỞ GAME để chơi.")
                                 if (pendingOpen && !gameOpen) openGame()
@@ -306,6 +312,12 @@ class ToolFragment : Fragment() {
                 delay(2000)
             }
         }
+    }
+
+    private fun wvGone() {
+        val wv = binding.webView
+        try { wv.stopLoading() } catch (_: Exception) {}
+        wv.visibility = View.GONE
     }
 
     override fun onResume() {
@@ -327,7 +339,7 @@ class ToolFragment : Fragment() {
         if (pick.isNullOrEmpty()) return
 
         val isTai = pick.equals("T", ignoreCase = true)
-        binding.tvPrediction.text = if (isTai) "TÀI" else "XỈU"
+        binding.tvPrediction.text = getString(if (isTai) R.string.tai else R.string.xiu)
         binding.tvPrediction.setTextColor(
             ContextCompat.getColor(
                 requireContext(),
@@ -341,7 +353,7 @@ class ToolFragment : Fragment() {
         binding.progressBar.progress = pT.roundToInt().coerceIn(0, 100)
 
         val conf = (p["confidence"] ?: p["conf"])?.toString()?.toDoubleOrNull()
-        val confTxt = conf?.let { String.format(Locale.ROOT, "Độ tin cậy %02.0f%%", it) }.orEmpty()
+        val confTxt = conf?.let { getString(R.string.confidence, it) }.orEmpty()
 
         val hist = p["hist"] ?: p["history"]
         var histTxt = ""

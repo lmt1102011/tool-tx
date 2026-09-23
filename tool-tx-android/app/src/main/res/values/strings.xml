@@ -36,6 +36,11 @@
     <string name="confidence">Độ tin cậy %02.0f%%</string>
     <string name="tai">TÀI</string>
     <string name="xiu">XỈU</string>
+    <string name="prediction">Dự đoán</string>
+    <string name="open_game">MỞ GAME</string>
+    <string name="close_game">Đóng game</string>
+    <string name="reset_code">Reset mã</string>
+    <string name="tool_hint">Bấm MỞ GAME sau khi kết nối. Khi game đang mở, chỉ hiện cửa sổ dự đoán kéo thả như trên web PC.</string>
 
     <!-- Settings -->
     <string name="settings">Cài đặt</string>

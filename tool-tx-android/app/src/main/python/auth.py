@@ -41,7 +41,7 @@ def _firebase_message(data, default="Đăng nhập thất bại"):
 def _http_json(method, url, **kw):
     """Thực hiện HTTP và chuyển lỗi mạng/http thành thông báo tiếng Việt rõ ràng."""
     try:
-        r = requests.request(method, url, timeout=30, **kw)
+        r = requests.request(method, url, timeout=12, **kw)
     except _ConnError:
         raise Exception("Không có kết nối mạng. Kiểm tra Wi-Fi hoặc dữ liệu di động rồi thử lại.")
     except _Timeout:
