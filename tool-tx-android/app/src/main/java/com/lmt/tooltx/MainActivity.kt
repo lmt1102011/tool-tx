@@ -302,7 +302,8 @@ class MainActivity : AppCompatActivity() {
                     if (prefs.getBoolean("auto_connect", true) && !pythonBridge.isSocketConnected()) {
                         val url = pythonBridge.discoverServer()
                         if (!url.isNullOrEmpty()) {
-                            val token = pythonBridge.getSession()?.get("idToken")?.toString().orEmpty()
+                            val token = pythonBridge.refreshToken()
+                                ?: pythonBridge.getSession()?.get("idToken")?.toString().orEmpty()
                             pythonBridge.connectSocket(url, token)
                         }
                     }
