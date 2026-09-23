@@ -155,6 +155,14 @@ class PythonBridge(private val context: Context) {
         } catch (_: Exception) {}
     }
 
+    fun agentStatus(): Map<String, Any?> {
+        return try {
+            parseMap(py.getModule("agent").callAttr("status"))
+        } catch (_: Exception) {
+            mapOf()
+        }
+    }
+
     fun getAgentPair(serverUrl: String): String? {
         return try {
             val code = py.getModule("socket_client").callAttr("agent_pair", serverUrl)

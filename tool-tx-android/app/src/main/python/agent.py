@@ -1,36 +1,42 @@
 """
-agent.py — Agent control for Chaquopy (APK).
+agent.py — Agent control cho Chaquopy (APK).
 
-Hướng A: mở fork Cromite bằng flag CDP dùng chung stack 9222/vs hcdp.
-- force-stop Cromite cũ (ngoài flag flag không có hiệu lực nếu process cũ còn chạy)
-- am start với intent extra args "--remote-debugging-port=9222"
-- poll http://127.0.0.1:9222/json/version tới khi CDP sẵn sàng mới trả True
-- trả False kèm lý do nếu không connect được (app hiện "khởi động chrome fork thất bại")
+Mô hình WebView nhúng (không cần fork Cromite / CDP 9222):
+- Game Sunwin mở ngay trong WebView của app (webViewBridge.loadUrl).
+- Python nối /agent-ws tới server bằng mã liên kết, nhận {t:'eval',id,expr},
+  chạy expr ngay trong WebView nhúng (evalJs) rồi trả {t:'res',id,value}.
 """
 
 import json
-import subprocess
+import sys
 import threading
 import time
 
-from config import FORK_PACKAGE, FORK_ACTIVITY
+try:
+    import websocket
+    _HAS_WS = True
+except Exception:
+    _HAS_WS = False
 
 _running = False
-_started_at = 0.0
+_stop_evt = threading.Event()
 _lock = threading.Lock()
+_ws_lock = threading.Lock()
+_ws = None
+_last_status = {"connected": False, "message": "", "url": "", "running": False}
 
-CDP_PORT = 9222
-START_TIMEOUT = 35          # tổng thời gian đợi CDP sau khi am start
-POLL_INTERVAL = 1.5
-CDP_WAIT_BEFORE_START = 2.0  # để process fork kịp init
-
-_CDP_JSON = None
+RECONNECT_DELAY = 5
+SERVER_TIMEOUT = 25
+EVAL_TIMEOUT_MS = 12000
 
 
-def log(msg):
+def log(msg, err=False):
     try:
         import logging
-        logging.getLogger("agent").info(msg)
+        if err:
+            logging.getLogger("agent").warning(msg)
+        else:
+            logging.getLogger("agent").info(msg)
     except Exception:
         pass
     try:
@@ -39,111 +45,191 @@ def log(msg):
         pass
 
 
-def _cromite_running():
-    try:
-        out = subprocess.check_output(
-            ["pidof", FORK_PACKAGE],
-            shell=False, timeout=5,
-        ).decode("utf-8", "replace").strip()
-        return bool(out)
-    except Exception:
-        return False
-
-
-def _cdp_version():
-    """Trả dict JSON từ http://127.0.0.1:9222/json/version hoặc None."""
-    global _CDP_JSON
-    try:
-        import urllib.request
-        req = urllib.request.Request(
-            "http://127.0.0.1:%d/json/version" % CDP_PORT,
-            headers={"User-Agent": "tooltx-agent/1.0"},
-        )
-        with urllib.request.urlopen(req, timeout=2.0) as r:
-            raw = r.read(4096)
-        data = json.loads(raw.decode("utf-8", "replace"))
-        _CDP_JSON = data
-        return data
-    except Exception:
-        return None
-
-
-def wait_cdp(timeout=START_TIMEOUT):
-    """Poll http://127.0.0.1:9222/json/version cho tới khi có kết quả."""
-    deadline = time.time() + timeout
-    first = None
-    while time.time() < deadline:
-        data = _cdp_version()
-        if data and data.get("webSocketDebuggerUrl"):
-            return data
-        if first is None:
-            first = time.time()
-        time.sleep(POLL_INTERVAL)
-    return None
-
-
-def start_fork(server_url, code):
-    """Mở Cromite với CDP TCP 9222, chờ connect được thì trả True."""
-    global _running, _started_at
+def _set_status(connected, message=None, url=None, running=None):
     with _lock:
-        # 1) force-stop process cũ — flag mới chỉ có hiệu lực khi fork khởi động lại từ đầu
-        try:
-            subprocess.run(["am", "force-stop", FORK_PACKAGE],
-                           capture_output=True, timeout=15)
-        except Exception:
-            pass
-        time.sleep(1.0)
-
-        # 2) mở Cromite kèm args flag CDP
-        args = "--remote-debugging-port=%d --remote-debugging-address=127.0.0.1 --remote-allow-origins=*" % CDP_PORT
-        cmd = ["am", "start", "-n",
-               "%s/%s" % (FORK_PACKAGE, FORK_ACTIVITY),
-               "--es", "args", args]
-        log("am start: " + " ".join(cmd))
-        try:
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-            out = (r.stdout or "") + (r.stderr or "")
-            if r.returncode != 0 or "Error" in out or "Exception" in out:
-                log("am start fail: " + out)
-                return False
-        except Exception as e:
-            log("am start exception: " + repr(e))
-            return False
-
-        # 3) chờ CDP sẵn sàng
-        time.sleep(CDP_WAIT_BEFORE_START)
-        data = wait_cdp()
-        if data is None:
-            log("CDP khong bat duoc tren port %d — dang thu lai..." % CDP_PORT)
-            time.sleep(2.0)
-            data = wait_cdp(START_TIMEOUT - 8)
-        if data is None:
-            log("CDP 9222 van khong connect (fork mo nhung khong listen TCP).")
-            if _cromite_running():
-                log("Cromite dang chay nhung khong mo CDP — co the bo qua intent args, can fallback localabstract:chrome_devtools_remote.")
-            _running = False
-            return False
-
-        _running = True
-        _started_at = time.time()
-        log("CDP OK: " + (data.get("Browser") or data.get("browser") or "?"))
-        return True
+        _last_status["connected"] = bool(connected)
+        if message is not None:
+            _last_status["message"] = str(message)
+        if url is not None:
+            _last_status["url"] = str(url)
+        if running is not None:
+            _last_status["running"] = bool(running)
 
 
-def start_agent(server_url, code):
-    """Bật agent thật: = mở fork + kết nối CDP. Trả True khi CDP connect OK."""
-    return start_fork(server_url, code)
-
-
-def stop():
-    global _running
+def status():
     with _lock:
-        _running = False
+        return dict(_last_status)
 
 
 def is_running():
     return _running
 
 
-def cdp_json():
-    return _CDP_JSON
+def _ws_url(server):
+    s = str(server or "").strip().rstrip("/")
+    scheme = "wss://" if s.startswith("https://") else "ws://"
+    return scheme + s.replace("https://", "").replace("http://", "") + "/agent-ws"
+
+
+def _send(msg):
+    global _ws
+    with _ws_lock:
+        w = _ws
+        if w:
+            try:
+                w.send(json.dumps(msg))
+                return True
+            except Exception:
+                pass
+    return False
+
+
+def _eval_in_webview(expr, timeout_ms=EVAL_TIMEOUT_MS):
+    """Chạy expr trong WebView nhúng. Trả (ok, value); ok=False khi có lỗi/timeout."""
+    try:
+        from com.lmt.tooltx import WebViewBridge
+        raw = WebViewBridge.evalJs(expr, timeout_ms)
+    except Exception as e:
+        return False, str(e)
+    if raw is None:
+        return False, "timeout"
+    try:
+        return True, json.loads(raw)
+    except Exception:
+        return False, "bad-json:" + str(raw)[:200]
+
+
+def _handle_eval(req):
+    try:
+        rid = str(req.get("id") or "")
+        expr = str(req.get("expr") or "")
+        ok, value = _eval_in_webview(expr)
+        if not ok:
+            _send({"t": "res", "id": rid, "value": [], "error": str(value)[:200]})
+        elif isinstance(value, list):
+            _send({"t": "res", "id": rid, "value": value})
+        else:
+            _send({"t": "res", "id": rid, "value": []})
+    except Exception as e:
+        try:
+            _send({"t": "res", "id": str(req.get("id") or ""), "value": [], "error": str(e)[:200]})
+        except Exception:
+            pass
+
+
+def _server_main(server, code):
+    global _ws, _running
+    fatal = False
+    while not _stop_evt.is_set():
+        url = _ws_url(server)
+        try:
+            if not _HAS_WS:
+                raise RuntimeError("thiếu thư viện websocket-client")
+            _set_status(False, "Nối server: %s..." % (server or ""))
+            w = websocket.create_connection(
+                url, timeout=SERVER_TIMEOUT, ping_interval=20, ping_timeout=15
+            )
+        except Exception as e:
+            _set_status(False, "Lỗi nối server: %s" % str(e)[:120])
+            log("Lỗi nối server: " + str(e)[:120] + " — thử lại trong %ds" % RECONNECT_DELAY, err=True)
+            _stop_evt.wait(RECONNECT_DELAY)
+            continue
+        with _ws_lock:
+            _ws = w
+        try:
+            w.send(json.dumps({"t": "hello", "code": code, "v": 1, "node": sys.version.split()[0]}))
+            _set_status(False, "Đã gửi mã liên kết — chờ server xác nhận...")
+            while not _stop_evt.is_set():
+                w.settimeout(0.5)
+                try:
+                    raw = w.recv()
+                except websocket.WebSocketTimeoutException:
+                    raw = None
+                except Exception:
+                    break
+                if not raw:
+                    continue
+                try:
+                    m = json.loads(raw)
+                except Exception:
+                    continue
+                if not m.get("t"):
+                    continue
+                t = m["t"]
+                if t == "ok":
+                    game_url = str(m.get("url") or "")
+                    _set_status(True, "Đã kết nối — mở game trong app...", game_url or None)
+                    log("Server xác nhận: uid=%s" % str(m.get("uid", ""))[:8])
+                    if game_url:
+                        try:
+                            from com.lmt.tooltx import WebViewBridge
+                            WebViewBridge.navigate(game_url)
+                        except Exception as e:
+                            log("navigate err: " + str(e))
+                elif t == "err":
+                    msg = str(m.get("message") or "Server từ chối.")
+                    _set_status(True, msg)
+                    log("Server từ chối: " + msg, err=True)
+                    fatal = True
+                    try:
+                        w.close()
+                    except Exception:
+                        pass
+                    break
+                elif t == "ping":
+                    _send({"t": "pong", "ts": int(time.time() * 1000)})
+                elif t == "eval":
+                    _handle_eval(m)
+        finally:
+            try:
+                w.close()
+            except Exception:
+                pass
+            with _ws_lock:
+                _ws = None
+        if fatal:
+            break
+        if _stop_evt.is_set():
+            break
+        _set_status(False, "Mất kết nối server — thử lại trong %ds..." % RECONNECT_DELAY)
+        _stop_evt.wait(RECONNECT_DELAY)
+    _running = False
+    if not fatal:
+        _set_status(False, "Agent đã dừng.", running=False)
+    else:
+        _set_status(True, _last_status.get("message", "Server từ chối."), running=False)
+
+
+def start_agent(server_url, code):
+    global _running
+    with _lock:
+        if _running:
+            return True
+        code = str(code or "").strip().upper()
+        if not server_url or not code:
+            _set_status(False, "Thiếu server/code — không bắt đầu.", running=False)
+            return False
+        _running = True
+        _stop_evt.clear()
+        _set_status(True, "Agent đang khởi động...", running=True)
+        threading.Thread(target=_server_main, args=(server_url, code), daemon=True).start()
+        return True
+
+
+def stop():
+    global _running
+    with _lock:
+        _running = False
+    _stop_evt.set()
+    with _ws_lock:
+        w = _ws
+        if w:
+            try:
+                w.close()
+            except Exception:
+                pass
+
+
+# Tương thích API cũ (PythonBridge.startFork vẫn gọi tới).
+def start_fork(server_url, code):
+    return start_agent(server_url, code)

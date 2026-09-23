@@ -64,6 +64,7 @@ chaquopy {
         pip {
             install("requests==2.32.3")
             install("python-socketio==5.13.0")
+            install("websocket-client==1.8.0")
         }
     }
 }

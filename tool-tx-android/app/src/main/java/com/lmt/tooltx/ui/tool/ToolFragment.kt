@@ -6,9 +6,9 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import com.lmt.tooltx.ForkInstaller
 import com.lmt.tooltx.MainActivity
 import com.lmt.tooltx.R
+import com.lmt.tooltx.WebViewBridge
 import com.lmt.tooltx.bridge.PythonBridge
 import com.lmt.tooltx.databinding.FragmentToolBinding
 import com.lmt.tooltx.ui.home.HomeFragment
@@ -46,9 +46,25 @@ class ToolFragment : Fragment() {
         }
 
         binding.btnOpenTool.setOnClickListener { startTool() }
+        setupWebView()
 
         val bridge = (requireActivity() as MainActivity).getBridge()
         if (bridge.isLoggedIn()) startTool()
+    }
+
+    private fun setupWebView() {
+        val wv = binding.webView
+        val s = wv.settings
+        s.javaScriptEnabled = true
+        s.domStorageEnabled = true
+        s.databaseEnabled = true
+        s.loadsImagesAutomatically = true
+        s.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+        s.setSupportZoom(false)
+        android.webkit.CookieManager.getInstance().setAcceptCookie(true)
+        android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(wv, true)
+        wv.setBackgroundColor(android.graphics.Color.parseColor("#000000"))
+        WebViewBridge.attach(wv)
     }
 
     private fun startTool() {
@@ -71,31 +87,6 @@ class ToolFragment : Fragment() {
                 val server = bridge.discoverServer() ?: "http://localhost:8787"
                 val token = bridge.refreshToken() ?: session["idToken"]?.toString().orEmpty()
                 bridge.clearKick()
-
-                if (!ForkInstaller.isInstalled(requireContext())) {
-                    val apk = withContext(Dispatchers.IO) {
-                        ForkInstaller.prepareApk(requireContext(), server)
-                    }
-                    if (apk != null) {
-                        val launched = ForkInstaller.install(requireContext(), apk)
-                        withContext(Dispatchers.Main) {
-                            if (_binding == null) return@withContext
-                            if (launched) {
-                                setStatus("Chưa cài Chromium Fork — đang mở màn hình CÀI ĐẶT...")
-                                setAgent("Bấm CÀI ĐẶT (cho phép cài từ nguồn này nếu được hỏi), rồi mở TOOL lại.")
-                            } else {
-                                setStatus("Không mở được màn hình cài đặt.")
-                            }
-                        }
-                    } else {
-                        withContext(Dispatchers.Main) {
-                            if (_binding == null) return@withContext
-                            setStatus("Không tìm thấy file chromefork.apk.")
-                            setAgent("Đặt chromefork.apk vào thư mục assets của app trước khi build, hoặc upload lên thư mục public của server.")
-                        }
-                    }
-                    return@launch
-                }
 
                 for (attempt in 1..2) {
                     try {
@@ -139,22 +130,48 @@ class ToolFragment : Fragment() {
                     return@launch
                 }
                 lastCode = code
-                val ok = bridge.startFork(server, code)
+                val ok = bridge.startAgent(server, code)
                 withContext(Dispatchers.Main) {
                     if (_binding == null) return@withContext
                     setCode("Mã liên kết: $code")
                     if (ok) {
-                        setStatus("Đã mở Chromium Fork — chờ kết nối CDP...")
-                        setAgent("Agent fork đang chạy trên điện thoại.")
+                        setStatus("Agent đang nối server — mở game trong app...")
+                        setAgent("Chờ game tải xong rồi chơi ngay trong app.")
                     } else {
-                        setStatus("Khởi động Chrome Fork thất bại.")
-                        setAgent("Cài Chromium Fork rồi thử lại.")
+                        setStatus("Không khởi động được agent.")
+                        setAgent("Thử bấm MỞ TOOL lại.")
                     }
                 }
+                pollAgentStatus(bridge)
             } finally {
                 running = false
             }
         }
+    }
+
+    private fun pollAgentStatus(bridge: PythonBridge) {
+        GlobalScope.launch(Dispatchers.IO) {
+            for (i in 0 until 120) {
+                if (_binding == null) return@launch
+                val st = bridge.agentStatus()
+                val msg = st["message"]?.toString()?.takeIf { it.isNotEmpty() } ?: ""
+                val connected = st["connected"]?.toString()?.toBooleanStrictOrNull() ?: false
+                withContext(Dispatchers.Main) {
+                    if (_binding == null) return@withContext
+                    if (msg.isNotEmpty()) setAgent(msg)
+                    if (connected) setStatus("Đã kết nối — đang dự đoán theo bàn của bạn.")
+                }
+                if (connected) return@launch
+                delay(2000)
+            }
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        WebViewBridge.detach()
+        runCatching { (activity as? MainActivity)?.getBridge()?.stopAgent() }
+        _binding = null
     }
 
     private fun prediction(p: Map<*, *>) {
