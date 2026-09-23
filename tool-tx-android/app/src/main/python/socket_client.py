@@ -8,6 +8,8 @@ _sio = None
 _connected = False
 _locking = False
 _kick = None
+_panel = {}
+
 
 def connect(url, token):
     global _sio, _connected, _locking
@@ -18,10 +20,12 @@ def connect(url, token):
         import socketio
         _sio = socketio.Client(
             logger=False, engineio_logger=False,
-            reconnection=True, reconnection_attempts=5, reconnection_delay=2,
+            reconnection=True, reconnection_attempts=3, reconnection_delay=1,
         )
         _sio.on("kick", _on_kick)
-        _sio.connect(url, auth={"token": token or ""}, wait_timeout=20, retry=True)
+        _sio.on("disconnect", _on_disconnect)
+        _sio.on("panel-push", _on_panel)
+        _sio.connect(url, auth={"token": token or ""}, wait_timeout=15)
         _connected = True
     except Exception as e:
         _connected = False
@@ -34,6 +38,7 @@ def connect(url, token):
     finally:
         _locking = False
 
+
 def disconnect():
     global _sio, _connected
     try:
@@ -43,6 +48,12 @@ def disconnect():
         pass
     _connected = False
     _sio = None
+
+
+def _on_disconnect(*_args):
+    global _connected
+    _connected = False
+
 
 def _on_kick(data):
     global _kick
@@ -55,17 +66,33 @@ def _on_kick(data):
         _kick = "Đăng nhập lại."
     print("[socket_client] kick: " + str(_kick))
 
+
+def _on_panel(data):
+    global _panel
+    if isinstance(data, dict):
+        _panel = data
+
+
 def last_kick():
     return _kick
+
 
 def clear_kick():
     global _kick
     _kick = None
 
+
+def last_panel():
+    return _panel
+
+
 def is_connected():
     return _connected
 
+
 def agent_pair(url):
+    """Lấy mã liên kết qua event 'agent-code' (server tự emit kèm ack).
+    Không dùng emit(callback=...) để tránh treo khi server không ack (vd token hết hạn)."""
     global _sio, _connected
     if not _sio or not _connected:
         return None
@@ -84,8 +111,14 @@ def agent_pair(url):
         done.set()
 
     try:
-        _sio.emit("agent-pair", {}, callback=on_code)
+        _sio.on("agent-code", on_code)
+        _sio.emit("agent-pair", {})
         done.wait(timeout=10)
     except Exception:
         pass
+    finally:
+        try:
+            _sio.off("agent-code", on_code)
+        except Exception:
+            pass
     return result[0]

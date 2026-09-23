@@ -73,6 +73,15 @@ class PythonBridge(private val context: Context) {
         }
     }
 
+    fun getLastPanel(): Map<String, Any?> {
+        return try {
+            val p = py.getModule("socket_client").callAttr("last_panel")
+            if (p == null) mapOf() else parseMap(p)
+        } catch (_: Exception) {
+            mapOf()
+        }
+    }
+
     fun getLastKick(): String? {
         return try {
             val k = py.getModule("socket_client").callAttr("last_kick")

@@ -158,14 +158,8 @@ def _server_main(server, code):
                 t = m["t"]
                 if t == "ok":
                     game_url = str(m.get("url") or "")
-                    _set_status(True, "Đã kết nối — mở game trong app...", game_url or None)
+                    _set_status(True, "Đã kết nối — bấm MỞ GAME để mở game.", game_url or None)
                     log("Server xác nhận: uid=%s" % str(m.get("uid", ""))[:8])
-                    if game_url:
-                        try:
-                            from com.lmt.tooltx import WebViewBridge
-                            WebViewBridge.navigate(game_url)
-                        except Exception as e:
-                            log("navigate err: " + str(e))
                 elif t == "err":
                     msg = str(m.get("message") or "Server từ chối.")
                     _set_status(True, msg)
