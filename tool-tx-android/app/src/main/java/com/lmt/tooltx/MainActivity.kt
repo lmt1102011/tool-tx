@@ -183,7 +183,13 @@ class MainActivity : AppCompatActivity() {
         fm.executePendingTransactions()
 
         val isAuth = tag == "signin" || tag == "signup"
-        navWrap.visibility = if (isAuth) View.GONE else View.VISIBLE
+        navWrap.visibility = if (tag == "tool") {
+            View.GONE
+        } else if (isAuth) {
+            View.GONE
+        } else {
+            View.VISIBLE
+        }
         if (isAuth) {
             if (tag == "signin") {
                 navStack.clear()

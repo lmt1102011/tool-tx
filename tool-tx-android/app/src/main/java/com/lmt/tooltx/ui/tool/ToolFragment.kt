@@ -41,15 +41,25 @@ class ToolFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        binding.btnOpenTool.setOnClickListener { startTool() }
+        binding.btnResetToken.setOnClickListener { startTool(forceRefresh = true) }
+        binding.panelHeader.setOnClickListener { togglePanel() }
+        binding.btnTogglePanel.setOnClickListener { togglePanel() }
         binding.btnBack.setOnClickListener {
             (requireActivity() as MainActivity).showFragment(HomeFragment::class.java, "home", push = false)
         }
-
-        binding.btnOpenTool.setOnClickListener { startTool() }
         setupWebView()
 
         val bridge = (requireActivity() as MainActivity).getBridge()
         if (bridge.isLoggedIn()) startTool()
+    }
+
+    private var panelExpanded = true
+
+    private fun togglePanel() {
+        panelExpanded = !panelExpanded
+        binding.panelBody.visibility = if (panelExpanded) android.view.View.VISIBLE else android.view.View.GONE
+        binding.btnTogglePanel.rotation = if (panelExpanded) 0f else 180f
     }
 
     private fun setupWebView() {
@@ -67,10 +77,10 @@ class ToolFragment : Fragment() {
         WebViewBridge.attach(wv)
     }
 
-    private fun startTool() {
+    private fun startTool(forceRefresh: Boolean = false) {
         if (running) return
         running = true
-        setStatus("Đang kết nối server...")
+        setStatus(if (forceRefresh) "Đang làm mới mã và kết nối lại server..." else "Đang kết nối server...")
         setCode(null)
 
         GlobalScope.launch(Dispatchers.IO) {
@@ -85,7 +95,15 @@ class ToolFragment : Fragment() {
                     return@launch
                 }
                 val server = bridge.discoverServer() ?: "http://localhost:8787"
-                val token = bridge.refreshToken() ?: session["idToken"]?.toString().orEmpty()
+                if (forceRefresh) {
+                    bridge.stopAgent()
+                    bridge.disconnectSocket()
+                }
+                val token = if (forceRefresh) {
+                    bridge.forceRefreshToken() ?: bridge.refreshToken()
+                } else {
+                    bridge.refreshToken()
+                } ?: session["idToken"]?.toString().orEmpty()
                 bridge.clearKick()
 
                 for (attempt in 1..2) {

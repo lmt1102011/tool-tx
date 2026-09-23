@@ -64,6 +64,15 @@ class PythonBridge(private val context: Context) {
         }
     }
 
+    fun forceRefreshToken(): String? {
+        return try {
+            val t = py.getModule("auth").callAttr("force_refresh_token")
+            if (t == null) null else t.toString()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     fun getLastKick(): String? {
         return try {
             val k = py.getModule("socket_client").callAttr("last_kick")

@@ -1,18 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/surface"
-    android:orientation="vertical">
+    android:background="@android:color/black">
+
+    <android.webkit.WebView
+        android:id="@+id/web_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/black" />
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="@dimen/bar_height"
-        android:background="@color/surfaceContainer"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:background="@drawable/bg_top_overlay"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingHorizontal="@dimen/spacing_lg">
+        android:paddingHorizontal="@dimen/spacing_md"
+        android:paddingVertical="@dimen/spacing_sm">
 
         <ImageButton
             android:id="@+id/btn_back"
@@ -22,197 +29,178 @@
             android:contentDescription="@string/nav_home"
             android:padding="@dimen/spacing_xs"
             android:src="@drawable/ic_arrow_left"
-            android:tint="@color/onSurfaceVariant" />
+            android:tint="@android:color/white" />
 
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/spacing_sm"
             android:layout_weight="1"
-            android:text="@string/tool"
-            android:textColor="@color/onSurface"
-            android:textSize="22sp"
+            android:gravity="center"
+            android:text="Tool"
+            android:textColor="@android:color/white"
+            android:textSize="18sp"
             android:textStyle="bold" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_reset_token"
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:paddingHorizontal="@dimen/spacing_lg"
+            android:text="Reset mã"
+            android:textColor="@color/onPrimary"
+            app:backgroundTint="@color/primary" />
 
     </LinearLayout>
 
-    <android.webkit.WebView
-        android:id="@+id/web_view"
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:background="@color/surface" />
-
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="210dp"
-        android:background="@color/surface"
-        android:clipToPadding="false"
-        android:fillViewport="true"
-        android:paddingBottom="@dimen/nav_height">
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_margin="@dimen/spacing_md"
+        android:elevation="8dp"
+        app:cardBackgroundColor="@color/surface"
+        app:cardCornerRadius="@dimen/card_radius"
+        app:strokeWidth="0dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="@dimen/spacing_lg">
+            android:padding="@dimen/card_padding">
 
-            <com.google.android.material.card.MaterialCardView
+            <LinearLayout
+                android:id="@+id/panel_header"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Dự đoán"
+                    android:textColor="@color/onSurface"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <ImageButton
+                    android:id="@+id/btn_toggle_panel"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/tool"
+                    android:padding="@dimen/spacing_xs"
+                    android:src="@drawable/ic_arrow_down"
+                    android:tint="@color/onSurfaceVariant" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/panel_body"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tv_prediction"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/waiting_data"
+                    android:textColor="@color/onSurface"
+                    android:textSize="24sp"
+                    android:textStyle="bold" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <TextView
+                    android:id="@+id/tv_percentage"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/spacing_md"
+                    android:textColor="@color/onSurfaceVariant"
+                    android:textSize="12sp" />
+
+            </LinearLayout>
+
+            <com.google.android.material.progressindicator.LinearProgressIndicator
+                android:id="@+id/progress_bar"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/spacing_sm"
-                app:cardCornerRadius="@dimen/card_radius"
-                app:cardElevation="2dp">
+                android:indeterminate="false"
+                android:max="100"
+                android:progress="0"
+                android:progressTint="@color/primary"
+                app:indicatorColor="@color/primary"
+                app:trackColor="@color/surfaceContainerHighest"
+                app:trackThickness="6dp" />
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="@dimen/card_padding">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Data analysis table"
-                        android:textColor="@color/onSurface"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="match_parent"
-                        android:layout_height="200dp"
-                        android:layout_marginTop="@dimen/spacing_md"
-                        app:cardBackgroundColor="@color/surfaceContainerHigh"
-                        app:cardCornerRadius="@dimen/card_radius"
-                        app:cardElevation="0dp"
-                        app:strokeWidth="0dp">
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:orientation="vertical"
-                            android:padding="@dimen/card_padding">
-
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:gravity="center_vertical"
-                                android:orientation="horizontal">
-
-                                <TextView
-                                    android:id="@+id/tv_prediction"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="@string/waiting_data"
-                                    android:textColor="@color/onSurface"
-                                    android:textSize="30sp"
-                                    android:textStyle="bold" />
-
-                                <View
-                                    android:layout_width="0dp"
-                                    android:layout_height="0dp"
-                                    android:layout_weight="1" />
-
-                                <TextView
-                                    android:id="@+id/tv_percentage"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginStart="@dimen/spacing_md"
-                                    android:textColor="@color/onSurfaceVariant"
-                                    android:textSize="13sp" />
-
-                            </LinearLayout>
-
-                            <com.google.android.material.progressindicator.LinearProgressIndicator
-                                android:id="@+id/progress_bar"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="@dimen/spacing_md"
-                                android:indeterminate="false"
-                                android:max="100"
-                                android:progress="0"
-                                android:progressTint="@color/primary"
-                                app:indicatorColor="@color/primary"
-                                app:trackColor="@color/surfaceContainerHighest"
-                                app:trackThickness="6dp" />
-
-                            <TextView
-                                android:id="@+id/tv_history"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="@dimen/spacing_md"
-                                android:textColor="@color/onSurfaceVariant"
-                                android:textSize="12sp" />
-
-                        </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
-
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <com.google.android.material.card.MaterialCardView
+            <TextView
+                android:id="@+id/tv_history"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/spacing_lg"
-                app:cardCornerRadius="@dimen/card_radius"
-                app:cardElevation="2dp">
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:textColor="@color/onSurfaceVariant"
+                android:textSize="12sp" />
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="@dimen/card_padding">
+            <TextView
+                android:id="@+id/tv_tool_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_sm"
+                android:text="@string/waiting_data"
+                android:textColor="@color/onSurfaceVariant"
+                android:textSize="13sp" />
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Tool"
-                        android:textColor="@color/onSurface"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
+            <TextView
+                android:id="@+id/tv_agent_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_xs"
+                android:text="@string/no_agent"
+                android:textColor="@color/onSurfaceVariant"
+                android:textSize="13sp" />
 
-                    <TextView
-                        android:id="@+id/tv_tool_status"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/spacing_sm"
-                        android:text="@string/waiting_data"
-                        android:textColor="@color/onSurfaceVariant"
-                        android:textSize="13sp" />
+            <TextView
+                android:id="@+id/tv_code"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_xs"
+                android:textColor="@color/primary"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
 
-                    <TextView
-                        android:id="@+id/tv_agent_status"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/spacing_xs"
-                        android:text="@string/no_agent"
-                        android:textColor="@color/onSurfaceVariant"
-                        android:textSize="13sp" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_open_tool"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/btn_height"
+                android:layout_marginTop="@dimen/spacing_md"
+                android:text="Open Tool"
+                android:textColor="@color/onPrimary"
+                android:textSize="16sp"
+                app:backgroundTint="@color/primary"
+                app:cornerRadius="@dimen/btn_height" />
 
-                    <TextView
-                        android:id="@+id/tv_code"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/spacing_xs"
-                        android:textColor="@color/primary"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:visibility="gone" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_open_tool"
-                        android:layout_width="match_parent"
-                        android:layout_height="@dimen/btn_height"
-                        android:layout_marginTop="@dimen/spacing_md"
-                        android:text="Open Tool"
-                        android:textColor="@color/onPrimary"
-                        android:textSize="16sp"
-                        app:backgroundTint="@color/primary"
-                        app:cornerRadius="@dimen/btn_height" />
-
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
 
         </LinearLayout>
-    </ScrollView>
-</LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+</FrameLayout>

@@ -185,6 +185,12 @@ def refresh_token():
     _token_exp = time.time() + int(data.get("expires_in") or 3600)
     return _session["idToken"]
 
+def force_refresh_token():
+    """Bỏ qua cache cũ, refresh lại idToken từ Firebase rồi lưu — dùng khi server báo token không hợp lệ."""
+    global _token_exp
+    _token_exp = 0.0
+    return refresh_token()
+
 def user_data():
     if not _session.get("uid"):
         return {}
