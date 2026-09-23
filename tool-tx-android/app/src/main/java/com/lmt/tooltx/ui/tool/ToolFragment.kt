@@ -191,6 +191,7 @@ class ToolFragment : Fragment() {
                     return@launch
                 }
                 val server = bridge.discoverServer() ?: "http://localhost:8787"
+                bridge.writeBugLog("ui", "startTool: server=$server forceRefresh=$forceRefresh")
                 if (forceRefresh) {
                     bridge.stopAgent()
                     bridge.disconnectSocket()
@@ -208,6 +209,7 @@ class ToolFragment : Fragment() {
                         bridge.connectSocket(server, token)
                     } catch (_: Exception) {}
                     val connected = bridge.isSocketConnected()
+                    bridge.writeBugLog("ui", "connect attempt=$attempt connected=$connected")
                     withContext(Dispatchers.Main) {
                         if (_binding == null) return@withContext
                         setStatus(
@@ -220,6 +222,7 @@ class ToolFragment : Fragment() {
                 }
 
                 if (!bridge.isSocketConnected()) {
+                    bridge.writeBugLog("ui", "ket qua: KHONG ket noi duoc server (sau 2 lan)")
                     withContext(Dispatchers.Main) {
                         if (_binding == null) return@withContext
                         setStatus("Không kết nối được server: $server")
@@ -230,6 +233,7 @@ class ToolFragment : Fragment() {
                 }
 
                 val code = bridge.getAgentPair(server)
+                bridge.writeBugLog("ui", "agent_code=" + (code ?: "NULL"))
                 if (code.isNullOrEmpty()) {
                     val kick = bridge.getLastKick()
                     withContext(Dispatchers.Main) {
@@ -247,6 +251,7 @@ class ToolFragment : Fragment() {
                 }
                 lastCode = code
                 val ok = bridge.startAgent(server, code)
+                bridge.writeBugLog("ui", "startAgent ok=" + ok)
                 withContext(Dispatchers.Main) {
                     if (_binding == null) return@withContext
                     setCode("Mã liên kết: $code")

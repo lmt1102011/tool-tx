@@ -91,6 +91,11 @@ def _on_kick(data):
     except Exception:
         _kick = "Đăng nhập lại."
     print("[socket_client] kick: " + str(_kick))
+    try:
+        import applog
+        applog.log("socket", "kick: " + str(_kick))
+    except Exception:
+        pass
 
 
 def _on_panel(data):
@@ -123,6 +128,7 @@ def agent_pair(url):
     if not _sio or not _connected:
         return None
     result = [None]
+    reason = [""]
     done = threading.Event()
 
     def on_code(data):
@@ -134,17 +140,24 @@ def agent_pair(url):
                 result[0] = first.get("code")
             else:
                 result[0] = str(first)
+        reason[0] = "agent-code"
         done.set()
 
     try:
         _sio.on("agent-code", on_code)
         _sio.emit("agent-pair", {})
         done.wait(timeout=10)
-    except Exception:
-        pass
+    except Exception as e:
+        reason[0] = "exception:" + str(e)[:120]
     finally:
         try:
             _sio.off("agent-code", on_code)
+        except Exception:
+            pass
+    if result[0] is None:
+        try:
+            import applog
+            applog.log("socket", "agent_pair FAIL: " + reason[0] + " connected=" + str(_connected) + " url=" + str(url)[:60])
         except Exception:
             pass
     return result[0]
