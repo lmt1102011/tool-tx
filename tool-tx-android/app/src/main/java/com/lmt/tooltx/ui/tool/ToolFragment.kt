@@ -68,11 +68,13 @@ class ToolFragment : Fragment() {
         val window = requireActivity().window
         val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
         if (fullscreen) {
+            androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
             controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
             controller.systemBarsBehavior =
                 androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         } else {
             controller.show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, true)
         }
     }
 
@@ -148,7 +150,7 @@ class ToolFragment : Fragment() {
         requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         setSystemUiFullscreen(true)
         binding.btnOpenTool.text = getString(R.string.close_game)
-        setStatus("Đang chơi — cửa sổ dự đoán kéo thả được.")
+        setStatus("Đang chơi — cửa sổ dự đoán nằm ở giữa dưới màn hình.")
     }
 
     private fun closeGame() {
