@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.WebView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.lmt.tooltx.MainActivity
@@ -114,8 +115,37 @@ class ToolFragment : Fragment() {
         s.loadsImagesAutomatically = true
         s.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         s.setSupportZoom(false)
+        s.javaScriptCanOpenWindowsAutomatically = true
+        s.setSupportMultipleWindows(true)
         android.webkit.CookieManager.getInstance().setAcceptCookie(true)
         android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(wv, true)
+        wv.webViewClient = object : android.webkit.WebViewClient() {
+            override fun shouldOverrideUrlLoading(
+                view: WebView,
+                request: android.webkit.WebResourceRequest?
+            ): Boolean {
+                return false
+            }
+
+            override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
+                return false
+            }
+        }
+        wv.webChromeClient = object : android.webkit.WebChromeClient() {
+            override fun onCreateWindow(
+                view: WebView,
+                isDialog: Boolean,
+                isUserGesture: Boolean,
+                resultMsg: android.os.Message
+            ): Boolean {
+                wv.post {
+                    val transport = resultMsg.obj as? WebView.WebViewTransport
+                    transport?.webView = wv
+                    resultMsg.sendToTarget()
+                }
+                return true
+            }
+        }
         WebViewBridge.attach(wv)
     }
 
