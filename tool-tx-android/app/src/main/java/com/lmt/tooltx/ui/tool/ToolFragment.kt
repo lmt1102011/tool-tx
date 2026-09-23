@@ -151,7 +151,7 @@ class ToolFragment : Fragment() {
 
     private fun pollAgentStatus(bridge: PythonBridge) {
         GlobalScope.launch(Dispatchers.IO) {
-            for (i in 0 until 120) {
+            while (true) {
                 if (_binding == null) return@launch
                 val st = bridge.agentStatus()
                 val msg = st["message"]?.toString()?.takeIf { it.isNotEmpty() } ?: ""
@@ -161,7 +161,6 @@ class ToolFragment : Fragment() {
                     if (msg.isNotEmpty()) setAgent(msg)
                     if (connected) setStatus("Đã kết nối — đang dự đoán theo bàn của bạn.")
                 }
-                if (connected) return@launch
                 delay(2000)
             }
         }
@@ -219,10 +218,5 @@ class ToolFragment : Fragment() {
     private fun setCode(text: String?) {
         binding.tvCode.text = text.orEmpty()
         binding.tvCode.visibility = if (text.isNullOrEmpty()) android.view.View.GONE else android.view.View.VISIBLE
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
     }
 }
