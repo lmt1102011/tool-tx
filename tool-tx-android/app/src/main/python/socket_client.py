@@ -22,6 +22,11 @@ def connect(url, token):
     _locking = True
     _connected = False
     try:
+        import applog
+        applog.log("socket", "connect %s" % url)
+    except Exception:
+        pass
+    try:
         import socketio
         _sio = socketio.Client(
             logger=False, engineio_logger=False,
@@ -45,6 +50,11 @@ def connect(url, token):
         _connected = True
     except Exception:
         _connected = False
+        try:
+            import applog
+            applog.log("socket", "connect FAIL: url=%s" % url)
+        except Exception:
+            pass
         if _sio is not None:
             try:
                 _sio.disconnect()

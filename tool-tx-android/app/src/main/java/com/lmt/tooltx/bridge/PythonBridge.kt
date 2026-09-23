@@ -125,7 +125,10 @@ class PythonBridge(private val context: Context) {
     fun connectSocket(url: String, token: String) {
         try {
             py.getModule("socket_client").callAttr("connect", url, token)
-        } catch (_: Exception) {}
+            writeBugLog("main", "connectSocket: $url")
+        } catch (e: Exception) {
+            writeBugLog("main", "connectSocket FAIL: ${e.message}")
+        }
     }
 
     fun disconnectSocket() {
@@ -151,6 +154,27 @@ class PythonBridge(private val context: Context) {
         }
     }
 
+    fun getBugLog(): String {
+        return try {
+            val t = py.getModule("applog").callAttr("dump")
+            if (t == null) "" else t.toString()
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    fun clearBugLog() {
+        try {
+            py.getModule("applog").callAttr("clear")
+        } catch (_: Exception) {}
+    }
+
+    fun writeBugLog(tag: String, msg: String) {
+        try {
+            py.getModule("applog").callAttr("log", tag, msg)
+        } catch (_: Exception) {}
+    }
+
     fun startFork(serverUrl: String, code: String): Boolean {
         return try {
             py.getModule("agent").callAttr("start_fork", serverUrl, code).toBoolean()
@@ -162,7 +186,8 @@ class PythonBridge(private val context: Context) {
     fun startAgent(serverUrl: String, code: String): Boolean {
         return try {
             py.getModule("agent").callAttr("start_agent", serverUrl, code).toBoolean()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            writeBugLog("main", "startAgent FAIL: ${e.message}")
             false
         }
     }
@@ -185,7 +210,8 @@ class PythonBridge(private val context: Context) {
         return try {
             val code = py.getModule("socket_client").callAttr("agent_pair", serverUrl)
             if (code == null) null else code.toString()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            writeBugLog("main", "getAgentPair FAIL: ${e.message}")
             null
         }
     }

@@ -3,10 +3,10 @@ package com.lmt.tooltx.ui.settings
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.os.Environment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.RotateAnimation
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.fragment.app.Fragment
@@ -22,7 +22,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
 class SettingsFragment : Fragment() {
 
@@ -62,7 +61,12 @@ class SettingsFragment : Fragment() {
             toggleAutoConnect(isChecked)
         }
 
-        binding.btnCrash.setOnClickListener { shareCrash() }
+        binding.llBuglogHeader.setOnClickListener {
+            toggleBugLog()
+        }
+
+        binding.btnBuglogSend.setOnClickListener { shareBugLog() }
+        binding.btnBuglogClear.setOnClickListener { clearBugLog() }
     }
 
     override fun onResume() {
@@ -188,39 +192,70 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    private fun shareCrash() {
+    private var bugLogExpanded = false
+    private var bugLogLoaded = false
+
+    private fun toggleBugLog() {
+        bugLogExpanded = !bugLogExpanded
+        val body = binding.llBuglogBody
+        val arrow = binding.ivBuglogArrow
+        if (bugLogExpanded) {
+            body.visibility = View.VISIBLE
+            val anim = RotateAnimation(270f, 90f, RotateAnimation.RELATIVE_TO_SELF, 0.5f, RotateAnimation.RELATIVE_TO_SELF, 0.5f)
+            anim.duration = 200
+            anim.fillAfter = true
+            arrow.startAnimation(anim)
+            if (!bugLogLoaded) {
+                bugLogLoaded = true
+                loadBugLog()
+            }
+        } else {
+            body.visibility = View.GONE
+            val anim = RotateAnimation(90f, 270f, RotateAnimation.RELATIVE_TO_SELF, 0.5f, RotateAnimation.RELATIVE_TO_SELF, 0.5f)
+            anim.duration = 200
+            anim.fillAfter = true
+            arrow.startAnimation(anim)
+        }
+    }
+
+    private fun loadBugLog() {
         GlobalScope.launch(Dispatchers.IO) {
-            val context = requireContext()
-            val paths: List<File?> = listOf(
-                File(context.filesDir, "crash.log"),
-                context.getExternalFilesDir(null)?.let { File(it, "crash.log") },
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                    ?.let { File(it, "crash.log") }
-            )
-            var found: File? = null
-            for (p in paths) {
-                if (p != null && p.isFile && p.length() > 0) {
-                    found = p
-                    break
-                }
-            }
-            var body = ""
-            if (found != null) {
-                try {
-                    body = found.readText()
-                } catch (_: Exception) {
-                }
-            }
+            val bridge: PythonBridge = (requireActivity() as MainActivity).getBridge()
+            val logText = bridge.getBugLog()
             withContext(Dispatchers.Main) {
                 val b = _binding ?: return@withContext
-                if (found == null || body.isEmpty()) {
+                b.tvBuglog.text = if (logText.isEmpty())
+                    "Chưa có log lỗi nào trong lần chạy này.\n\nGồm: lỗi kết nối server, lỗi agent (websocket), lỗi socket, lỗi từ chối mã liên kết."
+                else logText
+            }
+        }
+    }
+
+    private fun clearBugLog() {
+        GlobalScope.launch(Dispatchers.IO) {
+            val bridge: PythonBridge = (requireActivity() as MainActivity).getBridge()
+            bridge.clearBugLog()
+            withContext(Dispatchers.Main) {
+                val b = _binding ?: return@withContext
+                b.tvBuglog.text = "Đã dọn log."
+            }
+        }
+    }
+
+    private fun shareBugLog() {
+        GlobalScope.launch(Dispatchers.IO) {
+            val bridge: PythonBridge = (requireActivity() as MainActivity).getBridge()
+            val body = bridge.getBugLog()
+            withContext(Dispatchers.Main) {
+                val b = _binding ?: return@withContext
+                if (body.isEmpty()) {
                     Toast.makeText(requireContext(), "Không có bug log.", Toast.LENGTH_SHORT).show()
                     return@withContext
                 }
                 val send = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
                     putExtra(Intent.EXTRA_SUBJECT, "ToolTX Bug Log")
-                    putExtra(Intent.EXTRA_TEXT, body.takeLast(3000))
+                    putExtra(Intent.EXTRA_TEXT, body.takeLast(5000))
                 }
                 try {
                     startActivity(Intent.createChooser(send, "Gửi bug log"))

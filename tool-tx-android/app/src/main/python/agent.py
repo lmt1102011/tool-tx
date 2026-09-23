@@ -46,6 +46,11 @@ EVAL_TIMEOUT_MS = 12000
 
 def log(msg, err=False):
     try:
+        import applog
+        applog.log("agent", ("ERR " if err else "") + str(msg))
+    except Exception:
+        pass
+    try:
         import logging
         if err:
             logging.getLogger("agent").warning(msg)
