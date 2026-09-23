@@ -306,7 +306,8 @@ class ToolFragment : Fragment() {
                             }
                         }
                     } else {
-                        stopToolButtons()
+                        binding.btnOpenTool.isEnabled = true
+                        binding.btnOpenTool.text = getString(R.string.open_tool)
                         if (msg.isNotEmpty()) setStatus(msg)
                     }
                 }

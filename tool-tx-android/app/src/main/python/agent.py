@@ -18,19 +18,19 @@ try:
 except Exception:
     _HAS_WS = False
 
-def _sslopt():
-    """SSL context cho websocket-client. Chaquopy không tự tìm CA bundle —
-    dùng certifi (requests kéo theo) nếu có, fallback không verify."""
+def _sslopt_list():
+    """Các sslopt để thử lần lượt cho websocket-client trên Chaquopy.
+    Chaquopy không tự tìm CA bundle như requests; thử certifi, rồi
+    không verify để đảm bảo nối được qua tunnel Cloudflare."""
+    import ssl
+    opts = []
     try:
         import certifi
-        return {"ca_certs": certifi.where()}
+        opts.append({"ca_certs": certifi.where()})
     except Exception:
         pass
-    try:
-        import ssl
-        return {"cert_reqs": ssl.CERT_NONE}
-    except Exception:
-        return None
+    opts.append({"cert_reqs": ssl.CERT_NONE, "check_hostname": False})
+    return opts
 
 _running = False
 _stop_evt = threading.Event()
@@ -131,6 +131,21 @@ def _handle_eval(req):
             pass
 
 
+def _try_connect(url):
+    """Thử connect websocket với từng sslopt. Trả ws hoặc ném exception."""
+    last_err = None
+    for sopt in _sslopt_list():
+        try:
+            return websocket.create_connection(
+                url, timeout=SERVER_TIMEOUT, ping_interval=20, ping_timeout=15,
+                sslopt=sopt
+            )
+        except Exception as e:
+            last_err = e
+            log("Nối thử (sslopt=%s) thất bại: %s" % (sopt, str(e)[:200]), err=True)
+    raise last_err
+
+
 def _server_main(server, code):
     global _ws, _running
     fatal = False
@@ -140,13 +155,10 @@ def _server_main(server, code):
             if not _HAS_WS:
                 raise RuntimeError("thiếu thư viện websocket-client")
             _set_status(False, "Nối server: %s..." % (server or ""))
-            w = websocket.create_connection(
-                url, timeout=SERVER_TIMEOUT, ping_interval=20, ping_timeout=15,
-                sslopt=_sslopt()
-            )
+            w = _try_connect(url)
         except Exception as e:
-            _set_status(False, "Lỗi nối server: %s" % str(e)[:120])
-            log("Lỗi nối server: " + str(e)[:120] + " — thử lại trong %ds" % RECONNECT_DELAY, err=True)
+            _set_status(False, "Lỗi nối server: %s" % str(e)[:160])
+            log("Lỗi nối server: " + str(e)[:160] + " — thử lại trong %ds" % RECONNECT_DELAY, err=True)
             _stop_evt.wait(RECONNECT_DELAY)
             continue
         with _ws_lock:
