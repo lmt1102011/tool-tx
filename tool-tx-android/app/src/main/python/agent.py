@@ -18,6 +18,20 @@ try:
 except Exception:
     _HAS_WS = False
 
+def _sslopt():
+    """SSL context cho websocket-client. Chaquopy không tự tìm CA bundle —
+    dùng certifi (requests kéo theo) nếu có, fallback không verify."""
+    try:
+        import certifi
+        return {"ca_certs": certifi.where()}
+    except Exception:
+        pass
+    try:
+        import ssl
+        return {"cert_reqs": ssl.CERT_NONE}
+    except Exception:
+        return None
+
 _running = False
 _stop_evt = threading.Event()
 _lock = threading.Lock()
@@ -127,7 +141,8 @@ def _server_main(server, code):
                 raise RuntimeError("thiếu thư viện websocket-client")
             _set_status(False, "Nối server: %s..." % (server or ""))
             w = websocket.create_connection(
-                url, timeout=SERVER_TIMEOUT, ping_interval=20, ping_timeout=15
+                url, timeout=SERVER_TIMEOUT, ping_interval=20, ping_timeout=15,
+                sslopt=_sslopt()
             )
         except Exception as e:
             _set_status(False, "Lỗi nối server: %s" % str(e)[:120])

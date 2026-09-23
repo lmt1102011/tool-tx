@@ -307,6 +307,7 @@ class ToolFragment : Fragment() {
                         }
                     } else {
                         stopToolButtons()
+                        if (msg.isNotEmpty()) setStatus(msg)
                     }
                 }
                 delay(2000)
