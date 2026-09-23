@@ -69,7 +69,8 @@ class ToolFragment : Fragment() {
                     return@launch
                 }
                 val server = bridge.discoverServer() ?: "http://localhost:8787"
-                val token = session["idToken"]?.toString().orEmpty()
+                val token = bridge.refreshToken() ?: session["idToken"]?.toString().orEmpty()
+                bridge.clearKick()
 
                 if (!ForkInstaller.isInstalled(requireContext())) {
                     val apk = withContext(Dispatchers.IO) {
@@ -98,7 +99,8 @@ class ToolFragment : Fragment() {
 
                 for (attempt in 1..2) {
                     try {
-                        if (!bridge.isSocketConnected()) bridge.connectSocket(server, token)
+                        bridge.disconnectSocket()
+                        bridge.connectSocket(server, token)
                     } catch (_: Exception) {}
                     val connected = bridge.isSocketConnected()
                     withContext(Dispatchers.Main) {
@@ -123,10 +125,16 @@ class ToolFragment : Fragment() {
 
                 val code = bridge.getAgentPair(server)
                 if (code.isNullOrEmpty()) {
+                    val kick = bridge.getLastKick()
                     withContext(Dispatchers.Main) {
                         if (_binding == null) return@withContext
-                        setStatus("Không lấy được mã liên kết — bấm MỞ TOOL lại.")
-                        setAgent("Server bật nhưng không trả mã trong 10s.")
+                        if (!kick.isNullOrEmpty()) {
+                            setStatus("Server từ chối: $kick")
+                            setAgent("Đăng nhập lại trong app rồi bấm MỞ TOOL.")
+                        } else {
+                            setStatus("Không lấy được mã liên kết — bấm MỞ TOOL lại.")
+                            setAgent("Server bật nhưng không trả mã trong 10s.")
+                        }
                     }
                     return@launch
                 }

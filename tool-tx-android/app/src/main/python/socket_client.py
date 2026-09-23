@@ -7,6 +7,7 @@ import threading
 _sio = None
 _connected = False
 _locking = False
+_kick = None
 
 def connect(url, token):
     global _sio, _connected, _locking
@@ -19,6 +20,7 @@ def connect(url, token):
             logger=False, engineio_logger=False,
             reconnection=True, reconnection_attempts=5, reconnection_delay=2,
         )
+        _sio.on("kick", _on_kick)
         _sio.connect(url, auth={"token": token or ""}, wait_timeout=20, retry=True)
         _connected = True
     except Exception as e:
@@ -41,6 +43,24 @@ def disconnect():
         pass
     _connected = False
     _sio = None
+
+def _on_kick(data):
+    global _kick
+    try:
+        if isinstance(data, dict):
+            _kick = data.get("message") or data.get("error") or "Đăng nhập lại."
+        else:
+            _kick = str(data)
+    except Exception:
+        _kick = "Đăng nhập lại."
+    print("[socket_client] kick: " + str(_kick))
+
+def last_kick():
+    return _kick
+
+def clear_kick():
+    global _kick
+    _kick = None
 
 def is_connected():
     return _connected
