@@ -3,7 +3,6 @@ package com.lmt.tooltx.ui.tool
 import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
@@ -30,7 +29,6 @@ class ToolFragment : Fragment() {
     private var running = false
     private var startJob: Job? = null
     private var lastCode: String? = null
-    private var panelExpanded = true
     private var gameOpen = false
     private var gameUrl: String? = null
     private var pendingOpen = false
@@ -60,50 +58,22 @@ class ToolFragment : Fragment() {
                 (requireActivity() as MainActivity).showFragment(HomeFragment::class.java, "home", push = false)
             }
         }
-        binding.panelHeader.setOnTouchListener(::onDragTouch)
-        binding.btnTogglePanel.setOnClickListener { togglePanel() }
         setupWebView()
 
         val bridge = (requireActivity() as MainActivity).getBridge()
         if (bridge.isLoggedIn()) startTool()
     }
 
-    // ── Cửa sổ dự đoán kéo thả ───────────────────────────────
-    private var downRawX = 0f
-    private var downRawY = 0f
-    private var startTransX = 0f
-    private var startTransY = 0f
-    private var isDragging = false
-
-    private fun onDragTouch(v: View, e: MotionEvent): Boolean {
-        val card = binding.predCard
-        when (e.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                downRawX = e.rawX; downRawY = e.rawY
-                startTransX = card.translationX; startTransY = card.translationY
-                isDragging = false
-                return false
-            }
-            MotionEvent.ACTION_MOVE -> {
-                val dx = e.rawX - downRawX
-                val dy = e.rawY - downRawY
-                if (kotlin.math.abs(dx) > 6f || kotlin.math.abs(dy) > 6f) isDragging = true
-                if (isDragging) card.translationX = startTransX + dx
-                if (isDragging) card.translationY = startTransY + dy
-                return true
-            }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                if (!isDragging) togglePanel()
-                return true
-            }
+    private fun setSystemUiFullscreen(fullscreen: Boolean) {
+        val window = requireActivity().window
+        val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+        if (fullscreen) {
+            controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            controller.systemBarsBehavior =
+                androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        } else {
+            controller.show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
         }
-        return false
-    }
-
-    private fun togglePanel() {
-        panelExpanded = !panelExpanded
-        binding.panelBody.visibility = if (panelExpanded) View.VISIBLE else View.GONE
-        binding.btnTogglePanel.rotation = if (panelExpanded) 0f else 180f
     }
 
     private fun setupWebView() {
@@ -176,6 +146,7 @@ class ToolFragment : Fragment() {
         WebViewBridge.attach(wv)
         gameUrl?.let { WebViewBridge.navigate(it) }
         requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        setSystemUiFullscreen(true)
         binding.btnOpenTool.text = getString(R.string.close_game)
         setStatus("Đang chơi — cửa sổ dự đoán kéo thả được.")
     }
@@ -189,6 +160,7 @@ class ToolFragment : Fragment() {
         try { wv.stopLoading() } catch (_: Exception) {}
         wv.visibility = View.GONE
         requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        setSystemUiFullscreen(false)
         binding.btnOpenTool.text = if (running) getString(R.string.open_game) else getString(R.string.open_tool)
         if (running) setStatus("Server: đã kết nối — bấm MỞ GAME để chơi.")
         else setStatus("Chưa kết nối — bấm MỞ GAME để kết nối.")
@@ -320,6 +292,9 @@ class ToolFragment : Fragment() {
 
                 val panel = bridge.getLastPanel()
                 if (panel.isNotEmpty()) {
+                    val pick = panel["pick"]?.toString()?.trim().orEmpty()
+                    val hist = (panel["hist"] as? List<*>)?.size ?: 0
+                    bridge.writeBugLog("ui", "panel: pick=$pick hist=$hist")
                     withContext(Dispatchers.Main) {
                         if (_binding != null) prediction(panel)
                     }
