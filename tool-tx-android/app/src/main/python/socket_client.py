@@ -100,6 +100,11 @@ def _on_kick(data):
 
 def _on_panel(data):
     global _panel
+    try:
+        import applog
+        applog.log("socket", "panel-push nhan: %s" % (str(data)[:300]))
+    except Exception:
+        pass
     if isinstance(data, dict):
         _panel = data
 

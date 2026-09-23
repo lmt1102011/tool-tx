@@ -3,6 +3,7 @@ package com.lmt.tooltx.ui.tool
 import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
@@ -58,6 +59,7 @@ class ToolFragment : Fragment() {
                 (requireActivity() as MainActivity).showFragment(HomeFragment::class.java, "home", push = false)
             }
         }
+binding.predCard.setOnTouchListener(::onDragTouch)
         setupWebView()
 
         val bridge = (requireActivity() as MainActivity).getBridge()
@@ -76,6 +78,38 @@ class ToolFragment : Fragment() {
             controller.show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
             androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, true)
         }
+    }
+
+    // ── Cửa sổ dự đoán kéo thả ───────────────────────────────
+    private var downRawX = 0f
+    private var downRawY = 0f
+    private var startTransX = 0f
+    private var startTransY = 0f
+    private var isDragging = false
+
+    private fun onDragTouch(v: View, e: MotionEvent): Boolean {
+        val card = binding.predCard
+        when (e.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                downRawX = e.rawX; downRawY = e.rawY
+                startTransX = card.translationX; startTransY = card.translationY
+                isDragging = false
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val dx = e.rawX - downRawX
+                val dy = e.rawY - downRawY
+                if (kotlin.math.abs(dx) > 6f || kotlin.math.abs(dy) > 6f) isDragging = true
+                if (isDragging) card.translationX = startTransX + dx
+                if (isDragging) card.translationY = startTransY + dy
+                return true
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                isDragging = false
+                return true
+            }
+        }
+        return false
     }
 
     private fun setupWebView() {
