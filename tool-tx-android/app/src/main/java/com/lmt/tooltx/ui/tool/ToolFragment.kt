@@ -371,10 +371,12 @@ class ToolFragment : Fragment() {
 
     private fun setStatus(text: String) {
         binding.tvToolStatus.text = text
+        binding.tvBottomStatus.text = text
     }
 
     private fun setAgent(text: String) {
         binding.tvAgentStatus.text = text
+        binding.tvBottomStatus.text = text
     }
 
     private fun setCode(text: String?) {

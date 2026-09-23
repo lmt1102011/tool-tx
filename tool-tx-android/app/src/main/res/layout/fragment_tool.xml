@@ -133,6 +133,17 @@
             app:backgroundTint="@color/primary"
             app:cornerRadius="@dimen/btn_height" />
 
+        <TextView
+            android:id="@+id/tv_bottom_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/surfaceContainer"
+            android:gravity="center"
+            android:paddingHorizontal="@dimen/spacing_md"
+            android:paddingVertical="@dimen/spacing_sm"
+            android:textColor="@color/onSurfaceVariant"
+            android:textSize="12sp" />
+
     </LinearLayout>
 
     <!-- Lớp game fullscreen (mở khi bấm MỞ GAME) -->
