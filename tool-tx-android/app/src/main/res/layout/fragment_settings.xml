@@ -357,7 +357,7 @@
                                 android:id="@+id/btn_buglog_send"
                                 android:layout_width="wrap_content"
                                 android:layout_height="@dimen/btn_height"
-                                android:text="Gửi bug log"
+                                android:text="Sao chép bug log"
                                 android:textColor="@color/onTertiaryContainer"
                                 android:textSize="14sp"
                                 app:backgroundTint="@color/tertiaryContainer"

@@ -1,7 +1,6 @@
 package com.lmt.tooltx.ui.settings
 
 import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -252,20 +251,9 @@ class SettingsFragment : Fragment() {
                     Toast.makeText(requireContext(), "Không có bug log.", Toast.LENGTH_SHORT).show()
                     return@withContext
                 }
-                val send = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_SUBJECT, "ToolTX Bug Log")
-                    putExtra(Intent.EXTRA_TEXT, body.takeLast(5000))
-                }
-                try {
-                    startActivity(Intent.createChooser(send, "Gửi bug log"))
-                } catch (e: Exception) {
-                    Toast.makeText(
-                        requireContext(),
-                        "Lỗi gửi bug log: " + (e.message ?: "unknown"),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
+                val cm = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                cm.setPrimaryClip(android.content.ClipData.newPlainText("ToolTX Bug Log", body.takeLast(5000)))
+                Toast.makeText(requireContext(), "Đã sao chép bug log.", Toast.LENGTH_SHORT).show()
             }
         }
     }
