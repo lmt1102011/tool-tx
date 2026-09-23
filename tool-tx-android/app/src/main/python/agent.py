@@ -138,22 +138,27 @@ def _handle_eval(req):
 
 def _try_connect(url):
     """Thử connect websocket với từng sslopt. Trả ws hoặc ném exception."""
+    import traceback
     last_err = None
+    log("Try connect WS: " + url)
     for sopt in _sslopt_list():
         try:
-            return websocket.create_connection(
+            w = websocket.create_connection(
                 url, timeout=SERVER_TIMEOUT, ping_interval=20, ping_timeout=15,
                 sslopt=sopt
             )
+            log("WS connected OK (sslopt=%s)", sopt)
+            return w
         except Exception as e:
             last_err = e
-            log("Nối thử (sslopt=%s) thất bại: %s" % (sopt, str(e)[:200]), err=True)
+            log("Nối thử (sslopt=%s) thất bại: %s — %s" % (sopt, str(e)[:200], traceback.format_exc()[-500:]), err=True)
     raise last_err
 
 
 def _server_main(server, code):
     global _ws, _running
     fatal = False
+    log("_server_main enter: server=%s code=%s has_ws=%s" % (server, code, _HAS_WS))
     while not _stop_evt.is_set():
         url = _ws_url(server)
         try:
@@ -228,18 +233,23 @@ def _server_main(server, code):
 
 def start_agent(server_url, code):
     global _running
+    invalid = False
     with _lock:
         if _running:
             return True
         code = str(code or "").strip().upper()
         if not server_url or not code:
-            _set_status(False, "Thiếu server/code — không bắt đầu.", running=False)
-            return False
-        _running = True
-        _stop_evt.clear()
-        _set_status(True, "Agent đang khởi động...", running=True)
-        threading.Thread(target=_server_main, args=(server_url, code), daemon=True).start()
-        return True
+            _running = False
+            invalid = True
+        else:
+            _running = True
+            _stop_evt.clear()
+    if invalid:
+        _set_status(False, "Thiếu server/code — không bắt đầu.", running=False)
+        return False
+    _set_status(True, "Agent đang khởi động...", running=True)
+    threading.Thread(target=_server_main, args=(server_url, code), daemon=True).start()
+    return True
 
 
 def stop():
