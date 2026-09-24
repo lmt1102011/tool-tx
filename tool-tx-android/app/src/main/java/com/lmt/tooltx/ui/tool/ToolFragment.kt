@@ -172,7 +172,11 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                 return false
             }
 
-            override fun onPageStarted(view: WebView, url: String) {
+            override fun onPageStarted(
+                view: WebView,
+                url: String,
+                favicon: android.graphics.Bitmap?
+            ) {
                 WebViewBridge.installWsShim()
                 setStatus("Game đang tải…")
             }
