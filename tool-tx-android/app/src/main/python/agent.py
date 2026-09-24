@@ -122,10 +122,18 @@ def _handle_eval(req):
     try:
         rid = str(req.get("id") or "")
         expr = str(req.get("expr") or "")
+        from com.lmt.tooltx import WebViewBridge as _wvb
+        try:
+            _cu = _wvb.currentUrl()
+        except Exception:
+            _cu = None
+        log("eval url=%s nhu cau" % (str(_cu)[:80]))
         ok, value = _eval_in_webview(expr)
         if not ok:
+            log("eval LỖI: " + str(value)[:200])
             _send({"t": "res", "id": rid, "value": [], "error": str(value)[:200]})
         elif isinstance(value, list):
+            log("eval OK: %d item" % len(value))
             _send({"t": "res", "id": rid, "value": value})
         else:
             _send({"t": "res", "id": rid, "value": []})

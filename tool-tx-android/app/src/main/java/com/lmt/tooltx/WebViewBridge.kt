@@ -31,6 +31,23 @@ object WebViewBridge {
     }
 
     @JvmStatic
+    fun currentUrl(): String? {
+        val wv = webView ?: return null
+        val result = AtomicReference<String?>()
+        val latch = CountDownLatch(1)
+        main.post {
+            try {
+                result.set(wv.url)
+            } catch (e: Throwable) {
+                result.set(null)
+            }
+            latch.countDown()
+        }
+        latch.await(3, TimeUnit.SECONDS)
+        return result.get()
+    }
+
+    @JvmStatic
     @Throws(Throwable::class)
     fun evalJs(expr: String, timeoutMs: Long): String? {
         val wv = webView ?: return null
