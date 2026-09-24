@@ -84,6 +84,14 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         val window = requireActivity().window
         if (fullscreen) {
             androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+            if (android.os.Build.VERSION.SDK_INT >= 28) {
+                try {
+                    window.attributes = window.attributes.apply {
+                        layoutInDisplayCutoutMode =
+                            android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                    }
+                } catch (_: Exception) {}
+            }
             window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
             controller.systemBarsBehavior =
@@ -91,6 +99,14 @@ binding.predCard.setOnTouchListener(::onDragTouch)
             controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
         } else {
             window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            if (android.os.Build.VERSION.SDK_INT >= 28) {
+                try {
+                    window.attributes = window.attributes.apply {
+                        layoutInDisplayCutoutMode =
+                            android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
+                    }
+                } catch (_: Exception) {}
+            }
             val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
             controller.systemBarsBehavior =
                 androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_DEFAULT

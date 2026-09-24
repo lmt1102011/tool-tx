@@ -154,26 +154,30 @@
         android:background="@android:color/black"
         android:visibility="gone">
 
+        <!-- Sửa lệch màn hình: che cả cụm camera khi fullscreen -->
         <android.webkit.WebView
             android:id="@+id/web_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@android:color/black" />
+            android:background="@android:color/black"
+            android:clipToPadding="false"
+            android:fitsSystemWindows="false" />
 
         <!-- Nút mũi tên thoát ở góc trái trên cùng -->
         <ImageButton
             android:id="@+id/btn_exit_game"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:layout_gravity="top|start"
-            android:layout_margin="@dimen/spacing_sm"
+            android:layout_margin="@dimen/spacing_xs"
             android:background="@drawable/bg_game_exit"
             android:contentDescription="@string/close_game"
             android:padding="@dimen/spacing_xs"
             android:src="@drawable/ic_arrow_left"
-            android:tint="@android:color/white" />
+            android:tint="@android:color/white"
+            android:alpha="0.7" />
 
-        <!-- Cửa sổ dự đoán hình chữ nhật (giống web PC) -->
+        <!-- Cửa sổ dự đoán hình chữ nhật (giống web PC) trong suốt -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/pred_card"
             android:layout_width="wrap_content"
@@ -181,7 +185,7 @@
             android:layout_gravity="bottom|center_horizontal"
             android:layout_margin="@dimen/spacing_md"
             android:elevation="8dp"
-            app:cardBackgroundColor="@color/surface"
+            app:cardBackgroundColor="@color/surfaceTranslucent"
             app:cardCornerRadius="@dimen/card_radius"
             app:strokeWidth="0dp">
 

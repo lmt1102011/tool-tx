@@ -15,6 +15,7 @@
     <color name="onTertiaryContainer">#FF40304B</color>
 
     <color name="surface">#FFFAF9FB</color>
+    <color name="surfaceTranslucent">#E6FAF9FB</color>
     <color name="surfaceContainerLow">#FFF2F2F5</color>
     <color name="surfaceContainer">#FFECECEF</color>
     <color name="surfaceContainerHigh">#FFE7E7EA</color>
