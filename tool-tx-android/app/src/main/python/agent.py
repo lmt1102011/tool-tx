@@ -128,6 +128,9 @@ def _handle_eval(req):
         except Exception:
             _cu = None
         log("eval url=%s nhu cau" % (str(_cu)[:80]))
+        if not _cu or str(_cu).strip().lower() in ("", "about:blank", "null", "none"):
+            _send({"t": "res", "id": rid, "value": [], "error": "no-game"})
+            return
         ok, value = _eval_in_webview(expr)
         if not ok:
             log("eval LỖI: " + str(value)[:200])
