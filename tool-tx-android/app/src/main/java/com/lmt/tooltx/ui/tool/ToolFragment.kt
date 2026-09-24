@@ -503,6 +503,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         val pick = p["pick"]?.toString()?.trim()
         val confV = num("confidence").let { if (it > 0) it else num("conf") }
         val isSkip = (p["skip"] as? Boolean) ?: (p["skip"]?.toString()?.toBooleanStrictOrNull() ?: false)
+        val histCount = (p["hist"] ?: p["history"])?.let { if (it is List<*>) it.size else 0 } ?: 0
         var pT = num("pT")
         var pX = num("pX")
         if (pT <= 0 && pX <= 0) { pT = 50.0; pX = 50.0 }
@@ -572,7 +573,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                 predColor = ContextCompat.getColor(ctx, R.color.panelText)
             }
             else -> {
-                predText = getString(R.string.waiting_data)
+                predText = if (isSkip && histCount > 0) "" else getString(R.string.waiting_data)
                 predColor = ContextCompat.getColor(ctx, R.color.panelDim)
             }
         }
@@ -580,7 +581,10 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         val statusTxt: String
         val countTxt: String
         when (phase) {
-            "idle" -> { statusTxt = getString(R.string.phase_idle); countTxt = "" }
+            "idle" -> {
+                statusTxt = if (isSkip && histCount > 0) getString(R.string.phase_first_round) else getString(R.string.phase_idle)
+                countTxt = ""
+            }
             "wait" -> {
                 statusTxt = getString(R.string.phase_wait)
                 countTxt = countdownTxt()
