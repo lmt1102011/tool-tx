@@ -109,8 +109,8 @@ object WebViewBridge {
     @JvmStatic
     fun installWsShim() {
         val wv = webView ?: return
-        val js = "if(window.__wsCapShim)return;window.__wsCapShim=1;" +
-            "(function(){" +
+        val js = "(function(){" +
+            "if(window.__wsCapShim)return;window.__wsCapShim=1;" +
             "window.__wsLog=[];window.__wsLogMax=2000;" +
             "function push(e){if(!e)return;if(window.__wsLog.length>=window.__wsLogMax)window.__wsLog.shift();window.__wsLog.push(e);}" +
             "var Orig=window.WebSocket;" +
