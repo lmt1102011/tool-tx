@@ -53,6 +53,9 @@
     <string name="prediction">Dự đoán</string>
     <string name="open_game">MỞ GAME</string>
     <string name="close_game">Đóng game</string>
+    <string name="mute_sound">Bật/tắt tiếng</string>
+    <string name="muted">Đang tắt tiếng</string>
+    <string name="unmuted">Đang bật tiếng</string>
     <string name="reset_code">Reset mã</string>
     <string name="tool_hint">Bấm MỞ GAME sau khi kết nối. Khi game đang mở, chỉ hiện cửa sổ dự đoán kéo thả như trên web PC.</string>
 

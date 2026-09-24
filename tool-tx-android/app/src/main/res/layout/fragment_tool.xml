@@ -177,6 +177,20 @@
             android:tint="@android:color/white"
             android:alpha="0.7" />
 
+        <!-- Nút bật/tắt tiếng (mute/unmute) ở góc phải trên cùng, cạnh nút thoát -->
+        <ImageButton
+            android:id="@+id/btn_mute"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="@dimen/spacing_xs"
+            android:background="@drawable/bg_game_exit"
+            android:contentDescription="@string/mute_sound"
+            android:padding="@dimen/spacing_xs"
+            android:src="@drawable/ic_volume_off"
+            android:tint="@android:color/white"
+            android:alpha="0.7" />
+
         <!-- Cửa sổ dự đoán hình chữ nhật (giống web PC) trong suốt -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/pred_card"

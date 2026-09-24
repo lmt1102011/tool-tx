@@ -109,6 +109,13 @@ def _on_panel(data):
         _panel = data
 
 
+def set_panel(data):
+    """Panel đẩy qua agent-ws (kênh bền) dùng chung biến _panel với socket.io."""
+    global _panel
+    if isinstance(data, dict):
+        _panel = data
+
+
 def last_kick():
     return _kick
 

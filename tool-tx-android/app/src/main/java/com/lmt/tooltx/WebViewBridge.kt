@@ -65,23 +65,58 @@ object WebViewBridge {
         return result.get()
     }
 
+    @Volatile
+    private var muted = true
+
     @JvmStatic
-    fun mutePage() {
+    fun isMuted(): Boolean = muted
+
+    @JvmStatic
+    fun setMuted(mute: Boolean) {
+        muted = mute
         val wv = webView ?: return
-        val js = "(function(){try{" +
-            "function killA(){document.querySelectorAll('audio,video').forEach(function(a){a.muted=true;});}" +
-            "killA();" +
-            "var op=HTMLMediaElement.prototype.play;" +
-            "HTMLMediaElement.prototype.play=function(){this.muted=true;return op.apply(this,arguments);};" +
-            "(function(AC){if(!AC)return;var ctor=function(){var c=new AC();if(c.suspend){c.suspend().catch(function(){});}return c;};ctor.prototype=AC.prototype;window.AudioContext=ctor;window.webkitAudioContext=ctor;})(window.AudioContext||window.webkitAudioContext);" +
-            "new MutationObserver(function(){killA();}).observe(document.body,{subtree:true,childList:true});" +
-            "}catch(e){}})();"
+        val js = if (mute) MUTE_JS else UNMUTE_JS
         main.post {
             try {
                 wv.evaluateJavascript(js, null)
             } catch (_: Throwable) {}
         }
     }
+
+    @JvmStatic
+    fun mutePage() = setMuted(true)
+
+    @JvmStatic
+    fun unmutePage() = setMuted(false)
+
+    private val MUTE_JS = "(function(){try{" +
+        "if(!window.__txAudio){window.__txAudio={patched:0,cxs:[]};}" +
+        "var A=window.__txAudio;" +
+        "function killA(){document.querySelectorAll('audio,video').forEach(function(a){a.muted=true;});}" +
+        "killA();" +
+        "if(!A.patched){A.patched=1;" +
+        "A.origPlay=HTMLMediaElement.prototype.play;" +
+        "HTMLMediaElement.prototype.play=function(){this.muted=true;return A.origPlay.apply(this,arguments);};" +
+        "(function(AC){if(!AC)return;var ctor=function(){var c=new AC();A.cxs.push(c);if(c.suspend){c.suspend().catch(function(){});}return c;};ctor.prototype=AC.prototype;window.AudioContext=ctor;window.webkitAudioContext=ctor;})(window.AudioContext||window.webkitAudioContext);" +
+        "A.obs=new MutationObserver(function(){killA();});" +
+        "A.obs.observe(document.body,{subtree:true,childList:true});}" +
+        "else{" +
+        "var cx=A.cxs||[];for(var i=0;i<cx.length;i++){try{if(cx[i]&&cx[i].suspend)cx[i].suspend().catch(function(){});}catch(e){}}" +
+        "if(A.obs){try{A.obs.disconnect();}catch(e){}" +
+        "A.obs=new MutationObserver(function(){killA();});" +
+        "A.obs.observe(document.body,{subtree:true,childList:true});}}}" +
+        "}catch(e){}})();"
+
+    /** Bật tiếng: gỡ patch play, resume AudioContext đã suspend, unmute media hiện có. */
+    private val UNMUTE_JS = "(function(){try{" +
+        "var A=window.__txAudio;if(!A){A=window.__txAudio={patched:0,cxs:[]};}" +
+        "if(A.obs){try{A.obs.disconnect();}catch(e){}A.obs=null;}" +
+        "document.querySelectorAll('audio,video').forEach(function(a){a.muted=false;if(a.paused){try{a.play().catch(function(){});}catch(e){}}});" +
+        "if(A.origPlay){HTMLMediaElement.prototype.play=A.origPlay;A.origPlay=null;}" +
+        "var cx=A.cxs||[];for(var i=0;i<cx.length;i++){try{if(cx[i]&&cx[i].resume)cx[i].resume().catch(function(){});}catch(e){}}" +
+        "var AC=window.__txOrigAC||window.AudioContext;if(AC){window.__txOrigAC=AC;window.__txOrigWAC=AC;" +
+        "var ctor=function(){var c=new AC();A.cxs.push(c);return c;};ctor.prototype=AC.prototype;window.AudioContext=ctor;window.webkitAudioContext=ctor;}" +
+        "}catch(e){}})();"
 
     @JvmStatic
     @Throws(Throwable::class)

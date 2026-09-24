@@ -145,9 +145,9 @@ class PythonBridge(private val context: Context) {
         }
     }
 
-    fun discoverServer(): String? {
+    fun discoverServer(force: Boolean = false): String? {
         return try {
-            val url = py.getModule("config").callAttr("discover_server")
+            val url = py.getModule("config").callAttr("discover_server", null, force)
             if (url == null) null else url.toString()
         } catch (_: Exception) {
             null

@@ -36,6 +36,7 @@ class ToolFragment : Fragment() {
     private var gameOpen = false
     private var gameUrl: String? = null
     private var pendingOpen = false
+    private var muted = true
 
     @Volatile
     private var lastPanel: Map<*, *> = emptyMap<String, Any?>()
@@ -59,6 +60,7 @@ class ToolFragment : Fragment() {
         binding.btnOpenTool.setOnClickListener { onOpenGameClicked() }
         binding.btnResetToken.setOnClickListener { startTool(forceRefresh = true) }
         binding.btnExitGame.setOnClickListener { closeGame() }
+        binding.btnMute.setOnClickListener { toggleMute() }
         binding.btnBack.setOnClickListener {
             if (gameOpen) {
                 closeGame()
@@ -192,7 +194,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
                 WebViewBridge.installWsShim()
-                WebViewBridge.mutePage()
+                WebViewBridge.setMuted(muted)
             }
         }
         wv.webChromeClient = object : android.webkit.WebChromeClient() {
@@ -229,6 +231,19 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         }
     }
 
+    // ── Bật/tắt tiếng game (nút loa) ────────────────────────────
+    private fun toggleMute() {
+        muted = !muted
+        applyMuteUi()
+        WebViewBridge.setMuted(muted)
+        setAgent(if (muted) getString(R.string.muted) else getString(R.string.unmuted))
+    }
+
+    private fun applyMuteUi() {
+        binding.btnMute.setImageResource(if (muted) R.drawable.ic_volume_off else R.drawable.ic_volume_up)
+        binding.btnMute.contentDescription = getString(R.string.mute_sound) + (if (muted) " (" + getString(R.string.muted) + ")" else " (" + getString(R.string.unmuted) + ")")
+    }
+
     private fun openGame() {
         if (gameOpen) return
         gameOpen = true
@@ -236,10 +251,12 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         backCallback?.isEnabled = true
         binding.toolPage.visibility = View.GONE
         binding.gameOverlay.visibility = View.VISIBLE
+        applyMuteUi()
         val wv = binding.webView
         wv.visibility = View.VISIBLE
         WebViewBridge.attach(wv)
         gameUrl?.let { WebViewBridge.navigate(it) }
+        WebViewBridge.setMuted(muted)
         requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         (requireActivity() as MainActivity).setGameFullscreen(true)
         setSystemUiFullscreen(true)
@@ -307,36 +324,57 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                 } ?: session["idToken"]?.toString().orEmpty()
                 bridge.clearKick()
 
-                for (attempt in 1..2) {
+                var connected = false
+                var curServer = server
+                // Thử tối đa 3 lần: mỗi lần fail → rediscover (bỏ cache) để bắt tunnel URL mới,
+                // vì launcher có thể đã đổi URL khi server restart.
+                for (attempt in 1..3) {
                     try {
                         bridge.disconnectSocket()
-                        bridge.connectSocket(server, token)
+                        bridge.connectSocket(curServer, token)
                     } catch (_: Exception) {}
-                    val connected = bridge.isSocketConnected()
-                    bridge.writeBugLog("ui", "connect attempt=$attempt connected=$connected")
+                    connected = bridge.isSocketConnected()
+                    bridge.writeBugLog("ui", "connect attempt=$attempt server=$curServer connected=$connected")
                     withContext(Dispatchers.Main) {
                         if (_binding == null) return@withContext
                         setStatus(
-                            if (connected) "Server: $server — lấy mã liên kết..."
-                            else "Đang thử kết nối server... ($attempt/2)"
+                            if (connected) "Server: $curServer — lấy mã liên kết..."
+                            else "Đang thử kết nối server... ($attempt/3)"
                         )
                     }
                     if (connected) break
-                    delay(2500)
+                    if (attempt < 3) {
+                        // Server chưa kịp cập nhật URL → ép tìm lại (không dùng cache).
+                        val freshServer = bridge.discoverServer(force = true)
+                        if (!freshServer.isNullOrEmpty()) curServer = freshServer
+                        delay(3000)
+                    }
                 }
 
-                if (!bridge.isSocketConnected()) {
-                    bridge.writeBugLog("ui", "ket qua: KHONG ket noi duoc server (sau 2 lan)")
+                if (!connected) {
+                    bridge.writeBugLog("ui", "ket qua: KHONG ket noi duoc server (sau 3 lan)")
+                    // Thử 1 lần cuối với URL mới nhất từ config.txt/đăng ký.
+                    val lastTry = bridge.discoverServer(force = true) ?: curServer
+                    try {
+                        bridge.disconnectSocket()
+                        bridge.connectSocket(lastTry, token)
+                    } catch (_: Exception) {}
+                    connected = bridge.isSocketConnected()
+                    if (connected) curServer = lastTry
+                    bridge.writeBugLog("ui", "final try server=$lastTry connected=$connected")
+                }
+
+                if (!connected) {
                     withContext(Dispatchers.Main) {
                         if (_binding == null) return@withContext
-                        setStatus("Không kết nối được server: $server")
-                        setAgent("Kiểm tra: server đã bật trên PC, điện thoại cùng mạng Wi-Fi với PC, và địa chỉ server đúng.")
+                        setStatus("Không kết nối được server: $curServer")
+                        setAgent("Kiểm tra: server đã bật trên PC, điện thoại cùng mạng Wi-Fi với PC, và địa chỉ server đúng. Nếu server vừa restart, chờ 10–30 giây rồi bấm MỞ GAME lại.")
                         stopToolButtons()
                     }
                     return@launch
                 }
 
-                val code = bridge.getAgentPair(server)
+                val code = bridge.getAgentPair(curServer)
                 bridge.writeBugLog("ui", "agent_code=" + (code ?: "NULL"))
                 if (code.isNullOrEmpty()) {
                     val kick = bridge.getLastKick()
@@ -354,7 +392,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                     return@launch
                 }
                 lastCode = code
-                val ok = bridge.startAgent(server, code)
+                val ok = bridge.startAgent(curServer, code)
                 bridge.writeBugLog("ui", "startAgent ok=" + ok)
                 withContext(Dispatchers.Main) {
                     if (_binding == null) return@withContext

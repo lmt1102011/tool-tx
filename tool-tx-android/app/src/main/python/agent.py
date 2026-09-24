@@ -166,6 +166,7 @@ def _try_connect(url):
 def _server_main(server, code):
     global _ws, _running
     fatal = False
+    fail_count = 0
     log("_server_main enter: server=%s code=%s has_ws=%s" % (server, code, _HAS_WS))
     while not _stop_evt.is_set():
         url = _ws_url(server)
@@ -175,10 +176,26 @@ def _server_main(server, code):
             _set_status(False, "Nối server: %s..." % (server or ""))
             w = _try_connect(url)
         except Exception as e:
+            fail_count += 1
+            # Nếu nối thất bại nhiều lần liên tiếp (server có thể vừa restart,
+            # tunnel đổi URL) → thử discover lại URL mới thay vì ôm URL cũ.
+            if fail_count >= 2:
+                try:
+                    from config import discover_server
+                    new_server = discover_server(force=True)
+                except Exception:
+                    new_server = ""
+                if new_server and new_server != server and new_server != (server or "").rstrip("/"):
+                    log("Server đổi URL: %s -> %s" % (server, new_server))
+                    server = new_server
+                    fail_count = 0
+                else:
+                    fail_count = 0
             _set_status(False, "Lỗi nối server: %s" % str(e)[:160])
             log("Lỗi nối server: " + str(e)[:160] + " — thử lại trong %ds" % RECONNECT_DELAY, err=True)
             _stop_evt.wait(RECONNECT_DELAY)
             continue
+        fail_count = 0
         with _ws_lock:
             _ws = w
         try:
@@ -217,6 +234,14 @@ def _server_main(server, code):
                     break
                 elif t == "ping":
                     _send({"t": "pong", "ts": int(time.time() * 1000)})
+                elif t == "panel":
+                    # Panel dự đoán gửi qua agent-ws (kênh bền) → đưa thẳng vào socket_client
+                    # để UI đọc được cả khi socket.io đứt.
+                    try:
+                        import socket_client as _sc
+                        _sc.set_panel(m.get("data"))
+                    except Exception:
+                        pass
                 elif t == "eval":
                     _handle_eval(m)
         finally:
