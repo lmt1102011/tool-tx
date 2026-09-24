@@ -38,7 +38,7 @@ class ToolFragment : Fragment() {
     private var pendingOpen = false
 
     @Volatile
-    private var lastPanel: Map<*, *> = emptyMap()
+    private var lastPanel: Map<*, *> = emptyMap<String, Any?>()
     private var countdownJob: Job? = null
 
     private var _binding: FragmentToolBinding? = null
@@ -463,7 +463,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         super.onDestroyView()
         countdownJob?.cancel()
         countdownJob = null
-        lastPanel = emptyMap()
+        lastPanel = emptyMap<String, Any?>()
         WebViewBridge.detach()
         runCatching { (activity as? MainActivity)?.getBridge()?.stopAgent() }
         if (gameOpen) {
