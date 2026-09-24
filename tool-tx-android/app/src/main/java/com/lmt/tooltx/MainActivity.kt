@@ -103,14 +103,34 @@ class MainActivity : AppCompatActivity() {
         if (hasFocus) hideSystemBars()
     }
 
+    @Volatile
+    private var gameFullscreen = false
+
     private fun setupImmersive() {
         val root = findViewById<View>(R.id.main_root)
         ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
-            val sys = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            fragmentContainer.setPadding(0, sys.top, 0, 0)
+            // Khi đang fullscreen game thì KHÔNG pad gì cả — game phải chạm kín màn hình
+            if (!gameFullscreen) {
+                val sys = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+                fragmentContainer.setPadding(0, sys.top, 0, 0)
+            } else {
+                fragmentContainer.setPadding(0, 0, 0, 0)
+            }
             insets
         }
         hideSystemBars()
+    }
+
+    fun setGameFullscreen(on: Boolean) {
+        gameFullscreen = on
+        if (on) {
+            fragmentContainer.setPadding(0, 0, 0, 0)
+            hideSystemBars()
+        } else {
+            // Trả lại padding theo insets hiện tại
+            val root = findViewById<View>(R.id.main_root)
+            root.post { root.requestApplyInsets() }
+        }
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
@@ -140,7 +160,12 @@ class MainActivity : AppCompatActivity() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 window.setDecorFitsSystemWindows(false)
                 val controller = WindowInsetsControllerCompat(window, window.decorView)
-                controller.hide(WindowInsetsCompat.Type.navigationBars())
+                // Khi đang fullscreen game thì ẩn CẢ status lẫn navigation (tránh "thanh ngang" trên cùng)
+                if (gameFullscreen) {
+                    controller.hide(WindowInsetsCompat.Type.systemBars())
+                } else {
+                    controller.hide(WindowInsetsCompat.Type.navigationBars())
+                }
                 controller.systemBarsBehavior =
                     WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             } else {
@@ -150,6 +175,7 @@ class MainActivity : AppCompatActivity() {
                         or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                         or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                         or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        or (if (gameFullscreen) View.SYSTEM_UI_FLAG_FULLSCREEN else 0)
                     )
             }
         } catch (_: Exception) {}
