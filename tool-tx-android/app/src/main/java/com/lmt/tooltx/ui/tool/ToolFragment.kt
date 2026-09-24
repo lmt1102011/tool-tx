@@ -2,11 +2,14 @@ package com.lmt.tooltx.ui.tool
 
 import android.content.pm.ActivityInfo
 import android.os.Bundle
+import android.text.SpannableStringBuilder
+import android.text.style.ForegroundColorSpan
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
+import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.lmt.tooltx.MainActivity
@@ -33,6 +36,10 @@ class ToolFragment : Fragment() {
     private var gameOpen = false
     private var gameUrl: String? = null
     private var pendingOpen = false
+
+    @Volatile
+    private var lastPanel: Map<*, *> = emptyMap()
+    private var countdownJob: Job? = null
 
     private var _binding: FragmentToolBinding? = null
     private val binding get() = _binding!!
@@ -76,6 +83,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
             }
         }
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, backCallback!!)
+        startCountdownTicker()
     }
 
     private var backCallback: androidx.activity.OnBackPressedCallback? = null
@@ -453,6 +461,9 @@ binding.predCard.setOnTouchListener(::onDragTouch)
 
     override fun onDestroyView() {
         super.onDestroyView()
+        countdownJob?.cancel()
+        countdownJob = null
+        lastPanel = emptyMap()
         WebViewBridge.detach()
         runCatching { (activity as? MainActivity)?.getBridge()?.stopAgent() }
         if (gameOpen) {
@@ -466,36 +477,190 @@ binding.predCard.setOnTouchListener(::onDragTouch)
 
     private fun prediction(p: Map<*, *>) {
         if (p.isEmpty()) return
+        lastPanel = p
+        renderPhase(p)
+    }
+
+    private fun isTai(v: String): Boolean =
+        v.startsWith("T", ignoreCase = true) && !v.startsWith("X", ignoreCase = true)
+
+    // Vẽ panel dự đoán giống web PC: phase + countdown (Server ước lượng phiên) +
+    // thanh tỉ lệ TÀI/XỈU đôi. Phiên đầu (skipFirst, pick null) vẫn hiện countdown/kết quả.
+    private fun renderPhase(p: Map<*, *>) {
+        if (_binding == null) return
+        val ctx = requireContext()
+        val now = System.currentTimeMillis()
+        fun num(k: String): Double =
+            (p[k] as? Number)?.toDouble() ?: (p[k]?.toString()?.toDoubleOrNull() ?: 0.0)
+
+        val rStart = num("rStart").toLong()
+        val rEnd = num("rEnd").toLong()
+        val lastSettle = num("lastSettle").toLong()
+        val roundDur = num("roundDur")
+        val interGap = num("interGap").let { if (it > 0) it else 18.0 }
+        val lastResult = (p["lastResult"] as? String)?.trim().orEmpty()
+        val realSum = num("realSum").toInt()
         val pick = p["pick"]?.toString()?.trim()
-        if (pick.isNullOrEmpty()) return
+        val confV = num("confidence").let { if (it > 0) it else num("conf") }
+        val isSkip = (p["skip"] as? Boolean) ?: (p["skip"]?.toString()?.toBooleanStrictOrNull() ?: false)
+        var pT = num("pT")
+        var pX = num("pX")
+        if (pT <= 0 && pX <= 0) { pT = 50.0; pX = 50.0 }
 
-        val isTai = pick.equals("T", ignoreCase = true)
-        binding.tvPrediction.text = getString(if (isTai) R.string.tai else R.string.xiu)
-        binding.tvPrediction.setTextColor(
-            ContextCompat.getColor(
-                requireContext(),
-                if (isTai) R.color.error else R.color.primary
-            )
-        )
+        val betLen = if (rStart > 0 && rEnd > rStart) (rEnd - rStart) / 1000.0 else roundDur
+        val revShow = (if (betLen > 0) betLen else 0.0) + interGap - 3.0
+        val sRound = if (rStart > 0) (now - rStart) / 1000.0 else -1.0
+        val live = rStart > 0
 
-        val pT = p["pT"]?.toString()?.toDoubleOrNull() ?: (if (isTai) 60.0 else 40.0)
-        val pX = p["pX"]?.toString()?.toDoubleOrNull() ?: (100.0 - pT)
-        binding.tvPercentage.text = String.format(Locale.ROOT, "TÀI %02.0f  /  XỈU %02.0f", pT, pX)
-        binding.progressBar.progress = pT.roundToInt().coerceIn(0, 100)
+        val phase: String = if (live) {
+            when {
+                sRound < 3.0 -> "wait"
+                sRound < betLen - 15.0 -> "analyze"
+                sRound < betLen - 2.0 -> "ready"
+                sRound < betLen -> "get_result"
+                sRound < revShow -> "reveal"
+                else -> "wait"
+            }
+        } else {
+            "idle"
+        }
+        val phaseColorRes = when (phase) {
+            "ready" -> if (isSkip) R.color.panelWarn else R.color.panelGo
+            "reveal" -> R.color.panelGo
+            "get_result" -> R.color.panelWarn
+            "analyze" -> R.color.panelAnalyze
+            else -> R.color.panelDim
+        }
+        val phaseColor = ContextCompat.getColor(ctx, phaseColorRes)
 
-        val conf = (p["confidence"] ?: p["conf"])?.toString()?.toDoubleOrNull()
-        val confTxt = conf?.let { getString(R.string.confidence, it) }.orEmpty()
+        val remaining = Math.max(0L, (rEnd - now) / 1000L)
+        val nextStart = if (lastSettle > 0) lastSettle + (interGap * 1000.0).toLong() else 0L
+        val toNext = if (nextStart > now) Math.max(0L, (nextStart - now) / 1000L) else 0L
+        fun countdownTxt(): String = when {
+            remaining > 0 -> getString(R.string.panel_countdown_remaining, remaining)
+            toNext > 0 -> getString(R.string.panel_new_round_in, toNext)
+            else -> getString(R.string.panel_estimated)
+        }
 
-        val hist = p["hist"] ?: p["history"]
-        var histTxt = ""
-        if (hist is List<*>) {
-            histTxt = hist.takeLast(16).joinToString("   ") { item ->
-                (item?.toString()?.take(1) ?: "").uppercase()
+        val pickTai = pick != null && isTai(pick)
+        val predText: String
+        val predColor: Int
+        when {
+            phase == "reveal" -> {
+                val side = getString(if (isTai(lastResult)) R.string.tai else R.string.xiu)
+                predText = if (realSum > 0) {
+                    getString(R.string.panel_result_with_sum, side, realSum)
+                } else {
+                    getString(R.string.phase_result) + ": " + side
+                }
+                predColor = ContextCompat.getColor(ctx, R.color.panelGo)
+            }
+            phase == "ready" && !pick.isNullOrEmpty() -> {
+                predText = if (confV > 0) {
+                    getString(
+                        R.string.panel_pick_with_conf,
+                        getString(if (pickTai) R.string.tai else R.string.xiu),
+                        confV
+                    )
+                } else {
+                    getString(if (pickTai) R.string.tai else R.string.xiu)
+                }
+                predColor = ContextCompat.getColor(ctx, if (pickTai) R.color.panelTai else R.color.panelXiu)
+            }
+            phase != "idle" -> {
+                predText = ""
+                predColor = ContextCompat.getColor(ctx, R.color.panelText)
+            }
+            else -> {
+                predText = getString(R.string.waiting_data)
+                predColor = ContextCompat.getColor(ctx, R.color.panelDim)
             }
         }
-        binding.tvHistory.text = listOf(confTxt, histTxt)
-            .filter { it.isNotEmpty() }
-            .joinToString(" | ")
+
+        val statusTxt: String
+        val countTxt: String
+        when (phase) {
+            "idle" -> { statusTxt = getString(R.string.phase_idle); countTxt = "" }
+            "wait" -> {
+                statusTxt = getString(R.string.phase_wait)
+                countTxt = countdownTxt()
+            }
+            "analyze" -> {
+                statusTxt = if (confV > 0) {
+                    getString(R.string.phase_analyze) + " · " + getString(R.string.panel_ratio, pT, pX)
+                } else {
+                    getString(R.string.phase_analyze)
+                }
+                countTxt = countdownTxt()
+            }
+            "ready" -> {
+                statusTxt = if (pick.isNullOrEmpty()) {
+                    getString(R.string.phase_first_round)
+                } else {
+                    getString(R.string.panel_ratio, pT, pX)
+                }
+                countTxt = countdownTxt()
+            }
+            "get_result" -> {
+                statusTxt = getString(R.string.phase_get_result)
+                countTxt = countdownTxt()
+            }
+            else -> { statusTxt = getString(R.string.phase_result); countTxt = "" }
+        }
+
+        binding.tvPrediction.text = predText
+        binding.tvPrediction.setTextColor(predColor)
+        binding.tvCountdown.text = countTxt
+        binding.tvCountdown.setTextColor(phaseColor)
+        binding.tvPercentage.text = statusTxt
+        binding.tvPercentage.setTextColor(phaseColor)
+        setBar(pT, pX)
+        renderHistory(p)
+    }
+
+    private fun setBar(pT: Double, pX: Double) {
+        if (_binding == null) return
+        val tW = pT.coerceIn(0.0, 100.0).roundToInt()
+        val xW = (100 - tW).coerceIn(0, 100)
+        (binding.barTai.layoutParams as LinearLayout.LayoutParams).weight = tW.toFloat()
+        (binding.barXiu.layoutParams as LinearLayout.LayoutParams).weight = xW.toFloat()
+        binding.barTai.requestLayout()
+        binding.barXiu.requestLayout()
+    }
+
+    private fun renderHistory(p: Map<*, *>) {
+        if (_binding == null) return
+        val hist = p["hist"] ?: p["history"]
+        if (hist !is List<*>) {
+            binding.tvHistory.text = ""
+            return
+        }
+        val ctx = requireContext()
+        val taiC = ContextCompat.getColor(ctx, R.color.panelTai)
+        val xiuC = ContextCompat.getColor(ctx, R.color.panelXiu)
+        val sb = SpannableStringBuilder()
+        hist.takeLast(14).forEach { item ->
+            val ch = (item?.toString() ?: "").uppercase(Locale.ROOT)
+            if (isTai(ch)) sb.append(getString(R.string.tai) + "  ", ForegroundColorSpan(taiC), 0)
+            else if (ch.startsWith("X")) sb.append(getString(R.string.xiu) + "  ", ForegroundColorSpan(xiuC), 0)
+        }
+        binding.tvHistory.text = sb
+    }
+
+    // Cập nhật countdown mỗi giây từ panel cuối (server ước lượng phiên).
+    private fun startCountdownTicker() {
+        countdownJob?.cancel()
+        countdownJob = GlobalScope.launch(Dispatchers.IO) {
+            while (!Thread.currentThread().isInterrupted) {
+                val p = lastPanel
+                if (p.isNotEmpty() && _binding != null && gameOpen) {
+                    withContext(Dispatchers.Main) {
+                        if (_binding != null && gameOpen) renderPhase(p)
+                    }
+                }
+                delay(1000)
+            }
+        }
     }
 
     private fun setStatus(text: String) {

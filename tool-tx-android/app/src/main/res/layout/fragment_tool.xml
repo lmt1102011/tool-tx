@@ -184,64 +184,88 @@
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|center_horizontal"
             android:layout_margin="@dimen/spacing_md"
-            android:elevation="8dp"
-            app:cardBackgroundColor="@color/surfaceTranslucent"
-            app:cardCornerRadius="@dimen/card_radius"
-            app:strokeWidth="0dp">
+            app:cardBackgroundColor="@color/panelDark"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/panelStroke"
+            app:strokeWidth="1dp">
 
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="220dp"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:paddingHorizontal="@dimen/spacing_md"
                 android:paddingVertical="@dimen/spacing_sm">
 
                 <LinearLayout
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
 
                     <TextView
                         android:id="@+id/tv_prediction"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_weight="1"
                         android:text="@string/waiting_data"
-                        android:textColor="@color/onSurface"
-                        android:textSize="26sp"
+                        android:textColor="@color/panelText"
+                        android:textSize="22sp"
                         android:textStyle="bold" />
 
                     <TextView
-                        android:id="@+id/tv_percentage"
+                        android:id="@+id/tv_countdown"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="@dimen/spacing_md"
-                        android:textColor="@color/onSurfaceVariant"
-                        android:textSize="13sp" />
+                        android:textColor="@color/panelStroke"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
 
                 </LinearLayout>
 
-                <com.google.android.material.progressindicator.LinearProgressIndicator
-                    android:id="@+id/progress_bar"
-                    android:layout_width="220dp"
+                <LinearLayout
+                    android:id="@+id/ratio_bar"
+                    android:layout_width="match_parent"
+                    android:layout_height="6dp"
+                    android:layout_marginTop="@dimen/spacing_xs"
+                    android:background="@color/panelTrack"
+                    android:orientation="horizontal">
+
+                    <View
+                        android:id="@+id/bar_tai"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="50"
+                        android:background="@color/panelTai" />
+
+                    <View
+                        android:id="@+id/bar_xiu"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="50"
+                        android:background="@color/panelXiu" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_percentage"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/spacing_sm"
-                    android:indeterminate="false"
-                    android:max="100"
-                    android:progress="0"
-                    android:progressTint="@color/primary"
-                    app:indicatorColor="@color/primary"
-                    app:trackColor="@color/surfaceContainerHighest"
-                    app:trackThickness="6dp" />
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="@dimen/spacing_2xs"
+                    android:textColor="@color/panelDim"
+                    android:textSize="11sp" />
 
                 <TextView
                     android:id="@+id/tv_history"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="@dimen/spacing_2xs"
                     android:maxLines="2"
-                    android:textColor="@color/onSurfaceVariant"
-                    android:textSize="11sp" />
+                    android:textColor="@color/panelDim"
+                    android:textSize="10sp" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
