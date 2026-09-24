@@ -48,6 +48,24 @@ object WebViewBridge {
     }
 
     @JvmStatic
+    fun mutePage() {
+        val wv = webView ?: return
+        val js = "(function(){try{" +
+            "function killA(){document.querySelectorAll('audio,video').forEach(function(a){a.muted=true;});}" +
+            "killA();" +
+            "var op=HTMLMediaElement.prototype.play;" +
+            "HTMLMediaElement.prototype.play=function(){this.muted=true;return op.apply(this,arguments);};" +
+            "(function(AC){if(!AC)return;var ctor=function(){var c=new AC();if(c.suspend){c.suspend().catch(function(){});}return c;};ctor.prototype=AC.prototype;window.AudioContext=ctor;window.webkitAudioContext=ctor;})(window.AudioContext||window.webkitAudioContext);" +
+            "new MutationObserver(function(){killA();}).observe(document.body,{subtree:true,childList:true});" +
+            "}catch(e){}})();"
+        main.post {
+            try {
+                wv.evaluateJavascript(js, null)
+            } catch (_: Throwable) {}
+        }
+    }
+
+    @JvmStatic
     @Throws(Throwable::class)
     fun evalJs(expr: String, timeoutMs: Long): String? {
         val wv = webView ?: return null

@@ -68,13 +68,18 @@ binding.predCard.setOnTouchListener(::onDragTouch)
 
     private fun setSystemUiFullscreen(fullscreen: Boolean) {
         val window = requireActivity().window
-        val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
         if (fullscreen) {
             androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
-            controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
             controller.systemBarsBehavior =
                 androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
         } else {
+            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+            controller.systemBarsBehavior =
+                androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
             controller.show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
             androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, true)
         }
@@ -135,6 +140,11 @@ binding.predCard.setOnTouchListener(::onDragTouch)
 
             override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
                 return false
+            }
+
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                WebViewBridge.mutePage()
             }
         }
         wv.webChromeClient = object : android.webkit.WebChromeClient() {
@@ -370,7 +380,10 @@ binding.predCard.setOnTouchListener(::onDragTouch)
 
     override fun onResume() {
         super.onResume()
-        if (gameOpen) requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        if (gameOpen) {
+            requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            setSystemUiFullscreen(true)
+        }
     }
 
     override fun onDestroyView() {
