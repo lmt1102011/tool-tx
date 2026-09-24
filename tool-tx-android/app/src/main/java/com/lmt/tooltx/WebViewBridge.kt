@@ -25,6 +25,24 @@ object WebViewBridge {
     }
 
     @JvmStatic
+    fun pauseWebView() {
+        val wv = webView ?: return
+        main.post {
+            try { wv.pauseTimers() } catch (_: Throwable) {}
+            try { wv.onPause() } catch (_: Throwable) {}
+        }
+    }
+
+    @JvmStatic
+    fun resumeWebView() {
+        val wv = webView ?: return
+        main.post {
+            try { wv.onResume() } catch (_: Throwable) {}
+            try { wv.resumeTimers() } catch (_: Throwable) {}
+        }
+    }
+
+    @JvmStatic
     fun navigate(url: String) {
         val wv = webView ?: return
         main.post { wv.loadUrl(url) }

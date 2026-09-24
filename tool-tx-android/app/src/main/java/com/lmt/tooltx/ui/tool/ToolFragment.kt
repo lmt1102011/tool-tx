@@ -419,7 +419,18 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         if (gameOpen) {
             requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
             setSystemUiFullscreen(true)
+            WebViewBridge.resumeWebView()
         }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        WebViewBridge.pauseWebView()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        WebViewBridge.pauseWebView()
     }
 
     override fun onDestroyView() {
