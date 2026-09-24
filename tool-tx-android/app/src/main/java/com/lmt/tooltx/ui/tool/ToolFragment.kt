@@ -443,7 +443,12 @@ binding.predCard.setOnTouchListener(::onDragTouch)
 
     override fun onStop() {
         super.onStop()
-        WebViewBridge.pauseWebView()
+        // Bấm Home / app switcher → phải TẮT game, không được chạy ngầm.
+        if (gameOpen) {
+            closeGame()
+        } else {
+            WebViewBridge.pauseWebView()
+        }
     }
 
     override fun onDestroyView() {

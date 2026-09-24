@@ -126,9 +126,13 @@ object WebViewBridge {
             "Wrapped.CONNECTING=Orig.CONNECTING;Wrapped.OPEN=Orig.OPEN;Wrapped.CLOSING=Orig.CLOSING;Wrapped.CLOSED=Orig.CLOSED;" +
             "window.WebSocket=Wrapped;" +
             "})();"
-        main.post {
+        // Gọi TRỰC TIẾP (đang ở UI thread trong onPageStarted/onPageFinished) —
+        // không qua main.post để shim kịp cài TRƯỚC khi game mở WebSocket.
+        try {
+            wv.evaluateJavascript(js, null)
+        } catch (_: Throwable) {
             try {
-                wv.evaluateJavascript(js, null)
+                main.post { wv.evaluateJavascript(js, null) }
             } catch (_: Throwable) {}
         }
     }
