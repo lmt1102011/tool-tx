@@ -172,8 +172,15 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                 return false
             }
 
+            override fun onPageStarted(view: WebView?, url: String?) {
+                super.onPageStarted(view, url)
+                WebViewBridge.installWsShim()
+                setStatus("Game đang tải…")
+            }
+
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                WebViewBridge.installWsShim()
                 WebViewBridge.mutePage()
             }
         }
@@ -223,6 +230,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         WebViewBridge.attach(wv)
         gameUrl?.let { WebViewBridge.navigate(it) }
         requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        (requireActivity() as MainActivity).setGameFullscreen(true)
         setSystemUiFullscreen(true)
         binding.btnOpenTool.text = getString(R.string.close_game)
         setStatus("Đang chơi — cửa sổ dự đoán nằm ở giữa dưới màn hình.")
@@ -241,6 +249,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         try { wv.clearHistory() } catch (_: Exception) {}
         WebViewBridge.detach()
         requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        (requireActivity() as MainActivity).setGameFullscreen(false)
         setSystemUiFullscreen(false)
         binding.btnOpenTool.text = if (running) getString(R.string.open_game) else getString(R.string.open_tool)
         if (running) setStatus("Server: đã kết nối — bấm MỞ GAME để chơi.")
@@ -418,6 +427,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         super.onResume()
         if (gameOpen) {
             requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            (requireActivity() as MainActivity).setGameFullscreen(true)
             setSystemUiFullscreen(true)
             WebViewBridge.resumeWebView()
         }

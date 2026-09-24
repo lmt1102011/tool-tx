@@ -105,4 +105,36 @@ object WebViewBridge {
         }
         return null
     }
+
+    @JvmStatic
+    fun installWsShim() {
+        val wv = webView ?: return
+        val js = "if(window.__wsCapShim)return;window.__wsCapShim=1;" +
+            "(function(){" +
+            "window.__wsLog=[];window.__wsLogMax=2000;" +
+            "function push(e){if(!e)return;if(window.__wsLog.length>=window.__wsLogMax)window.__wsLog.shift();window.__wsLog.push(e);}" +
+            "var Orig=window.WebSocket;" +
+            "function Wrapped(url,protocols){" +
+            "var w=new Orig(url,protocols);" +
+            "try{w.addEventListener('message',function(ev){var d=ev.data;" +
+            "if(typeof d==='string'){push({t:Date.now(),k:'t',d:d});}" +
+            "else if(d&&d.byteLength!==undefined){try{var u8=new Uint8Array(d.slice?d.slice(0,1500):d);var hex='';for(var i=0;i<u8.length;i++)hex+=('0'+u8[i].toString(16)).slice(-2);push({t:Date.now(),k:'b',d:hex});}catch(_){}}" +
+            "else if(d&&d.data){try{var dd=new Uint8Array(d.data.slice?d.data.slice(0,1500):d.data);var h2='';for(var i=0;i<dd.length;i++)h2+=('0'+dd[i].toString(16)).slice(-2);push({t:Date.now(),k:'b',d:h2});}catch(_){}}" +
+            "});}catch(_){}" +
+            "return w;}" +
+            "Wrapped.prototype=Orig.prototype;" +
+            "Wrapped.CONNECTING=Orig.CONNECTING;Wrapped.OPEN=Orig.OPEN;Wrapped.CLOSING=Orig.CLOSING;Wrapped.CLOSED=Orig.CLOSED;" +
+            "window.WebSocket=Wrapped;" +
+            "})();"
+        main.post {
+            try {
+                wv.evaluateJavascript(js, null)
+            } catch (_: Throwable) {}
+        }
+    }
+
+    @JvmStatic
+    fun getWsLog(): String? {
+        return evalJs("(function(){try{return JSON.stringify(window.__wsLog||[]);}catch(e){return '[]';}})()", 4000)
+    }
 }
