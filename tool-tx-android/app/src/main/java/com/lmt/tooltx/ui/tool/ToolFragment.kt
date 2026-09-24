@@ -64,7 +64,21 @@ binding.predCard.setOnTouchListener(::onDragTouch)
 
         val bridge = (requireActivity() as MainActivity).getBridge()
         if (bridge.isLoggedIn()) startTool()
+
+        backCallback = object : androidx.activity.OnBackPressedCallback(false) {
+            override fun handleOnBackPressed() {
+                if (gameOpen) {
+                    closeGame()
+                } else {
+                    isEnabled = false
+                    requireActivity().onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        }
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, backCallback!!)
     }
+
+    private var backCallback: androidx.activity.OnBackPressedCallback? = null
 
     private fun setSystemUiFullscreen(fullscreen: Boolean) {
         val window = requireActivity().window
@@ -185,6 +199,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         if (gameOpen) return
         gameOpen = true
         pendingOpen = false
+        backCallback?.isEnabled = true
         binding.toolPage.visibility = View.GONE
         binding.gameOverlay.visibility = View.VISIBLE
         val wv = binding.webView
@@ -200,12 +215,16 @@ binding.predCard.setOnTouchListener(::onDragTouch)
     private fun closeGame() {
         if (!gameOpen) return
         gameOpen = false
+        backCallback?.isEnabled = false
         binding.gameOverlay.visibility = View.GONE
         binding.toolPage.visibility = View.VISIBLE
         val wv = binding.webView
         try { wv.stopLoading() } catch (_: Exception) {}
         wv.visibility = View.GONE
-        requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        try { wv.loadUrl("about:blank") } catch (_: Exception) {}
+        try { wv.clearHistory() } catch (_: Exception) {}
+        WebViewBridge.detach()
+        requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         setSystemUiFullscreen(false)
         binding.btnOpenTool.text = if (running) getString(R.string.open_game) else getString(R.string.open_tool)
         if (running) setStatus("Server: đã kết nối — bấm MỞ GAME để chơi.")
@@ -217,11 +236,12 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         running = true
         if (forceRefresh && gameOpen) {
             gameOpen = false
+            backCallback?.isEnabled = false
             pendingOpen = true
             binding.gameOverlay.visibility = View.GONE
             binding.toolPage.visibility = View.VISIBLE
             wvGone()
-            requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
         setStatus(if (forceRefresh) "Đang làm mới mã và kết nối lại server..." else "Đang kết nối server...")
         setCode(null)
@@ -390,7 +410,12 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         super.onDestroyView()
         WebViewBridge.detach()
         runCatching { (activity as? MainActivity)?.getBridge()?.stopAgent() }
-        if (gameOpen) requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        if (gameOpen) {
+            gameOpen = false
+            backCallback?.isEnabled = false
+            requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            setSystemUiFullscreen(false)
+        }
         _binding = null
     }
 
