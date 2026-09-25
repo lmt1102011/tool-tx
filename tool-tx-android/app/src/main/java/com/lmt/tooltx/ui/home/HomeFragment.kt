@@ -1,9 +1,12 @@
 package com.lmt.tooltx.ui.home
 
 import android.app.DownloadManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
+import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -24,12 +27,9 @@ import com.lmt.tooltx.databinding.FragmentHomeBinding
 import com.lmt.tooltx.ui.settings.SettingsFragment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
-import java.net.HttpURLConnection
-import java.net.URL
 
 class HomeFragment : Fragment() {
 
@@ -173,76 +173,126 @@ class HomeFragment : Fragment() {
     }
 
     private fun downloadAndInstallApk(downloadUrl: String, b: FragmentHomeBinding) {
-        GlobalScope.launch(Dispatchers.IO) {
-            try {
-                val url = URL(downloadUrl)
-                val connection = url.openConnection() as HttpURLConnection
-                connection.connectTimeout = 15000
-                connection.readTimeout = 30000
-                val fileLength = connection.contentLength
+        val dm = requireContext().getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val request = DownloadManager.Request(Uri.parse(downloadUrl))
+            .setTitle("tool-tx cập nhật")
+            .setDescription("Đang tải phiên bản mới...")
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            .setDestinationInExternalFilesDir(requireContext(), Environment.DIRECTORY_DOWNLOADS, "tool-tx-update.apk")
+            .setAllowedOverMetered(true)
+            .setAllowedOverRoaming(false)
+            .setRequiresCharging(false)
+            .setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
 
-                val input = connection.inputStream
-                val outputFile = File(requireContext().cacheDir, "tool-tx-update.apk")
-                val output = FileOutputStream(outputFile)
+        val downloadId = dm.enqueue(request)
+        b.btnUpdate.isEnabled = false
+        b.btnUpdate.text = "ĐANG TẢI..."
 
-                val buffer = ByteArray(8192)
-                var total = 0
-                var len: Int
-
-                while (input.read(buffer).also { len = it } != -1) {
-                    output.write(buffer, 0, len)
-                    total += len
-
-                    val progress = if (fileLength > 0) (total * 100 / fileLength) else 0
-                    withContext(Dispatchers.Main) {
-                        if (b == _binding) {
+        // Poll download progress
+        GlobalScope.launch(Dispatchers.Main) {
+            var lastProgress = -1
+            while (true) {
+                delay(500)
+                val query = DownloadManager.Query().setFilterById(downloadId)
+                val cursor = dm.query(query)
+                if (cursor.moveToFirst()) {
+                    val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+                    val bytesDownloaded = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+                    val totalSize = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+                    
+                    if (totalSize > 0) {
+                        val progress = (bytesDownloaded * 100 / totalSize).toInt()
+                        if (progress != lastProgress) {
                             b.btnUpdate.text = "ĐANG TẢI $progress%"
+                            lastProgress = progress
                         }
                     }
+                    
+                    if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                        cursor.close()
+                        val localUri = dm.getUriForDownloadedFile(downloadId)
+                        installApkWithPackageInstaller(localUri)
+                        break
+                    } else if (status == DownloadManager.STATUS_FAILED) {
+                        cursor.close()
+                        val reason = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
+                        b.btnUpdate.isEnabled = true
+                        b.btnUpdate.text = "CẬP NHẬT"
+                        Toast.makeText(requireContext(), "Tải thất bại (mã: $reason)", Toast.LENGTH_LONG).show()
+                        break
+                    }
                 }
-
-                output.flush()
-                output.close()
-                input.close()
-
-                withContext(Dispatchers.Main) {
-                    val b2 = _binding ?: return@withContext
-                    b2.btnUpdate.text = "ĐANG CÀI ĐẶT..."
-                    installApk(outputFile)
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    val b2 = _binding ?: return@withContext
-                    b2.btnUpdate.isEnabled = true
-                    b2.btnUpdate.text = "CẬP NHẬT"
-                    Toast.makeText(requireContext(), "Lỗi tải APK: ${e.message}", Toast.LENGTH_LONG).show()
-                }
+                cursor.close()
             }
         }
     }
 
-    private fun installApk(apkFile: File) {
-        val intent = Intent(Intent.ACTION_VIEW)
-        val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            FileProvider.getUriForFile(
-                requireContext(),
-                "${requireContext().packageName}.fileprovider",
-                apkFile
-            )
-        } else {
-            Uri.fromFile(apkFile)
+    private fun installApkWithPackageInstaller(apkUri: Uri?) {
+        if (apkUri == null) {
+            Toast.makeText(requireContext(), "Không tìm thấy file APK", Toast.LENGTH_SHORT).show()
+            resetUpdateButton()
+            return
         }
-        intent.setDataAndType(uri, "application/vnd.android.package-archive")
-        intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+        
+        try {
+            val pm = requireContext().packageManager
+            val installer = pm.packageInstaller
+            val sessionParams = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+                .setAppPackageName(requireContext().packageName)
+                .setSize(0) // 0 = auto-detect
+            
+            val sessionId = installer.createSession(sessionParams)
+            val session = installer.openSession(sessionId)
+            
+            val inputStream = requireContext().contentResolver.openInputStream(apkUri)
+            val outputStream = session.openWrite("tool-tx-update.apk", 0, -1)
+            
+            inputStream?.use { src ->
+                outputStream.use { dest ->
+                    src.copyTo(dest)
+                }
+            }
+            
+            session.fsync(outputStream)
+            session.commit(createInstallIntent())
+            
+            // App will be installed, finish current app
+            requireActivity().finishAndRemoveTask()
+            System.exit(0)
+        } catch (e: Exception) {
+            // Fallback to intent method
+            installApkFallback(apkUri)
+        }
+    }
+
+    private fun createInstallIntent(): IntentSender {
+        val intent = Intent(requireContext(), MainActivity::class.java)
+        intent.action = Intent.ACTION_VIEW
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        return PendingIntent.getActivity(
+            requireContext(), 0, intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        ).intentSender
+    }
 
-        // Use the launcher intent to restart after install
-        val activity = requireActivity()
-        activity.startActivity(intent)
+    private fun installApkFallback(apkUri: Uri) {
+        val intent = Intent(Intent.ACTION_VIEW)
+        intent.setDataAndType(apkUri, "application/vnd.android.package-archive")
+        intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
+        try {
+            requireActivity().startActivity(intent)
+            requireActivity().finishAndRemoveTask()
+            System.exit(0)
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "Cài đặt thất bại: ${e.message}", Toast.LENGTH_LONG).show()
+            resetUpdateButton()
+        }
+    }
 
-        // Close the app to let the installer take over
-        activity.finishAndRemoveTask()
-        System.exit(0)
+    private fun resetUpdateButton() {
+        val b = _binding ?: return
+        b.btnUpdate.isEnabled = true
+        b.btnUpdate.text = "CẬP NHẬT"
     }
 
     private fun greet(name: String) {
