@@ -11,6 +11,8 @@ WEB_TOPUP = "https://lmt1102011.github.io/tool-tx/user.html"
 FORK_PACKAGE = "org.cromite.cromite"
 FORK_ACTIVITY = "org.chromium.chrome.browser.ChromeTabbedActivity"
 SERVER_URL_JSON = "https://lmt1102011.github.io/tool-tx/server-url.json"
+GITHUB_REPO = "lmt1102011/tool-tx"
+GITHUB_RELEASES_API = "https://api.github.com/repos/lmt1102011/tool-tx/releases/latest"
 
 # Nguồn fallback: đọc trực tiếp từ repo (không qua CDN GitHub Pages → URL mới hiện ngay
 # khi launcher publish, không bị cache lâu).
@@ -104,3 +106,55 @@ def forget_server():
     """Xoá cache địa chỉ server (dùng khi Reset mã)."""
     global _CACHED_SERVER
     _CACHED_SERVER = ""
+
+
+def check_app_update(current_version: str) -> dict:
+    """Kiểm tra bản cập nhật mới từ GitHub Releases.
+    Trả về dict: {"has_update": bool, "latest_version": str, "download_url": str, "release_notes": str}
+    """
+    try:
+        import urllib.request
+        req = urllib.request.Request(GITHUB_RELEASES_API, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            data = json.loads(r.read().decode("utf-8"))
+        
+        tag_name = data.get("tag_name", "").lstrip("v")
+        if not tag_name:
+            return {"has_update": False, "error": "No version tag"}
+        
+        # Compare versions (simple string compare for semantic versions like 2.0.3)
+        if _version_compare(tag_name, current_version) > 0:
+            # Find APK asset
+            download_url = ""
+            for asset in data.get("assets", []):
+                name = asset.get("name", "")
+                if name.endswith(".apk") and "tool-tx" in name.lower():
+                    download_url = asset.get("browser_download_url", "")
+                    break
+            
+            if download_url:
+                return {
+                    "has_update": True,
+                    "latest_version": tag_name,
+                    "download_url": download_url,
+                    "release_notes": data.get("body", "") or "Có bản cập nhật mới"
+                }
+        
+        return {"has_update": False, "latest_version": tag_name}
+    except Exception as e:
+        return {"has_update": False, "error": str(e)}
+
+
+def _version_compare(v1: str, v2: str) -> int:
+    """Compare two version strings. Returns 1 if v1 > v2, -1 if v1 < v2, 0 if equal."""
+    try:
+        p1 = [int(x) for x in v1.split(".")]
+        p2 = [int(x) for x in v2.split(".")]
+        for i in range(max(len(p1), len(p2))):
+            n1 = p1[i] if i < len(p1) else 0
+            n2 = p2[i] if i < len(p2) else 0
+            if n1 != n2:
+                return 1 if n1 > n2 else -1
+        return 0
+    except Exception:
+        return 0

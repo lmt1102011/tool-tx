@@ -263,6 +263,15 @@ class PythonBridge(private val context: Context) {
         } catch (_: Exception) {}
     }
 
+    fun checkAppUpdate(currentVersion: String): Map<String, Any?> {
+        return try {
+            val result = py.getModule("config").callAttr("check_app_update", currentVersion)
+            parseMap(result)
+        } catch (e: Exception) {
+            mapOf("has_update" to false, "error" to e.message)
+        }
+    }
+
     private fun parseMap(obj: com.chaquo.python.PyObject?): Map<String, Any?> {
         if (obj == null) return mapOf()
         return try {

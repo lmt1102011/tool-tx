@@ -1,11 +1,20 @@
 package com.lmt.tooltx.ui.home
 
+import android.app.DownloadManager
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.os.SystemClock
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import com.chaquo.python.PyObject
 import com.lmt.tooltx.MainActivity
@@ -17,12 +26,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 
 class HomeFragment : Fragment() {
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
     private var lastRefresh = 0L
+    private var updateCheckDone = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -42,6 +56,8 @@ class HomeFragment : Fragment() {
 
         binding.swipeRefresh.setOnRefreshListener { refresh(force = true) }
         binding.swipeRefresh.setColorSchemeResources(R.color.primary)
+
+        binding.btnUpdate.setOnClickListener { startUpdateDownload() }
     }
 
     override fun onResume() {
@@ -66,6 +82,16 @@ class HomeFragment : Fragment() {
             val user = bridge.getUserData()
             val picks = if (user.isEmpty() || user.containsKey("error")) -1 else pickCount(user)
             val connected = bridge.isSocketConnected()
+
+            // Check for app updates (only once per session unless forced)
+            val currentVersion = getCurrentVersion()
+            val updateInfo = if (!updateCheckDone || force) {
+                updateCheckDone = true
+                bridge.checkAppUpdate(currentVersion)
+            } else {
+                mapOf("has_update" to false)
+            }
+
             withContext(Dispatchers.Main) {
                 val b = _binding ?: return@withContext
                 b.swipeRefresh.isRefreshing = false
@@ -102,8 +128,121 @@ class HomeFragment : Fragment() {
                 } else {
                     server("Máy chủ đang tắt", ok = false)
                 }
+
+                // Handle update card
+                val hasUpdate = updateInfo["has_update"] == true
+                b.cardUpdate.visibility = if (hasUpdate) View.VISIBLE else View.GONE
+                if (hasUpdate) {
+                    val latestVersion = updateInfo["latest_version"]?.toString() ?: ""
+                    val notes = updateInfo["release_notes"]?.toString() ?: ""
+                    b.tvUpdateTitle.text = "Có phiên bản mới v$latestVersion"
+                    b.tvUpdateDesc.text = if (notes.isNotEmpty()) notes else "Bấm để tải và cài đặt"
+                }
             }
         }
+    }
+
+    private fun getCurrentVersion(): String {
+        return try {
+            requireContext().packageManager.getPackageInfo(requireContext().packageName, 0).versionName
+        } catch (_: Exception) {
+            "0.0.0"
+        }
+    }
+
+    private fun startUpdateDownload() {
+        GlobalScope.launch(Dispatchers.IO) {
+            val bridge: PythonBridge = (requireActivity() as MainActivity).getBridge()
+            val currentVersion = getCurrentVersion()
+            val updateInfo = bridge.checkAppUpdate(currentVersion)
+            val downloadUrl = updateInfo["download_url"]?.toString()
+
+            withContext(Dispatchers.Main) {
+                val b = _binding ?: return@withContext
+                if (downloadUrl.isNullOrEmpty()) {
+                    Toast.makeText(requireContext(), "Không tìm thấy link tải APK", Toast.LENGTH_SHORT).show()
+                    return@withContext
+                }
+
+                b.btnUpdate.isEnabled = false
+                b.btnUpdate.text = "ĐANG TẢI..."
+
+                downloadAndInstallApk(downloadUrl, b)
+            }
+        }
+    }
+
+    private fun downloadAndInstallApk(downloadUrl: String, b: FragmentHomeBinding) {
+        GlobalScope.launch(Dispatchers.IO) {
+            try {
+                val url = URL(downloadUrl)
+                val connection = url.openConnection() as HttpURLConnection
+                connection.connectTimeout = 15000
+                connection.readTimeout = 30000
+                val fileLength = connection.contentLength
+
+                val input = connection.inputStream
+                val outputFile = File(requireContext().cacheDir, "tool-tx-update.apk")
+                val output = FileOutputStream(outputFile)
+
+                val buffer = ByteArray(8192)
+                var total = 0
+                var len: Int
+
+                while (input.read(buffer).also { len = it } != -1) {
+                    output.write(buffer, 0, len)
+                    total += len
+
+                    val progress = if (fileLength > 0) (total * 100 / fileLength) else 0
+                    withContext(Dispatchers.Main) {
+                        if (b == _binding) {
+                            b.btnUpdate.text = "ĐANG TẢI $progress%"
+                        }
+                    }
+                }
+
+                output.flush()
+                output.close()
+                input.close()
+
+                withContext(Dispatchers.Main) {
+                    val b2 = _binding ?: return@withContext
+                    b2.btnUpdate.text = "ĐANG CÀI ĐẶT..."
+                    installApk(outputFile)
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    val b2 = _binding ?: return@withContext
+                    b2.btnUpdate.isEnabled = true
+                    b2.btnUpdate.text = "CẬP NHẬT"
+                    Toast.makeText(requireContext(), "Lỗi tải APK: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun installApk(apkFile: File) {
+        val intent = Intent(Intent.ACTION_VIEW)
+        val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            FileProvider.getUriForFile(
+                requireContext(),
+                "${requireContext().packageName}.fileprovider",
+                apkFile
+            )
+        } else {
+            Uri.fromFile(apkFile)
+        }
+        intent.setDataAndType(uri, "application/vnd.android.package-archive")
+        intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+        // Use the launcher intent to restart after install
+        val activity = requireActivity()
+        activity.startActivity(intent)
+
+        // Close the app to let the installer take over
+        activity.finishAndRemoveTask()
+        System.exit(0)
     }
 
     private fun greet(name: String) {
