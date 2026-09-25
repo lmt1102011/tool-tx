@@ -2,6 +2,7 @@ package com.lmt.tooltx
 
 import android.animation.ValueAnimator
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.MotionEvent
@@ -37,6 +38,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var navPill: View
     private lateinit var navWrap: View
+    private lateinit var navBump: View
     private lateinit var fragmentContainer: View
     private lateinit var navItems: List<View>
     private val pythonBridge by lazy { PythonBridge(this) }
@@ -67,11 +69,20 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (AppUpdater.pendingUpdateDone(this)) {
+            // Vừa cập nhật xong: khởi động lại sạch để không còn trạng thái cũ.
+            val fresh = Intent(this, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            startActivity(fresh)
+            finish()
+            return
+        }
         setContentView(R.layout.activity_main)
 
         pythonBridge.setSessionPath(filesDir.absolutePath + "/session.json")
 
         navPill = findViewById(R.id.nav_pill)
+        navBump = findViewById(R.id.nav_bump)
         navWrap = findViewById(R.id.nav_wrap)
         fragmentContainer = findViewById(R.id.fragment_container)
         navItems = navItemIds.map { findViewById<View>(it) }
@@ -81,6 +92,9 @@ class MainActivity : AppCompatActivity() {
                 showFragment(fragmentClassFor(tag), tag)
             }
         }
+        navWrap.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> layoutNavBump() }
+        navItems.forEach { it.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> layoutNavBump() } }
+        navWrap.post { layoutNavBump() }
         setAdminVisible(false)
         setupImmersive()
 
@@ -264,10 +278,23 @@ class MainActivity : AppCompatActivity() {
             }
         }
         if (animate) animatePill(idx) else positionPill(idx)
+        navPill.visibility = if (navTags.getOrNull(idx) == "tool") View.INVISIBLE else View.VISIBLE
     }
 
     fun showNav(show: Boolean) {
         navWrap.visibility = if (show) View.VISIBLE else View.GONE
+    }
+
+    private fun layoutNavBump() {
+        if (!::navBump.isInitialized) return
+        val tool = findViewById<View>(R.id.nav_item_tool) ?: return
+        if (tool.width == 0 || navBump.width == 0) {
+            tool.post { layoutNavBump() }
+            return
+        }
+        val dy = (-20f * resources.displayMetrics.density).toInt()
+        navBump.x = tool.left + tool.width / 2f - navBump.width / 2f
+        navBump.y = dy
     }
 
     fun showAdmin(show: Boolean) {
@@ -276,8 +303,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun setAdminVisible(show: Boolean) {
         val adminItem = findViewById<View>(R.id.nav_item_admin)
-        adminItem.visibility = if (show) View.VISIBLE else View.GONE
-        navPill.post { if (navPill.width > 0) navPill.translationX = pillTargetFor(activeIndex()) }
+        adminItem.visibility = if (show) View.VISIBLE else View.INVISIBLE
+        navPill.post {
+            if (navPill.width > 0) navPill.translationX = pillTargetFor(activeIndex())
+            layoutNavBump()
+        }
     }
 
     private fun activeIndex(): Int {

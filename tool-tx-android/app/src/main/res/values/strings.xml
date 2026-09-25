@@ -59,6 +59,15 @@
     <string name="unmuted">Đang bật tiếng</string>
     <string name="reset_code">Reset mã</string>
     <string name="tool_hint">Bấm MỞ GAME sau khi kết nối. Khi game đang mở, chỉ hiện cửa sổ dự đoán kéo thả như trên web PC.</string>
+    <string name="update_available">CÓ BẢN CẬP NHẬT MỚI</string>
+    <string name="update_version">Phiên bản mới: %1$s (đang dùng %2$s)</string>
+    <string name="update_size">Dung lượng: %1$s</string>
+    <string name="update_now">CẬP NHẬT NGAY</string>
+    <string name="update_later">Để sau</string>
+    <string name="update_downloading">Đang tải bản cập nhật… %1$d%%</string>
+    <string name="update_downloaded">Đã tải xong — đang mở trình cài đặt…</string>
+    <string name="update_failed">Cập nhật lỗi: %1$s</string>
+    <string name="update_installing">Mở trình cài đặt… nếu không, bật cho phép cài ứng dụng trong cài đặt hệ thống.</string>
 
     <!-- Settings -->
     <string name="settings">Cài đặt</string>

@@ -19,8 +19,16 @@
         android:layout_width="match_parent"
         android:layout_height="@dimen/nav_height"
         android:layout_gravity="bottom"
-        android:background="@color/surfaceContainer"
+        android:background="@drawable/bg_nav_bar"
+        android:clipChildren="false"
         android:fitsSystemWindows="false">
+
+        <View
+            android:id="@+id/nav_bump"
+            android:layout_width="74dp"
+            android:layout_height="74dp"
+            android:layout_gravity="top|center_horizontal"
+            android:background="@drawable/bg_nav_bump" />
 
         <View
             android:id="@+id/nav_pill"
@@ -35,6 +43,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:baselineAligned="false"
+            android:clipChildren="false"
             android:orientation="horizontal">
 
             <LinearLayout
@@ -102,19 +111,22 @@
                 android:layout_weight="1"
                 android:background="?attr/selectableItemBackground"
                 android:clickable="true"
+                android:clipChildren="false"
                 android:focusable="true"
                 android:gravity="center"
                 android:orientation="vertical">
 
                 <FrameLayout
-                    android:layout_width="38dp"
-                    android:layout_height="38dp"
-                    android:background="@drawable/bg_tool_circle">
+                    android:layout_width="58dp"
+                    android:layout_height="58dp"
+                    android:layout_marginTop="-26dp"
+                    android:background="@drawable/bg_tool_circle"
+                    android:elevation="8dp">
 
                     <ImageView
                         android:id="@+id/nav_icon_tool"
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
                         android:layout_gravity="center"
                         android:importantForAutofill="no"
                         android:src="@drawable/ic_tool" />
@@ -124,7 +136,6 @@
                     android:id="@+id/nav_label_tool"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
                     android:maxLines="1"
                     android:text="@string/nav_tool"
                     android:textSize="10sp" />

@@ -118,6 +118,89 @@
                     android:textColor="@color/onSurfaceVariant"
                     android:textSize="13sp" />
 
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_update"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_md"
+                    android:visibility="gone"
+                    app:cardBackgroundColor="@color/surfaceContainer"
+                    app:cardCornerRadius="@dimen/card_radius"
+                    app:strokeColor="@color/primary"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="@dimen/spacing_lg">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/update_available"
+                            android:textColor="@color/primary"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tv_update_version"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/spacing_xs"
+                            android:textColor="@color/onSurface"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/tv_update_notes"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/spacing_sm"
+                            android:maxLines="6"
+                            android:textColor="@color/onSurfaceVariant"
+                            android:textSize="13sp"
+                            android:visibility="gone" />
+
+                        <ProgressBar
+                            android:id="@+id/pb_update"
+                            style="?android:attr/progressBarStyleHorizontal"
+                            android:layout_width="match_parent"
+                            android:layout_height="6dp"
+                            android:layout_marginTop="@dimen/spacing_md"
+                            android:max="100"
+                            android:progress="0"
+                            android:visibility="gone" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/spacing_md"
+                            android:gravity="center_vertical|end"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_update_later"
+                                style="@style/Widget.Material3.Button.TextButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="48dp"
+                                android:text="@string/update_later"
+                                android:textColor="@color/onSurfaceVariant" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_update_now"
+                                android:layout_width="wrap_content"
+                                android:layout_height="48dp"
+                                android:layout_marginStart="@dimen/spacing_sm"
+                                android:text="@string/update_now"
+                                android:textColor="@color/onPrimary"
+                                app:backgroundTint="@color/primary"
+                                app:cornerRadius="24dp" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
             </LinearLayout>
         </ScrollView>
 

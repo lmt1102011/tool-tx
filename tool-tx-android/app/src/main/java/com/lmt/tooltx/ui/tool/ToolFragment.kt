@@ -13,6 +13,7 @@ import android.webkit.WebView
 import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import com.lmt.tooltx.AppUpdater
 import com.lmt.tooltx.MainActivity
 import com.lmt.tooltx.R
 import com.lmt.tooltx.WebViewBridge
@@ -45,6 +46,7 @@ class ToolFragment : Fragment() {
     private var barAnimator: ValueAnimator? = null
     private var splashJob: Job? = null
     private var openBtnReadyShown = false
+    private var connectedReady = false
     private var missStreak = 0
 
     private var _binding: FragmentToolBinding? = null
@@ -91,6 +93,91 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         }
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, backCallback!!)
         startCountdownTicker()
+        setupUpdater()
+    }
+
+    // ── Tự cập nhật: check GitHub, hiện card dưới card server, tải + cài ngay trong app ──
+    private fun setupUpdater() {
+        val ctx = context ?: return
+        binding.btnUpdateLater.setOnClickListener {
+            AppUpdater.markSeen(ctx, pendingRelease?.versionName ?: return@setOnClickListener)
+            binding.cardUpdate.visibility = View.GONE
+        }
+        binding.btnUpdateNow.setOnClickListener { downloadUpdate() }
+        checkUpdate()
+    }
+
+    private var pendingRelease: AppUpdater.Release? = null
+
+    private fun checkUpdate(force: Boolean = false) {
+        val ctx = context ?: return
+        GlobalScope.launch {
+            val release = runCatching { AppUpdater.check(ctx, force) }.getOrNull()
+            withContext(Dispatchers.Main) {
+                if (_binding == null || release == null) return@withContext
+                pendingRelease = release
+                val sizeText = if (release.size > 0) {
+                    " • " + getString(R.string.update_size, formatSize(release.size))
+                } else ""
+                binding.tvUpdateVersion.text =
+                    getString(R.string.update_version, release.versionName, AppUpdater.versionName(ctx)) + sizeText
+                val notes = release.notes.trim()
+                if (notes.isNotEmpty()) {
+                    binding.tvUpdateNotes.text = notes
+                    binding.tvUpdateNotes.visibility = View.VISIBLE
+                } else {
+                    binding.tvUpdateNotes.visibility = View.GONE
+                }
+                binding.pbUpdate.visibility = View.GONE
+                binding.btnUpdateNow.isEnabled = true
+                binding.btnUpdateNow.text = getString(R.string.update_now)
+                binding.btnUpdateLater.visibility = View.VISIBLE
+                binding.cardUpdate.visibility = View.VISIBLE
+            }
+        }
+    }
+
+    private fun formatSize(bytes: Long): String {
+        val mb = bytes / (1024.0 * 1024.0)
+        return if (mb >= 1) String.format(Locale.US, "%.1f MB", mb)
+        else String.format(Locale.US, "%.0f KB", bytes / 1024.0)
+    }
+
+    private fun downloadUpdate() {
+        val ctx = context ?: return
+        val release = pendingRelease ?: return
+        binding.btnUpdateNow.isEnabled = false
+        binding.btnUpdateLater.visibility = View.GONE
+        binding.pbUpdate.visibility = View.VISIBLE
+        binding.pbUpdate.progress = 0
+        GlobalScope.launch {
+            try {
+                val apk = AppUpdater.download(ctx, release) { percent, _, _ ->
+                    withContext(Dispatchers.Main) {
+                        if (_binding == null) return@withContext
+                        binding.pbUpdate.progress = percent
+                        binding.btnUpdateNow.text = getString(R.string.update_downloading, percent)
+                    }
+                }
+                withContext(Dispatchers.Main) {
+                    if (_binding != null) {
+                        binding.btnUpdateNow.text = getString(R.string.update_downloaded)
+                        setStatus(getString(R.string.update_installing))
+                    }
+                }
+                AppUpdater.install(ctx, apk)
+                AppUpdater.markSeen(ctx, release.versionName)
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    if (_binding == null) return@withContext
+                    binding.pbUpdate.visibility = View.GONE
+                    binding.btnUpdateNow.isEnabled = true
+                    binding.btnUpdateNow.text = getString(R.string.update_now)
+                    binding.btnUpdateLater.visibility = View.VISIBLE
+                    setStatus(getString(R.string.update_failed, e.message ?: "lỗi mạng"))
+                }
+            }
+        }
     }
 
     private var backCallback: androidx.activity.OnBackPressedCallback? = null
@@ -293,10 +380,18 @@ binding.predCard.setOnTouchListener(::onDragTouch)
             closeGame()
             return
         }
-        val bridge = (requireActivity() as MainActivity).getBridge()
-        if (bridge.isSocketConnected() && gameUrl != null) {
-            openGame()
-        } else if (!running) {
+        // Nút này chỉ hiện khi đã kết nối xong, nên tuyệt đối không gọi lại startTool
+        // (gọi lại sẽ khởi động agent mới và làm mất nút).
+        if (connectedReady || openBtnReadyShown) {
+            if (gameUrl != null) {
+                openGame()
+            } else {
+                pendingOpen = true
+                setStatus("Đã kết nối — đang chờ mã game...")
+            }
+            return
+        }
+        if (!running) {
             startTool()
         } else {
             setStatus("Đang kết nối server — chờ 1 chút rồi tự mở game.")
@@ -353,7 +448,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         (requireActivity() as MainActivity).setGameFullscreen(false)
         setSystemUiFullscreen(false)
-        val socketConnected = runCatching { (requireActivity() as MainActivity).getBridge().isSocketConnected() }.getOrDefault(false)
+        val socketConnected = connectedReady || runCatching { (requireActivity() as MainActivity).getBridge().isSocketConnected() }.getOrDefault(false)
         setOpenBtnReady(socketConnected) // đã kết nối → MỞ GAME xanh; chưa → MỞ CÔNG CỤ
         if (socketConnected) setStatus("Server: đã kết nối — bấm MỞ GAME để chơi.")
         else setStatus("Chưa kết nối — bấm MỞ GAME để kết nối.")
@@ -494,6 +589,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
     private fun stopToolButtons() {
         binding.btnOpenTool.isEnabled = false
         missStreak = 0
+        connectedReady = false
         setOpenBtnReady(false)
     }
 
@@ -540,6 +636,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                 withContext(Dispatchers.Main) {
                     if (_binding == null) return@withContext
                     if (msg.isNotEmpty()) setAgent(msg)
+                    connectedReady = connected
                     if (connected) {
                         missStreak = 0
                         binding.btnOpenTool.isEnabled = true
@@ -580,6 +677,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
 
     override fun onResume() {
         super.onResume()
+        if (_binding != null && pendingRelease != null) checkUpdate(force = true)
         if (gameOpen) {
             requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
             (requireActivity() as MainActivity).setGameFullscreen(true)
@@ -611,6 +709,8 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         splashJob = null
         stopBarAnim()
         lastPanel = emptyMap<String, Any?>()
+        connectedReady = false
+        openBtnReadyShown = false
         WebViewBridge.detach()
         runCatching { (activity as? MainActivity)?.getBridge()?.stopAgent() }
         if (gameOpen) {
