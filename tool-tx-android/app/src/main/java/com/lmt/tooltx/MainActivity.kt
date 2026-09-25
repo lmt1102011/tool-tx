@@ -246,10 +246,16 @@ class MainActivity : AppCompatActivity() {
     private fun selectNavIndex(idx: Int, animate: Boolean) {
         val primary = ContextCompat.getColor(this, R.color.primary)
         val secondary = ContextCompat.getColor(this, R.color.onSurfaceVariant)
+        val green = ContextCompat.getColor(this, R.color.panelGo)
         for (i in navItems.indices) {
             val selected = i == idx
             val icon = findViewById<ImageView>(navIconIds[i])
             val label = findViewById<TextView>(navLabelIds[i])
+            if (navTags[i] == "tool") {
+                icon.setColorFilter(android.graphics.Color.WHITE)
+                label.setTextColor(if (selected) green else secondary)
+                continue
+            }
             if (selected) {
                 icon.setColorFilter(primary)
                 label.setTextColor(primary)

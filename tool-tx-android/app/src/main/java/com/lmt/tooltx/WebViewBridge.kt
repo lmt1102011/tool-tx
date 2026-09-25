@@ -90,8 +90,9 @@ object WebViewBridge {
     fun unmutePage() = setMuted(false)
 
     private val MUTE_JS = "(function(){try{" +
-        "var A=window.__txAudio||(window.__txAudio={cxs:[],origPlay:null,origAC:null,patched:0,obs:null,timer:null});" +
+        "var A=window.__txAudio||(window.__txAudio={cxs:[],origPlay:null,origAC:null,patched:0,armed:0,obs:null,timer:null});" +
         "function killA(){var m=document.querySelectorAll('audio,video');var i;for(i=0;i<m.length;i++){try{m[i].muted=true;}catch(_){}}}" +
+        "function susp(){if(!A.armed)return;var i;for(i=0;i<(A.cxs||[]).length;i++){try{var c=A.cxs[i];if(c&&c.state!=='suspended'&&c.suspend)c.suspend();}catch(_){}}}" +
         "killA();" +
         "if(!A.origPlay){A.origPlay=HTMLMediaElement.prototype.play;}" +
         "HTMLMediaElement.prototype.play=function(){this.muted=true;return A.origPlay.apply(this,arguments);};" +
@@ -99,19 +100,30 @@ object WebViewBridge {
         "A.patched=1;" +
         "var RealAC=A.origAC||window.AudioContext||window.webkitAudioContext;" +
         "if(RealAC&&!A.origAC){A.origAC=RealAC;" +
-        "var wAC=function(){var c=new RealAC();A.cxs.push(c);try{if(c.suspend)c.suspend();else c.close();}catch(_){}};" +
+        "var wAC=function(){var c=new RealAC();A.cxs.push(c);if(A.armed){try{if(c&&c.state!=='suspended'&&c.suspend)c.suspend();}catch(_){}}return c;};" +
         "try{wAC.prototype=RealAC.prototype;}catch(_){}" +
         "window.AudioContext=wAC;if(window.webkitAudioContext)window.webkitAudioContext=wAC;}" +
         "A.obs=new MutationObserver(function(){killA();});" +
         "var root=document.body||document.documentElement;if(root)A.obs.observe(root,{subtree:true,childList:true});" +
-        "A.timer=setInterval(function(){killA();var i;for(i=0;i<(A.cxs||[]).length;i++){try{var c=A.cxs[i];if(c&&c.state!=='suspended'&&c.suspend)c.suspend();}catch(_){}}},800);" +
-        "}else{var i;for(i=0;i<(A.cxs||[]).length;i++){try{var c=A.cxs[i];if(c&&c.state!=='suspended'&&c.suspend)c.suspend();}catch(_){}}}" +
+        "A.timer=setInterval(function(){killA();susp();},800);" +
+        "}else{susp();}" +
         "}catch(e){}})();"
+
+    private val ARM_MUTE_JS = "(function(){try{var A=window.__txAudio;if(!A)return;A.armed=1;var i,m=document.querySelectorAll('audio,video');for(i=0;i<m.length;i++){try{m[i].muted=true;}catch(_){}}for(i=0;i<(A.cxs||[]).length;i++){try{var c=A.cxs[i];if(c&&c.state!=='suspended'&&c.suspend)c.suspend();}catch(_){}}}catch(e){}})();"
+
+    @JvmStatic
+    fun armMute() {
+        if (!muted) return
+        val wv = webView ?: return
+        main.postDelayed({
+            try { wv.evaluateJavascript(ARM_MUTE_JS, null) } catch (_: Throwable) {}
+        }, 4000)
+    }
 
     /** Bật tiếng: gỡ patch play, resume AudioContext đã suspend, unmute media hiện có. */
     private val UNMUTE_JS = "(function(){try{" +
-        "var A=window.__txAudio||(window.__txAudio={cxs:[],origPlay:null,origAC:null,patched:0,obs:null,timer:null});" +
-        "A.patched=0;" +
+        "var A=window.__txAudio||(window.__txAudio={cxs:[],origPlay:null,origAC:null,patched:0,armed:0,obs:null,timer:null});" +
+        "A.patched=0;A.armed=0;" +
         "if(A.obs){try{A.obs.disconnect();}catch(_){}A.obs=null;}" +
         "if(A.timer){try{clearInterval(A.timer);}catch(_){}A.timer=null;}" +
         "document.querySelectorAll('audio,video').forEach(function(a){a.muted=false;if(a.paused){try{a.play().catch(function(){});}catch(_){}}});" +
@@ -180,5 +192,66 @@ object WebViewBridge {
     @JvmStatic
     fun getWsLog(): String? {
         return evalJs("(function(){try{return JSON.stringify(window.__wsLog||[]);}catch(e){return '[]';}})()", 4000)
+    }
+
+    private val GAME_BOOT_JS = "(function(){try{" +
+        "var d=document,i,t=0,ids=['mask','handImage','div_full_screen','qrcode'];" +
+        "for(i=0;i<ids.length;i++){var e=d.getElementById(ids[i]);if(e){e.style.display='none';e.style.visibility='hidden';}}" +
+        "var c=d.getElementById('GameCanvas')||d.getElementById('GameDiv');" +
+        "var evs=['touchstart','touchend','touchmove','pointerdown','pointerup','mousedown','mouseup','click','keydown'];" +
+        "if(c){try{c.focus&&c.focus();}catch(_){}" +
+        "for(i=0;i<evs.length;i++){try{c.dispatchEvent(new Event(evs[i],{bubbles:true,cancelable:true}));}catch(_){}}" +
+        "for(i=0;i<evs.length;i++){try{d.dispatchEvent(new Event(evs[i],{bubbles:true,cancelable:true}));}catch(_){}}" +
+        "}catch(e){}})();"
+
+    @JvmStatic
+    fun unstickGame() {
+        val wv = webView ?: return
+        try {
+            wv.evaluateJavascript(GAME_BOOT_JS, null)
+        } catch (_: Throwable) {
+            try {
+                main.post { wv.evaluateJavascript(GAME_BOOT_JS, null) }
+            } catch (_: Throwable) {}
+        }
+    }
+
+    @JvmStatic
+    fun isStuckOnSplash(): Boolean {
+        val r = evalJs(
+            "(function(){try{var s=document.getElementById('spinner');if(!s)return '0';" +
+                "var t=getComputedStyle(s);return (t.display!=='none'&&t.visibility!=='hidden')?'1':'0';}catch(e){return '0';}})()",
+            4000
+        )
+        return r != null && r.replace("\"", "").trim() == "1"
+    }
+
+    @JvmStatic
+    fun reloadGame() {
+        val wv = webView ?: return
+        main.post {
+            try { wv.reload() } catch (_: Throwable) {}
+        }
+    }
+
+    private val SW_RESET_JS = "(function(){try{" +
+        "if(navigator.serviceWorker&&navigator.serviceWorker.getRegistrations){" +
+        "navigator.serviceWorker.getRegistrations().then(function(rs){for(var i=0;i<rs.length;i++){try{rs[i].unregister();}catch(_){}}},function(){});}" +
+        "if(window.caches&&window.caches.keys){window.caches.keys().then(function(ks){for(var i=0;i<ks.length;i++){try{window.caches.delete(ks[i]);}catch(_){}}},function(){});}" +
+        "}catch(e){}})();"
+
+    @JvmStatic
+    fun hardReloadGame() {
+        unstickGame()
+        val wv = webView ?: return
+        try {
+            wv.evaluateJavascript(SW_RESET_JS) {
+                main.postDelayed({
+                    try { wv.reload() } catch (_: Throwable) {}
+                }, 1500)
+            }
+        } catch (_: Throwable) {
+            reloadGame()
+        }
     }
 }

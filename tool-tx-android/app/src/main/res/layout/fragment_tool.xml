@@ -130,6 +130,7 @@
             android:text="@string/open_tool"
             android:textColor="@color/onPrimary"
             android:textSize="16sp"
+            android:visibility="gone"
             app:backgroundTint="@color/primary"
             app:cornerRadius="@dimen/btn_height" />
 

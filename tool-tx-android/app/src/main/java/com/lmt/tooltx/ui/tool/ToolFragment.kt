@@ -43,6 +43,7 @@ class ToolFragment : Fragment() {
     private var lastPanel: Map<*, *> = emptyMap<String, Any?>()
     private var countdownJob: Job? = null
     private var barAnimator: ValueAnimator? = null
+    private var splashJob: Job? = null
 
     private var _binding: FragmentToolBinding? = null
     private val binding get() = _binding!!
@@ -74,7 +75,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         setupWebView()
 
         val bridge = (requireActivity() as MainActivity).getBridge()
-        if (bridge.isLoggedIn()) startTool()
+        if (bridge.isLoggedIn()) startTool() else binding.btnOpenTool.visibility = View.VISIBLE
 
         backCallback = object : androidx.activity.OnBackPressedCallback(false) {
             override fun handleOnBackPressed() {
@@ -170,8 +171,25 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         s.setSupportZoom(false)
         s.javaScriptCanOpenWindowsAutomatically = true
         s.setSupportMultipleWindows(true)
+        s.useWideViewPort = true
+        s.loadWithOverviewMode = true
+        s.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
+        s.userAgentString = DESKTOP_UA
+        s.mediaPlaybackRequiresUserGesture = false
+        s.textZoom = 100
         android.webkit.CookieManager.getInstance().setAcceptCookie(true)
         android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(wv, true)
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 24) {
+                android.webkit.ServiceWorkerController.getInstance().setServiceWorkerClient(
+                    object : android.webkit.ServiceWorkerClient() {
+                        override fun shouldInterceptRequest(
+                            request: android.webkit.WebResourceRequest
+                        ): android.webkit.WebResourceResponse? = null
+                    }
+                )
+            }
+        } catch (_: Throwable) {}
         wv.webViewClient = object : android.webkit.WebViewClient() {
             override fun shouldOverrideUrlLoading(
                 view: WebView,
@@ -198,6 +216,30 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                 super.onPageFinished(view, url)
                 WebViewBridge.installWsShim()
                 WebViewBridge.setMuted(muted)
+                WebViewBridge.armMute()
+                WebViewBridge.unstickGame()
+                scheduleSplashWatchdog()
+            }
+
+            override fun onReceivedError(
+                view: WebView,
+                request: android.webkit.WebResourceRequest,
+                error: android.webkit.WebResourceError
+            ) {
+                super.onReceivedError(view, request, error)
+                if (request.isForMainFrame) {
+                    setStatus("Lỗi tải game: " + (error.description ?: "").toString())
+                }
+            }
+
+            override fun onRenderProcessGone(
+                view: WebView,
+                detail: android.webkit.WebViewRenderProcessGoneDetail
+            ): Boolean {
+                setStatus("Game bị treo — đang tải lại...")
+                val u = gameUrl
+                if (u != null) WebViewBridge.navigate(u) else WebViewBridge.reloadGame()
+                return true
             }
         }
         wv.webChromeClient = object : android.webkit.WebChromeClient() {
@@ -216,6 +258,31 @@ binding.predCard.setOnTouchListener(::onDragTouch)
             }
         }
         WebViewBridge.attach(wv)
+    }
+
+    private fun scheduleSplashWatchdog() {
+        splashJob?.cancel()
+        splashJob = GlobalScope.launch(Dispatchers.IO) {
+            delay(12000)
+            if (_binding == null || !gameOpen) return@launch
+            if (WebViewBridge.isStuckOnSplash()) {
+                WebViewBridge.unstickGame()
+                delay(8000)
+                if (_binding == null || !gameOpen) return@launch
+                if (WebViewBridge.isStuckOnSplash()) {
+                    withContext(Dispatchers.Main) {
+                        if (_binding != null) setStatus("Game đang kẹt ở màn giới thiệu — tải lại...")
+                    }
+                    WebViewBridge.hardReloadGame()
+                }
+            }
+        }
+    }
+
+    companion object {
+        private const val DESKTOP_UA =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " +
+                "Chrome/131.0.0.0 Safari/537.36"
     }
 
     // ── Flow: nút MỞ TOOL → MỞ GAME → mở game fullscreen ngang ─
@@ -264,6 +331,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         (requireActivity() as MainActivity).setGameFullscreen(true)
         setSystemUiFullscreen(true)
         binding.btnOpenTool.text = getString(R.string.close_game)
+        binding.btnOpenTool.visibility = View.VISIBLE
         setStatus("Đang chơi — cửa sổ dự đoán nằm ở giữa dưới màn hình.")
     }
 
@@ -273,6 +341,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         backCallback?.isEnabled = false
         binding.gameOverlay.visibility = View.GONE
         binding.toolPage.visibility = View.VISIBLE
+        splashJob?.cancel()
         val wv = binding.webView
         try { wv.stopLoading() } catch (_: Exception) {}
         wv.visibility = View.GONE
@@ -432,6 +501,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
             requireContext(),
             if (ready) R.color.panelGo else R.color.primary
         )
+        binding.btnOpenTool.visibility = if (ready) View.VISIBLE else View.GONE
     }
 
     private fun pollAgentStatus(bridge: PythonBridge, gameOpenAtStart: Boolean) {
@@ -515,6 +585,8 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         super.onDestroyView()
         countdownJob?.cancel()
         countdownJob = null
+        splashJob?.cancel()
+        splashJob = null
         stopBarAnim()
         lastPanel = emptyMap<String, Any?>()
         WebViewBridge.detach()
