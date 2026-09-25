@@ -54,24 +54,25 @@ class NavArchBackgroundView @JvmOverloads constructor(
             floatArrayOf(a[0] - b[0] + v.width / 2f, a[1] - b[1] + v.height / 2f)
         }
         val recalc = {
-            if (circle.width <= 0 || width <= 0) return@recalc
-            val c = l(circle)
-            val f = l(flatRef)
-            val r = minOf(circle.width, circle.height) / 2f
-            val cy = c[1]
-            val flat = f[1] + dp(1f)
-            val dyMax = (r - minClear).coerceAtLeast(1f)
-            val dy = (flat - cy).coerceIn(-dyMax, dyMax)
-            val archR = max(r + gap, sqrt((r + minClear) * (r + minClear) + dy * dy))
-            bumpCx = c[0]
-            bumpCy = cy
-            bumpR = archR
-            flatY = cy + dy
-            hasGeom = true
-            fillPaint.color = ContextCompat.getColor(context, R.color.surfaceContainer)
-            edgePaint.color = ContextCompat.getColor(context, R.color.outlineVariant)
-            edgePaint.strokeWidth = dp(1f)
-            invalidate()
+            if (circle.width > 0 && width > 0) {
+                val c = l(circle)
+                val f = l(flatRef)
+                val r = minOf(circle.width, circle.height) / 2f
+                val cy = c[1]
+                val flat = f[1] + dp(1f)
+                val dyMax = (r - minClear).coerceAtLeast(1f)
+                val dy = (flat - cy).coerceIn(-dyMax, dyMax)
+                val archR = max(r + gap, sqrt((r + minClear) * (r + minClear) + dy * dy))
+                bumpCx = c[0]
+                bumpCy = cy
+                bumpR = archR
+                flatY = cy + dy
+                hasGeom = true
+                fillPaint.color = ContextCompat.getColor(context, R.color.surfaceContainer)
+                edgePaint.color = ContextCompat.getColor(context, R.color.outlineVariant)
+                edgePaint.strokeWidth = dp(1f)
+                invalidate()
+            }
         }
         circle.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> recalc() }
         flatRef.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> recalc() }
@@ -104,7 +105,7 @@ class NavArchBackgroundView @JvmOverloads constructor(
         val half = sqrt((r * r - dy * dy).coerceAtLeast(0f))
         val left = (cx - half).coerceAtLeast(0f)
         val right = (cx + half).coerceAtMost(w)
-        val start = Math.toDegrees(asin((dy / r).coerceIn(-1.0, 1.0))).toFloat()
+        val start = Math.toDegrees(asin((dy / r).coerceIn(-1f, 1f).toDouble())).toFloat()
         val sweep = 180f + start * 2f
 
         archRect.set(cx - r, cy - r, cx + r, cy + r)
