@@ -90,32 +90,35 @@ object WebViewBridge {
     fun unmutePage() = setMuted(false)
 
     private val MUTE_JS = "(function(){try{" +
-        "if(!window.__txAudio){window.__txAudio={patched:0,cxs:[]};}" +
-        "var A=window.__txAudio;" +
-        "function killA(){document.querySelectorAll('audio,video').forEach(function(a){a.muted=true;});}" +
+        "var A=window.__txAudio||(window.__txAudio={cxs:[],origPlay:null,origAC:null,patched:0,obs:null,timer:null});" +
+        "function killA(){var m=document.querySelectorAll('audio,video');var i;for(i=0;i<m.length;i++){try{m[i].muted=true;}catch(_){}}}" +
         "killA();" +
-        "if(!A.patched){A.patched=1;" +
-        "A.origPlay=HTMLMediaElement.prototype.play;" +
+        "if(!A.origPlay){A.origPlay=HTMLMediaElement.prototype.play;}" +
         "HTMLMediaElement.prototype.play=function(){this.muted=true;return A.origPlay.apply(this,arguments);};" +
-        "(function(AC){if(!AC)return;var ctor=function(){var c=new AC();A.cxs.push(c);if(c.suspend){c.suspend().catch(function(){});}return c;};ctor.prototype=AC.prototype;window.AudioContext=ctor;window.webkitAudioContext=ctor;})(window.AudioContext||window.webkitAudioContext);" +
+        "if(!A.patched){" +
+        "A.patched=1;" +
+        "var RealAC=A.origAC||window.AudioContext||window.webkitAudioContext;" +
+        "if(RealAC&&!A.origAC){A.origAC=RealAC;" +
+        "var wAC=function(){var c=new RealAC();A.cxs.push(c);try{if(c.suspend)c.suspend();else c.close();}catch(_){}};" +
+        "try{wAC.prototype=RealAC.prototype;}catch(_){}" +
+        "window.AudioContext=wAC;if(window.webkitAudioContext)window.webkitAudioContext=wAC;}" +
         "A.obs=new MutationObserver(function(){killA();});" +
-        "A.obs.observe(document.body,{subtree:true,childList:true});}" +
-        "else{" +
-        "var cx=A.cxs||[];for(var i=0;i<cx.length;i++){try{if(cx[i]&&cx[i].suspend)cx[i].suspend().catch(function(){});}catch(e){}}" +
-        "if(A.obs){try{A.obs.disconnect();}catch(e){}" +
-        "A.obs=new MutationObserver(function(){killA();});" +
-        "A.obs.observe(document.body,{subtree:true,childList:true});}}}" +
+        "var root=document.body||document.documentElement;if(root)A.obs.observe(root,{subtree:true,childList:true});" +
+        "A.timer=setInterval(function(){killA();var i;for(i=0;i<(A.cxs||[]).length;i++){try{var c=A.cxs[i];if(c&&c.state!=='suspended'&&c.suspend)c.suspend();}catch(_){}}},800);" +
+        "}else{var i;for(i=0;i<(A.cxs||[]).length;i++){try{var c=A.cxs[i];if(c&&c.state!=='suspended'&&c.suspend)c.suspend();}catch(_){}}}" +
         "}catch(e){}})();"
 
     /** Bật tiếng: gỡ patch play, resume AudioContext đã suspend, unmute media hiện có. */
     private val UNMUTE_JS = "(function(){try{" +
-        "var A=window.__txAudio;if(!A){A=window.__txAudio={patched:0,cxs:[]};}" +
-        "if(A.obs){try{A.obs.disconnect();}catch(e){}A.obs=null;}" +
-        "document.querySelectorAll('audio,video').forEach(function(a){a.muted=false;if(a.paused){try{a.play().catch(function(){});}catch(e){}}});" +
+        "var A=window.__txAudio||(window.__txAudio={cxs:[],origPlay:null,origAC:null,patched:0,obs:null,timer:null});" +
+        "A.patched=0;" +
+        "if(A.obs){try{A.obs.disconnect();}catch(_){}A.obs=null;}" +
+        "if(A.timer){try{clearInterval(A.timer);}catch(_){}A.timer=null;}" +
+        "document.querySelectorAll('audio,video').forEach(function(a){a.muted=false;if(a.paused){try{a.play().catch(function(){});}catch(_){}}});" +
         "if(A.origPlay){HTMLMediaElement.prototype.play=A.origPlay;A.origPlay=null;}" +
-        "var cx=A.cxs||[];for(var i=0;i<cx.length;i++){try{if(cx[i]&&cx[i].resume)cx[i].resume().catch(function(){});}catch(e){}}" +
-        "var AC=window.__txOrigAC||window.AudioContext;if(AC){window.__txOrigAC=AC;window.__txOrigWAC=AC;" +
-        "var ctor=function(){var c=new AC();A.cxs.push(c);return c;};ctor.prototype=AC.prototype;window.AudioContext=ctor;window.webkitAudioContext=ctor;}" +
+        "var i;for(i=0;i<(A.cxs||[]).length;i++){try{var c=A.cxs[i];if(c&&c.resume)c.resume();}catch(_){}}" +
+        "var RealAC=A.origAC||window.AudioContext||window.webkitAudioContext;" +
+        "if(RealAC){var orig=A.origAC||RealAC;var wAC=function(){var c=new RealAC();A.cxs.push(c);return c;};try{wAC.prototype=orig.prototype;}catch(_){}window.AudioContext=wAC;if(window.webkitAudioContext)window.webkitAudioContext=wAC;}" +
         "}catch(e){}})();"
 
     @JvmStatic
@@ -151,9 +154,11 @@ object WebViewBridge {
             "var Orig=window.WebSocket;" +
             "function Wrapped(url,protocols){" +
             "var w=new Orig(url,protocols);" +
+            "try{w.binaryType='arraybuffer';}catch(_){}" +
             "try{w.addEventListener('message',function(ev){var d=ev.data;" +
             "if(typeof d==='string'){push({t:Date.now(),k:'t',d:d});}" +
-            "else if(d&&d.byteLength!==undefined){try{var u8=new Uint8Array(d.slice?d.slice(0,1500):d);var hex='';for(var i=0;i<u8.length;i++)hex+=('0'+u8[i].toString(16)).slice(-2);push({t:Date.now(),k:'b',d:hex});}catch(_){}}" +
+            "else if(d&&d.byteLength!==undefined&&d.byteLength>=0){try{var u8=new Uint8Array(d.slice?d.slice(0,1500):d);var hex='';for(var i=0;i<u8.length;i++)hex+=('0'+u8[i].toString(16)).slice(-2);push({t:Date.now(),k:'b',d:hex});}catch(_){}}" +
+            "else if(d&&d.arrayBuffer){try{d.arrayBuffer().then(function(ab){try{var u8=new Uint8Array(ab.slice?ab.slice(0,1500):ab);var hex='';for(var i=0;i<u8.length;i++)hex+=('0'+u8[i].toString(16)).slice(-2);push({t:Date.now(),k:'b',d:hex});}catch(_){}}).catch(function(){});}catch(_){}}" +
             "else if(d&&d.data){try{var dd=new Uint8Array(d.data.slice?d.data.slice(0,1500):d.data);var h2='';for(var i=0;i<dd.length;i++)h2+=('0'+dd[i].toString(16)).slice(-2);push({t:Date.now(),k:'b',d:h2});}catch(_){}}" +
             "});}catch(_){}" +
             "return w;}" +

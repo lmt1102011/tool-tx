@@ -47,6 +47,7 @@
     <string name="phase_wait">CHỜ PHIÊN MỚI</string>
     <string name="phase_idle">CHỜ DỮ LIỆU</string>
     <string name="phase_first_round">PHIÊN ĐẦU — CHỈ XEM KẾT QUẢ</string>
+    <string name="phase_stabilizing">ĐỢI ỔN ĐỊNH TOOL…</string>
     <string name="panel_pick_with_conf">%1$s %2$02.0f%%</string>
     <string name="panel_result_with_sum">KẾT QUẢ: %1$s (%2$d)</string>
     <string name="panel_new_round_in">Phiên mới sau %d giây</string>

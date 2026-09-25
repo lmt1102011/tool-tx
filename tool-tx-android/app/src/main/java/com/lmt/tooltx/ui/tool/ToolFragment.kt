@@ -1,5 +1,6 @@
 package com.lmt.tooltx.ui.tool
 
+import android.animation.ValueAnimator
 import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.text.SpannableStringBuilder
@@ -41,6 +42,7 @@ class ToolFragment : Fragment() {
     @Volatile
     private var lastPanel: Map<*, *> = emptyMap<String, Any?>()
     private var countdownJob: Job? = null
+    private var barAnimator: ValueAnimator? = null
 
     private var _binding: FragmentToolBinding? = null
     private val binding get() = _binding!!
@@ -188,6 +190,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                 favicon: android.graphics.Bitmap?
             ) {
                 WebViewBridge.installWsShim()
+                WebViewBridge.setMuted(muted)
                 setStatus("Game đang tải…")
             }
 
@@ -501,6 +504,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         super.onDestroyView()
         countdownJob?.cancel()
         countdownJob = null
+        stopBarAnim()
         lastPanel = emptyMap<String, Any?>()
         WebViewBridge.detach()
         runCatching { (activity as? MainActivity)?.getBridge()?.stopAgent() }
@@ -541,7 +545,6 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         val pick = p["pick"]?.toString()?.trim()
         val confV = num("confidence").let { if (it > 0) it else num("conf") }
         val isSkip = (p["skip"] as? Boolean) ?: (p["skip"]?.toString()?.toBooleanStrictOrNull() ?: false)
-        val histCount = (p["hist"] ?: p["history"])?.let { if (it is List<*>) it.size else 0 } ?: 0
         var pT = num("pT")
         var pX = num("pX")
         if (pT <= 0 && pX <= 0) { pT = 50.0; pX = 50.0 }
@@ -611,7 +614,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                 predColor = ContextCompat.getColor(ctx, R.color.panelText)
             }
             else -> {
-                predText = if (isSkip && histCount > 0) "" else getString(R.string.waiting_data)
+                predText = if (isSkip) "" else getString(R.string.waiting_data)
                 predColor = ContextCompat.getColor(ctx, R.color.panelDim)
             }
         }
@@ -620,7 +623,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         val countTxt: String
         when (phase) {
             "idle" -> {
-                statusTxt = if (isSkip && histCount > 0) getString(R.string.phase_first_round) else getString(R.string.phase_idle)
+                statusTxt = if (isSkip) getString(R.string.phase_stabilizing) else getString(R.string.phase_idle)
                 countTxt = ""
             }
             "wait" -> {
@@ -628,19 +631,11 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                 countTxt = countdownTxt()
             }
             "analyze" -> {
-                statusTxt = if (confV > 0) {
-                    getString(R.string.phase_analyze) + " · " + getString(R.string.panel_ratio, pT, pX)
-                } else {
-                    getString(R.string.phase_analyze)
-                }
+                statusTxt = ""
                 countTxt = countdownTxt()
             }
             "ready" -> {
-                statusTxt = if (pick.isNullOrEmpty()) {
-                    getString(R.string.phase_first_round)
-                } else {
-                    getString(R.string.panel_ratio, pT, pX)
-                }
+                statusTxt = if (pick.isNullOrEmpty()) getString(R.string.phase_stabilizing) else ""
                 countTxt = countdownTxt()
             }
             "get_result" -> {
@@ -656,8 +651,28 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         binding.tvCountdown.setTextColor(phaseColor)
         binding.tvPercentage.text = statusTxt
         binding.tvPercentage.setTextColor(phaseColor)
-        setBar(pT, pX)
+        if (phase == "analyze") startBarAnim() else { stopBarAnim(); setBar(pT, pX) }
         renderHistory(p)
+    }
+
+    private fun startBarAnim() {
+        if (barAnimator != null && barAnimator!!.isStarted) return
+        val a = ValueAnimator.ofFloat(3f, 97f).apply {
+            duration = 1300L
+            repeatMode = ValueAnimator.REVERSE
+            repeatCount = ValueAnimator.INFINITE
+            addUpdateListener { va ->
+                val t = (va.animatedValue as Float).toDouble()
+                if (_binding != null) setBar(t, 100.0 - t)
+            }
+        }
+        barAnimator = a
+        a.start()
+    }
+
+    private fun stopBarAnim() {
+        barAnimator?.cancel()
+        barAnimator = null
     }
 
     private fun setBar(pT: Double, pX: Double) {
