@@ -234,7 +234,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
 
             override fun onRenderProcessGone(
                 view: WebView,
-                detail: android.webkit.WebViewRenderProcessGoneDetail
+                detail: android.webkit.RenderProcessGoneDetail
             ): Boolean {
                 setStatus("Game bị treo — đang tải lại...")
                 val u = gameUrl
