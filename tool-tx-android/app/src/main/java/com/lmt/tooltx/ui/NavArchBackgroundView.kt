@@ -30,14 +30,16 @@ class NavArchBackgroundView @JvmOverloads constructor(
     private val fillPath = Path()
     private val edgePath = Path()
 
-    private val gap = dp(4f)
-    private val minClear = dp(1.5f)
+    private val gap = dp(6f)
+    private val minClear = dp(3f)
 
     private var bumpCx = 0f
     private var bumpCy = 0f
     private var bumpR = 0f
     private var flatY = 0f
     private var hasGeom = false
+    private var lastValidFlatY = 0f
+    private var navWrapRef: View? = null
 
     init {
         fillPaint.color = ContextCompat.getColor(context, R.color.surfaceContainer)
@@ -45,7 +47,8 @@ class NavArchBackgroundView @JvmOverloads constructor(
         edgePaint.strokeWidth = dp(1f)
     }
 
-    fun bind(circle: View, flatRef: View) {
+    fun bind(circle: View, flatRef: View, navWrap: View) {
+        navWrapRef = navWrap
         val l = { v: View ->
             val a = IntArray(2)
             val b = IntArray(2)
@@ -54,12 +57,18 @@ class NavArchBackgroundView @JvmOverloads constructor(
             floatArrayOf(a[0] - b[0] + v.width / 2f, a[1] - b[1] + v.height / 2f)
         }
         val recalc = {
-            if (circle.width > 0 && width > 0) {
+            if (circle.width > 0 && width > 0 && flatRef.width > 0 && flatRef.height > 0) {
+                val navVisible = navWrapRef?.visibility == View.VISIBLE
+                if (!navVisible) {
+                    invalidate()
+                    return@recalc
+                }
                 val c = l(circle)
                 val f = l(flatRef)
                 val r = minOf(circle.width, circle.height) / 2f
                 val cy = c[1]
                 val flat = f[1] + dp(1f)
+                lastValidFlatY = flat
                 val dyMax = (r - minClear).coerceAtLeast(1f)
                 val dy = (flat - cy).coerceIn(-dyMax, dyMax)
                 val archR = max(r + gap, sqrt((r + minClear) * (r + minClear) + dy * dy))

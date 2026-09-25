@@ -95,7 +95,8 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<NavArchBackgroundView>(R.id.nav_bg).bind(
             findViewById(R.id.nav_tool_circle),
-            findViewById(R.id.nav_icon_home)
+            findViewById(R.id.nav_icon_home),
+            findViewById(R.id.nav_wrap)
         )
         setAdminVisible(false)
         setupImmersive()

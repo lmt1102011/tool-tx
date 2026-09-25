@@ -146,6 +146,20 @@ def register(username, password, name):
     }
     _save_session()
     _cache_token(3600)
+    # Ghi user record vào Realtime DB để login sau này tìm thấy tài khoản
+    token = _session["idToken"]
+    now = int(time.time() * 1000)
+    user_data = {
+        "username": username,
+        "email": username + "@tooltx.app",
+        "displayName": (name or "").strip() or username,
+        "role": "user",
+        "balanceFields": 0,
+        "createdAt": now,
+        "lastSeen": now,
+    }
+    url = "%s/users/%s.json?auth=%s" % (FIREBASE_DB, _session["uid"], token)
+    _http_json("PUT", url, json=user_data)
     return {"uid": data["localId"]}
 
 def logout():
