@@ -19,16 +19,21 @@
         android:layout_width="match_parent"
         android:layout_height="@dimen/nav_total_height"
         android:layout_gravity="bottom"
-        android:background="@drawable/bg_nav_bar"
         android:clipChildren="false"
         android:fitsSystemWindows="false">
+
+        <com.lmt.tooltx.ui.NavArchBackgroundView
+            android:id="@+id/nav_bg"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/nav_bg_height"
+            android:layout_gravity="bottom" />
 
         <View
             android:id="@+id/nav_pill"
             android:layout_width="44dp"
             android:layout_height="28dp"
             android:layout_gravity="bottom"
-            android:layout_marginBottom="35dp"
+            android:layout_marginBottom="33dp"
             android:background="@drawable/bg_pill" />
 
         <LinearLayout
@@ -103,25 +108,28 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
                 android:clipChildren="false"
-                android:focusable="true"
                 android:gravity="center"
                 android:orientation="vertical">
 
                 <FrameLayout
+                    android:id="@+id/nav_tool_circle"
                     android:layout_width="58dp"
                     android:layout_height="58dp"
                     android:layout_marginTop="-34dp"
                     android:background="@drawable/bg_tool_circle"
-                    android:elevation="8dp">
+                    android:clickable="true"
+                    android:contentDescription="@string/nav_tool"
+                    android:elevation="8dp"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackgroundBorderless">
 
                     <ImageView
                         android:id="@+id/nav_icon_tool"
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:layout_gravity="center"
+                        android:clickable="false"
                         android:importantForAutofill="no"
                         android:src="@drawable/ic_tool" />
                 </FrameLayout>

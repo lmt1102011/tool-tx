@@ -21,6 +21,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.fragment.app.Fragment
 import com.lmt.tooltx.bridge.PythonBridge
 import com.lmt.tooltx.ui.admin.AdminFragment
+import com.lmt.tooltx.ui.NavArchBackgroundView
 import com.lmt.tooltx.ui.auth.SignInFragment
 import com.lmt.tooltx.ui.auth.SignUpFragment
 import com.lmt.tooltx.ui.browser.BrowserFragment
@@ -85,11 +86,17 @@ class MainActivity : AppCompatActivity() {
         fragmentContainer = findViewById(R.id.fragment_container)
         navItems = navItemIds.map { findViewById<View>(it) }
         for (i in navItems.indices) {
-            navItems[i].setOnClickListener { _ ->
+            // Nút Công cụ: chỉ vòng tròn cờ lê bấm được, không bắt cả ô nav.
+            val target = if (navTags[i] == "tool") findViewById<View>(R.id.nav_tool_circle) else navItems[i]
+            target.setOnClickListener { _ ->
                 val tag = navTags[i]
                 showFragment(fragmentClassFor(tag), tag)
             }
         }
+        findViewById<NavArchBackgroundView>(R.id.nav_bg).bind(
+            findViewById(R.id.nav_tool_circle),
+            findViewById(R.id.nav_icon_home)
+        )
         setAdminVisible(false)
         setupImmersive()
 

@@ -71,7 +71,6 @@ class ToolFragment : Fragment() {
         binding.btnOpenTool.setOnClickListener { onOpenGameClicked() }
         binding.btnResetToken.setOnClickListener { startTool(forceRefresh = true) }
         binding.btnExitGame.setOnClickListener { closeGame() }
-        binding.btnMute.setOnClickListener { toggleMute() }
         binding.btnBack.setOnClickListener {
             if (gameOpen) {
                 closeGame()
@@ -403,19 +402,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         }
     }
 
-    // ── Bật/tắt tiếng game (nút loa) ────────────────────────────
-    private fun toggleMute() {
-        muted = !muted
-        applyMuteUi()
-        WebViewBridge.setMuted(muted)
-        setAgent(if (muted) getString(R.string.muted) else getString(R.string.unmuted))
-    }
-
-    private fun applyMuteUi() {
-        binding.btnMute.setImageResource(if (muted) R.drawable.ic_volume_off else R.drawable.ic_volume_up)
-        binding.btnMute.contentDescription = getString(R.string.mute_sound) + (if (muted) " (" + getString(R.string.muted) + ")" else " (" + getString(R.string.unmuted) + ")")
-    }
-
+    // ── Mở game ─────────────────────────────────────────────────
     private fun openGame() {
         if (gameOpen) return
         val url = gameUrl
@@ -429,7 +416,6 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         backCallback?.isEnabled = true
         binding.toolPage.visibility = View.GONE
         binding.gameOverlay.visibility = View.VISIBLE
-        applyMuteUi()
         val wv = binding.webView
         wv.visibility = View.VISIBLE
         WebViewBridge.attach(wv)
@@ -677,10 +663,6 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                             setStatus("Mất kết nối — đang kết nối lại...")
                         } else if (msg.isNotEmpty()) {
                             setStatus(msg)
-                        }
-                        if (missStreak >= 6 && toolStarted && !gameOpen) {
-                            missStreak = 0
-                            startTool()
                         }
                     }
                     // Game đang mở: cài lại shim mỗi vòng (game có thể tự reload/navigation)

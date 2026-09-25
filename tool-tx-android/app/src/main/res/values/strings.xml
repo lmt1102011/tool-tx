@@ -83,7 +83,7 @@
     <string name="no_activity">Chưa có hoạt động.</string>
     <string name="predictions_left">Số lượt sử dụng tool còn lại</string>
     <string name="send_crash_log">Gửi crash log</string>
-    <string name="version">ToolTX — Gold edition — v2.0</string>
+    <string name="version">ToolTX — Gold edition — v2.0.3</string>
     <string name="logout">Đăng xuất</string>
     <string name="logout_confirm">Bạn có muốn đăng xuất không?</string>
 

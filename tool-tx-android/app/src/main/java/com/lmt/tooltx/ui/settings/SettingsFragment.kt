@@ -66,6 +66,16 @@ class SettingsFragment : Fragment() {
 
         binding.btnBuglogSend.setOnClickListener { shareBugLog() }
         binding.btnBuglogClear.setOnClickListener { clearBugLog() }
+        showAppVersion()
+    }
+
+    private fun showAppVersion() {
+        val v = try {
+            requireContext().packageManager.getPackageInfo(requireContext().packageName, 0).versionName
+        } catch (_: Exception) {
+            null
+        }
+        binding.tvVersion.text = "ToolTX — Gold edition — v" + (v ?: "2.0.3")
     }
 
     override fun onResume() {

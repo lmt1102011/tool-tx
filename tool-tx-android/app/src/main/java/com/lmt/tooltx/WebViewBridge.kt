@@ -163,20 +163,80 @@ object WebViewBridge {
             "if(window.__wsCapShim)return;window.__wsCapShim=1;" +
             "window.__wsLog=[];window.__wsLogMax=2000;" +
             "function push(e){if(!e)return;if(window.__wsLog.length>=window.__wsLogMax)window.__wsLog.shift();window.__wsLog.push(e);}" +
+            "function scan(node,out,depth){" +
+            "if(depth>8||!node||typeof node!=='object')return;" +
+            "var i,k;" +
+            "if(Array.isArray(node)){for(i=0;i<node.length;i++)scan(node[i],out,depth+1);return;}" +
+            "var a=node.d1,b=node.d2,c=node.d3;" +
+            "if(a!==undefined&&b!==undefined&&c!==undefined&&(a|0)===a&&(b|0)===b&&(c|0)===c&&a>=1&&a<=6&&b>=1&&b<=6&&c>=1&&c<=6){" +
+            "out.push(a+b+c+':'+(node.sid===undefined?(node.sidId===undefined?(node.tid===undefined?'':node.tid):node.sidId):node.sid));return;}" +
+            "var dc=node.dices||node.dice||node.diceValue;" +
+            "if(Array.isArray(dc)&&dc.length>=3&&(dc[0]|0)===dc[0]&&(dc[1]|0)===dc[1]&&(dc[2]|0)===dc[2]&&dc[0]>=1&&dc[0]<=6&&dc[1]>=1&&dc[1]<=6&&dc[2]>=1&&dc[2]<=6){" +
+            "out.push((dc[0]+dc[1]+dc[2])+':'+(node.sid===undefined?'':node.sid));return;}" +
+            "if(typeof node.sum==='number'&&node.sum>=3&&node.sum<=18){out.push(node.sum+':'+(node.sid===undefined?'':node.sid));return;}" +
+            "for(k in node){if(node[k]&&typeof node[k]==='object')scan(node[k],out,depth+1);}" +
+            "}" +
+            "function emit(obj){var out=[];scan(obj,out,0);for(var i=0;i<out.length;i++)push({t:Date.now(),k:'r',d:out[i]});return out.length;}" +
+            "var b,pp;" +
+            "function str(n){var s='';var st=pp;var en=pp+n;try{s=String.fromCharCode.apply(null,Array.prototype.slice.call(b.subarray(st,en)));}catch(_){}pp=en;return s;}" +
+            "function rd(){" +
+            "var t=b[pp++],i,j,k,n,o,a,s,l,q,cc,kk;" +
+            "if(t===undefined)throw 9;" +
+            "if(t<0x80)return t;if(t>0xef)return t-256;" +
+            "if(t>=0x80&&t<=0x8f){n=t&15;o={};for(i=0;i<n;i++){k=rd();o[k]=rd();}return o;}" +
+            "if(t>=0x90&&t<=0x9f){n=t&15;a=[];for(i=0;i<n;i++)a.push(rd());return a;}" +
+            "if(t>=0xa0&&t<=0xbf)return str(t&31);" +
+            "if(t>=0xc0&&t<=0xdf){" +
+            "if(t===0xc0)return null;if(t===0xc2)return false;if(t===0xc3)return true;" +
+            "if(t===0xcc)return b[pp++];if(t===0xcd)return (b[pp++]<<8)|b[pp++];if(t===0xce)return ((b[pp++]<<24)|(b[pp++]<<16)|(b[pp++]<<8)|b[pp++])>>>0;" +
+            "if(t===0xd0)return b[pp++]-256;if(t===0xd1)return ((b[pp++]<<8)|b[pp++])-65536;if(t===0xd2)return ((b[pp++]<<24)|(b[pp++]<<16)|(b[pp++]<<8)|b[pp++])-4294967296;" +
+            "if(t===0xd9)return str(b[pp++]);if(t===0xda)l=(b[pp++]<<8)|b[pp++];else if(t===0xc4)l=b[pp++];else if(t===0xc5)l=(b[pp++]<<8)|b[pp++];else if(t===0xc6)l=b[pp++]|(b[pp++]<<8)|(b[pp++]<<16)|(b[pp++]<<24);" +
+            "if(l!==undefined){s=str(l);return s;}" +
+            "if(t===0xc7){l=(b[pp++]<<8)|b[pp++];pp+=1+l;return '';}" +
+            "if(t===0xc8){l=b[pp++]|(b[pp++]<<8)|(b[pp++]<<16)|(b[pp++]<<24);pp+=1+l;return '';}" +
+            "if(t===0xdb){q=0;for(j=0;j<4;j++)q=q*256+b[pp++];return str(q);}" +
+            "if(t>=0xc9&&t<=0xd8){var el=0;if(t===0xc9)el=b[pp++];else if(t===0xca)el=(b[pp++]<<8)|b[pp++];else if(t===0xcb)el=b[pp++]|(b[pp++]<<8)|(b[pp++]<<16)|(b[pp++]<<24);else if(t===0xd4)el=1;else if(t===0xd5)el=2;else if(t===0xd6)el=4;else if(t===0xd7)el=8;else if(t===0xd8)el=16;pp+=1+el;return '';}" +
+            "throw 9;}" +
+            "if(t===0xdc){n=(b[pp++]<<8)|b[pp++];a=[];for(i=0;i<n;i++)a.push(rd());return a;}" +
+            "if(t===0xdd){q=0;for(j=0;j<4;j++)q=q*256+b[pp++];a=[];for(i=0;i<q;i++)a.push(rd());return a;}" +
+            "if(t===0xde){n=(b[pp++]<<8)|b[pp++];o={};for(i=0;i<n;i++){kk=rd();o[kk]=rd();}return o;}" +
+            "if(t===0xdf){q=0;for(j=0;j<4;j++)q=q*256+b[pp++];o={};for(i=0;i<q;i++){kk=rd();o[kk]=rd();}return o;}" +
+            "throw 9;}" +
+            "function onBin(d){" +
+            "try{b=new Uint8Array(d);}catch(_){return;}" +
+            "var got=0,st;" +
+            "for(st=0;st<10&&st<b.length;st++){" +
+            "pp=st;" +
+            "try{got=emit(rd());}catch(_){got=0;}" +
+            "if(got){return;}" +
+            "}" +
+            "try{var u8=b.length>120?b.subarray(0,120):b;var hex='';for(var i=0;i<u8.length;i++)hex+=('0'+u8[i].toString(16)).slice(-2);push({t:Date.now(),k:'b',d:hex});}catch(_){}" +
+            "}" +
+            "function onTxt(d){" +
+            "var s=String(d);" +
+            "if(s.length>600){s=s.slice(0,600);}" +
+            "if(/^4[0123]/.test(s))s=s.slice(2);" +
+            "s=s.trim();" +
+            "if(s&&(s.charAt(0)==='{'||s.charAt(0)==='[')){" +
+            "try{var o=JSON.parse(s);if(emit(o)>0)return;}catch(_){}" +
+            "}" +
+            "if(s&&s.length<=300)push({t:Date.now(),k:'t',d:s});" +
+            "}" +
             "var Orig=window.WebSocket;" +
             "function Wrapped(url,protocols){" +
             "var w=new Orig(url,protocols);" +
             "try{w.binaryType='arraybuffer';}catch(_){}" +
             "try{w.addEventListener('message',function(ev){var d=ev.data;" +
-            "if(typeof d==='string'){push({t:Date.now(),k:'t',d:d});}" +
-            "else if(d&&d.byteLength!==undefined&&d.byteLength>=0){try{var u8=new Uint8Array(d.slice?d.slice(0,1500):d);var hex='';for(var i=0;i<u8.length;i++)hex+=('0'+u8[i].toString(16)).slice(-2);push({t:Date.now(),k:'b',d:hex});}catch(_){}}" +
-            "else if(d&&d.arrayBuffer){try{d.arrayBuffer().then(function(ab){try{var u8=new Uint8Array(ab.slice?ab.slice(0,1500):ab);var hex='';for(var i=0;i<u8.length;i++)hex+=('0'+u8[i].toString(16)).slice(-2);push({t:Date.now(),k:'b',d:hex});}catch(_){}}).catch(function(){});}catch(_){}}" +
-            "else if(d&&d.data){try{var dd=new Uint8Array(d.data.slice?d.data.slice(0,1500):d.data);var h2='';for(var i=0;i<dd.length;i++)h2+=('0'+dd[i].toString(16)).slice(-2);push({t:Date.now(),k:'b',d:h2});}catch(_){}}" +
+            "if(typeof d==='string'){onTxt(d);}" +
+            "else if(d&&d.byteLength!==undefined){onBin(d);}" +
+            "else if(d&&d.arrayBuffer){try{d.arrayBuffer().then(function(ab){onBin(ab);}).catch(function(){});}catch(_){}}" +
+            "else if(d&&d.data){try{onBin(d.data);}catch(_){}}" +
             "});}catch(_){}" +
             "return w;}" +
             "Wrapped.prototype=Orig.prototype;" +
             "Wrapped.CONNECTING=Orig.CONNECTING;Wrapped.OPEN=Orig.OPEN;Wrapped.CLOSING=Orig.CLOSING;Wrapped.CLOSED=Orig.CLOSED;" +
             "window.WebSocket=Wrapped;" +
+            "window.__wsDecode=1;" +
             "})();"
         // Gọi TRỰC TIẾP (đang ở UI thread trong onPageStarted/onPageFinished) —
         // không qua main.post để shim kịp cài TRƯỚC khi game mở WebSocket.
