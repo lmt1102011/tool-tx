@@ -61,7 +61,7 @@ class NavArchBackgroundView @JvmOverloads constructor(
                 val navVisible = navWrapRef?.visibility == View.VISIBLE
                 if (!navVisible) {
                     invalidate()
-                    return@recalc
+                    return
                 }
                 val c = l(circle)
                 val f = l(flatRef)
