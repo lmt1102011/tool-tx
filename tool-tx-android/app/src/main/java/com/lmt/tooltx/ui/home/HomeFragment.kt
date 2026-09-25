@@ -144,7 +144,7 @@ class HomeFragment : Fragment() {
 
     private fun getCurrentVersion(): String {
         return try {
-            requireContext().packageManager.getPackageInfo(requireContext().packageName, 0).versionName
+            requireContext().packageManager.getPackageInfo(requireContext().packageName, 0).versionName ?: "0.0.0"
         } catch (_: Exception) {
             "0.0.0"
         }
