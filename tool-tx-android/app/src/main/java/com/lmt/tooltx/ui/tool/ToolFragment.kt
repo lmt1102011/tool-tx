@@ -282,8 +282,9 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         (requireActivity() as MainActivity).setGameFullscreen(false)
         setSystemUiFullscreen(false)
-        binding.btnOpenTool.text = if (running) getString(R.string.open_game) else getString(R.string.open_tool)
-        if (running) setStatus("Server: đã kết nối — bấm MỞ GAME để chơi.")
+        val socketConnected = runCatching { (requireActivity() as MainActivity).getBridge().isSocketConnected() }.getOrDefault(false)
+        setOpenBtnReady(socketConnected) // đã kết nối → MỞ GAME xanh; chưa → MỞ CÔNG CỤ
+        if (socketConnected) setStatus("Server: đã kết nối — bấm MỞ GAME để chơi.")
         else setStatus("Chưa kết nối — bấm MỞ GAME để kết nối.")
     }
 
@@ -404,7 +405,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                         setStatus("Đã kết nối — bấm MỞ GAME để chơi.")
                         setAgent("Chờ game mở rồi chơi ngay trong app.")
                         binding.btnOpenTool.isEnabled = true
-                        binding.btnOpenTool.text = getString(R.string.open_game)
+                        setOpenBtnReady(true)
                     } else {
                         setStatus("Không khởi động được agent.")
                         setAgent("Thử bấm RESET MÃ lại.")
@@ -420,7 +421,17 @@ binding.predCard.setOnTouchListener(::onDragTouch)
 
     private fun stopToolButtons() {
         binding.btnOpenTool.isEnabled = false
-        binding.btnOpenTool.text = getString(R.string.open_game)
+        setOpenBtnReady(false)
+    }
+
+    // Nút lớn dưới tool: chưa kết nối → "MỞ CÔNG CỤ" (màu thường); đã kết nối xong, chỉ còn
+    // bước mở game để chơi → "MỞ GAME" màu xanh lá.
+    private fun setOpenBtnReady(ready: Boolean) {
+        binding.btnOpenTool.text = getString(if (ready) R.string.open_game else R.string.open_tool)
+        binding.btnOpenTool.backgroundTintList = ContextCompat.getColorStateList(
+            requireContext(),
+            if (ready) R.color.panelGo else R.color.primary
+        )
     }
 
     private fun pollAgentStatus(bridge: PythonBridge, gameOpenAtStart: Boolean) {
@@ -450,7 +461,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                         if (gameOpen) {
                             binding.btnOpenTool.text = getString(R.string.close_game)
                         } else {
-                            binding.btnOpenTool.text = getString(R.string.open_game)
+                            setOpenBtnReady(true)
                             if (gameUrl != null) {
                                 setStatus("Đã kết nối — bấm MỞ GAME để chơi.")
                                 if (pendingOpen && !gameOpen) openGame()
@@ -460,7 +471,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                         }
                     } else {
                         binding.btnOpenTool.isEnabled = true
-                        binding.btnOpenTool.text = getString(R.string.open_tool)
+                        setOpenBtnReady(false)
                         if (msg.isNotEmpty()) setStatus(msg)
                     }
                 }
