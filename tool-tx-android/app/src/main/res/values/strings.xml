@@ -48,6 +48,12 @@
     <string name="phase_idle">CHỜ DỮ LIỆU</string>
     <string name="phase_first_round">PHIÊN ĐẦU — CHỈ XEM KẾT QUẢ</string>
     <string name="phase_stabilizing">ĐỢI ỔN ĐỊNH TOOL…</string>
+    <string name="phase_wait_game_data">ĐANG TẢI GAME — CHỜ DỮ LIỆU…</string>
+    <string name="phase_press_open_game">BẤM MỞ GAME ĐỂ NHẬN DỮ LIỆU</string>
+    <string name="pick_open_game">MỞ GAME</string>
+    <string name="hint_retry_data">Tool chưa nhận được dữ liệu — đang thử lại…</string>
+    <string name="hint_reset_data">Chưa nhận được dữ liệu — bấm RESET MÃ rồi MỞ GAME lại.</string>
+    <string name="ready_press_game">Sẵn sàng — bấm MỞ GAME để chơi và nhận dự đoán.</string>
     <string name="panel_pick_with_conf">%1$s %2$02.0f%%</string>
     <string name="panel_result_with_sum">KẾT QUẢ: %1$s (%2$d)</string>
     <string name="panel_new_round_in">Phiên mới sau %d giây</string>

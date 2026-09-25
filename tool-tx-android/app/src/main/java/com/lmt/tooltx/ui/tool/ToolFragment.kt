@@ -50,6 +50,7 @@ class ToolFragment : Fragment() {
     private var openBtnReadyShown = false
     private var connectedReady = false
     private var toolStarted = false
+    private var noDataTicks = 0
     private var missStreak = 0
 
     private var _binding: FragmentToolBinding? = null
@@ -82,6 +83,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         setupWebView()
 
         val bridge = (requireActivity() as MainActivity).getBridge()
+        binding.tvLivePick.text = getString(R.string.phase_press_open_game)
         if (bridge.isLoggedIn()) startTool() else setOpenBtnReady(false)
 
         backCallback = object : androidx.activity.OnBackPressedCallback(false) {
@@ -416,7 +418,13 @@ binding.predCard.setOnTouchListener(::onDragTouch)
 
     private fun openGame() {
         if (gameOpen) return
+        val url = gameUrl
+        if (url.isNullOrEmpty()) {
+            setStatus("Chưa có mã game — chờ lấy mã rồi bấm lại.")
+            return
+        }
         gameOpen = true
+        noDataTicks = 0
         pendingOpen = false
         backCallback?.isEnabled = true
         binding.toolPage.visibility = View.GONE
@@ -425,19 +433,20 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         val wv = binding.webView
         wv.visibility = View.VISIBLE
         WebViewBridge.attach(wv)
-        gameUrl?.let { WebViewBridge.navigate(it) }
+        WebViewBridge.navigate(url)
         WebViewBridge.setMuted(muted)
         requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         (requireActivity() as MainActivity).setGameFullscreen(true)
         setSystemUiFullscreen(true)
         binding.btnOpenTool.text = getString(R.string.close_game)
         binding.btnOpenTool.visibility = View.VISIBLE
-        setStatus("Đang chơi — cửa sổ dự đoán nằm ở giữa dưới màn hình.")
+        setStatus("Đang tải game — tool sẽ tự bắt dữ liệu, chờ vài giây...")
     }
 
     private fun closeGame() {
         if (!gameOpen) return
         gameOpen = false
+        noDataTicks = 0
         backCallback?.isEnabled = false
         binding.gameOverlay.visibility = View.GONE
         binding.toolPage.visibility = View.VISIBLE
@@ -651,7 +660,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                         } else {
                             if (!openBtnReadyShown) setOpenBtnReady(true)
                             if (gameUrl != null) {
-                                setStatus("Đã kết nối — bấm MỞ GAME để chơi.")
+                                setStatus(getString(R.string.ready_press_game))
                                 if (pendingOpen && !gameOpen) {
                                     pendingOpen = false
                                     openGame()
@@ -672,6 +681,27 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                         if (missStreak >= 6 && toolStarted && !gameOpen) {
                             missStreak = 0
                             startTool()
+                        }
+                    }
+                    // Game đang mở: cài lại shim mỗi vòng (game có thể tự reload/navigation)
+                    // và tự thử lại nếu lâu không có dữ liệu.
+                    if (gameOpen) {
+                        WebViewBridge.installWsShim()
+                        val p = panel
+                        val gotData = !p.isEmpty() && (
+                            !p["pick"].toString().isNullOrBlank() ||
+                                ((p["hist"] as? List<*>)?.size ?: 0) > 0 ||
+                                (p["rStart"]?.toString()?.toDoubleOrNull() ?: 0.0) > 0 ||
+                                (p["lastResult"]?.toString()?.isNotBlank() == true)
+                            )
+                        noDataTicks = if (gotData) 0 else noDataTicks + 1
+                        if (noDataTicks == 8) {
+                            WebViewBridge.unstickGame()
+                            WebViewBridge.armMute()
+                            setStatus(getString(R.string.hint_retry_data))
+                            binding.btnOpenTool.text = getString(R.string.close_game)
+                        } else if (noDataTicks >= 20) {
+                            setStatus(getString(R.string.hint_reset_data))
                         }
                     }
                 }
@@ -804,6 +834,14 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         }
 
         val pickTai = pick != null && isTai(pick)
+        val hasData = !pick.isNullOrEmpty() || realSum > 0 || lastResult.isNotEmpty() || rStart > 0
+        val noDataTxt: String = if (gameOpen) {
+            getString(R.string.phase_wait_game_data)
+        } else if (openBtnReadyShown) {
+            getString(R.string.phase_press_open_game)
+        } else {
+            getString(R.string.phase_stabilizing)
+        }
         val predText: String
         val predColor: Int
         when {
@@ -832,8 +870,12 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                 predText = ""
                 predColor = ContextCompat.getColor(ctx, R.color.panelText)
             }
+            !hasData -> {
+                predText = if (gameOpen) noDataTxt else getString(R.string.pick_open_game)
+                predColor = ContextCompat.getColor(ctx, R.color.panelDim)
+            }
             else -> {
-                predText = if (isSkip) "" else getString(R.string.waiting_data)
+                predText = getString(R.string.waiting_data)
                 predColor = ContextCompat.getColor(ctx, R.color.panelDim)
             }
         }
@@ -842,7 +884,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         val countTxt: String
         when (phase) {
             "idle" -> {
-                statusTxt = if (isSkip) getString(R.string.phase_stabilizing) else getString(R.string.phase_idle)
+                statusTxt = noDataTxt
                 countTxt = ""
             }
             "wait" -> {
@@ -854,7 +896,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                 countTxt = countdownTxt()
             }
             "ready" -> {
-                statusTxt = if (pick.isNullOrEmpty()) getString(R.string.phase_stabilizing) else ""
+                statusTxt = if (pick.isNullOrEmpty()) noDataTxt else ""
                 countTxt = countdownTxt()
             }
             "get_result" -> {
@@ -870,6 +912,17 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         binding.tvCountdown.setTextColor(phaseColor)
         binding.tvPercentage.text = statusTxt
         binding.tvPercentage.setTextColor(phaseColor)
+        val liveTxt = if (hasData) {
+            if (predText.isNotEmpty()) predText else countTxt
+        } else if (gameOpen) {
+            getString(R.string.phase_wait_game_data)
+        } else {
+            getString(R.string.phase_press_open_game)
+        }
+        binding.tvLivePick.text = liveTxt
+        binding.tvLivePick.setTextColor(
+            if (hasData) predColor else ContextCompat.getColor(ctx, R.color.onSurfaceVariant)
+        )
         if (phase == "analyze") startBarAnim() else { stopBarAnim(); setBar(pT, pX) }
         renderHistory(p)
     }
