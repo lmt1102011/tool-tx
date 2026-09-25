@@ -56,31 +56,31 @@ class NavArchBackgroundView @JvmOverloads constructor(
             getLocationInWindow(b)
             floatArrayOf(a[0] - b[0] + v.width / 2f, a[1] - b[1] + v.height / 2f)
         }
-        val recalc = {
+        val recalc: () -> Unit = {
             if (circle.width > 0 && width > 0 && flatRef.width > 0 && flatRef.height > 0) {
                 val navVisible = navWrapRef?.visibility == View.VISIBLE
-                if (!navVisible) {
+                if (navVisible) {
+                    val c = l(circle)
+                    val f = l(flatRef)
+                    val r = minOf(circle.width, circle.height) / 2f
+                    val cy = c[1]
+                    val flat = f[1] + dp(1f)
+                    lastValidFlatY = flat
+                    val dyMax = (r - minClear).coerceAtLeast(1f)
+                    val dy = (flat - cy).coerceIn(-dyMax, dyMax)
+                    val archR = max(r + gap, sqrt((r + minClear) * (r + minClear) + dy * dy))
+                    bumpCx = c[0]
+                    bumpCy = cy
+                    bumpR = archR
+                    flatY = cy + dy
+                    hasGeom = true
+                    fillPaint.color = ContextCompat.getColor(context, R.color.surfaceContainer)
+                    edgePaint.color = ContextCompat.getColor(context, R.color.outlineVariant)
+                    edgePaint.strokeWidth = dp(1f)
                     invalidate()
-                    return
+                } else {
+                    invalidate()
                 }
-                val c = l(circle)
-                val f = l(flatRef)
-                val r = minOf(circle.width, circle.height) / 2f
-                val cy = c[1]
-                val flat = f[1] + dp(1f)
-                lastValidFlatY = flat
-                val dyMax = (r - minClear).coerceAtLeast(1f)
-                val dy = (flat - cy).coerceIn(-dyMax, dyMax)
-                val archR = max(r + gap, sqrt((r + minClear) * (r + minClear) + dy * dy))
-                bumpCx = c[0]
-                bumpCy = cy
-                bumpR = archR
-                flatY = cy + dy
-                hasGeom = true
-                fillPaint.color = ContextCompat.getColor(context, R.color.surfaceContainer)
-                edgePaint.color = ContextCompat.getColor(context, R.color.outlineVariant)
-                edgePaint.strokeWidth = dp(1f)
-                invalidate()
             }
         }
         circle.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> recalc() }
