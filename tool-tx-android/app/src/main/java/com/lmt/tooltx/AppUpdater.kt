@@ -86,7 +86,7 @@ object AppUpdater {
         )
     }
 
-    private fun getJson(url: String): List<JSONObject> = withContext(Dispatchers.IO) {
+    private suspend fun getJson(url: String): List<JSONObject> = withContext(Dispatchers.IO) {
         val conn = URL(url).openConnection() as HttpURLConnection
         conn.connectTimeout = 15000
         conn.readTimeout = 15000
@@ -151,7 +151,6 @@ object AppUpdater {
         conn.readTimeout = 30000
         conn.setRequestProperty("User-Agent", "tool-tx-android")
         conn.setRequestProperty("Accept", "application/octet-stream")
-        conn.followRedirects = true
         try {
             val code = conn.responseCode
             if (code !in 200..299) throw RuntimeException("HTTP $code")

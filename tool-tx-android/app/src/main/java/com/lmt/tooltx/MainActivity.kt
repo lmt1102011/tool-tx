@@ -292,7 +292,7 @@ class MainActivity : AppCompatActivity() {
             tool.post { layoutNavBump() }
             return
         }
-        val dy = (-20f * resources.displayMetrics.density).toInt()
+        val dy = -20f * resources.displayMetrics.density
         navBump.x = tool.left + tool.width / 2f - navBump.width / 2f
         navBump.y = dy
     }
