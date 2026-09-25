@@ -45,6 +45,7 @@ class ToolFragment : Fragment() {
     private var lastPanel: Map<*, *> = emptyMap<String, Any?>()
     private var countdownJob: Job? = null
     private var barAnimator: ValueAnimator? = null
+    private var blinkAnimator: ValueAnimator? = null
     private var splashJob: Job? = null
     private var pollJob: Job? = null
     private var openBtnReadyShown = false
@@ -734,6 +735,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         pollJob = null
         toolStarted = false
         stopBarAnim()
+        stopBlinkAnim()
         lastPanel = emptyMap<String, Any?>()
         connectedReady = false
         openBtnReadyShown = false
@@ -776,6 +778,14 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         val pick = p["pick"]?.toString()?.trim()
         val confV = num("confidence").let { if (it > 0) it else num("conf") }
         val isSkip = (p["skip"] as? Boolean) ?: (p["skip"]?.toString()?.toBooleanStrictOrNull() ?: false)
+        val isSkipFirst = (p["skipFirst"] as? Boolean)
+            ?: (p["skipFirst"]?.toString()?.toBooleanStrictOrNull() ?: false) || (isSkip && pick.isNullOrEmpty())
+        val roundN = num("roundN").toInt()
+        val settledPick = (p["settledPick"] as? String)?.trim()?.takeIf { it.isNotEmpty() }
+        val settledWin = (p["settledWin"] as? Boolean)
+            ?: (p["settledWin"]?.toString()?.toBooleanStrictOrNull() ?: false)
+        val settledResult = (p["settledResult"] as? String)?.trim()?.takeIf { it.isNotEmpty() }
+        val settledSum = num("settledSum").toInt()
         var pT = num("pT")
         var pX = num("pX")
         if (pT <= 0 && pX <= 0) { pT = 50.0; pX = 50.0 }
@@ -797,12 +807,15 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         } else {
             "idle"
         }
-        val phaseColorRes = when (phase) {
-            "ready" -> if (isSkip) R.color.panelWarn else R.color.panelGo
-            "reveal" -> R.color.panelGo
-            "get_result" -> R.color.panelWarn
-            "analyze" -> R.color.panelAnalyze
-            else -> R.color.panelDim
+        val phaseColorRes = when {
+            isSkipFirst && phase != "reveal" && phase != "idle" -> R.color.panelWarn
+            else -> when (phase) {
+                "ready" -> if (isSkip) R.color.panelWarn else R.color.panelGo
+                "reveal" -> R.color.panelGo
+                "get_result" -> R.color.panelWarn
+                "analyze" -> R.color.panelAnalyze
+                else -> R.color.panelDim
+            }
         }
         val phaseColor = ContextCompat.getColor(ctx, phaseColorRes)
 
@@ -828,13 +841,34 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         val predColor: Int
         when {
             phase == "reveal" -> {
-                val side = getString(if (isTai(lastResult)) R.string.tai else R.string.xiu)
-                predText = if (realSum > 0) {
-                    getString(R.string.panel_result_with_sum, side, realSum)
+                val resSide = settledResult ?: lastResult
+                val showSum = if (settledSum > 0) settledSum else realSum
+                val side = getString(if (isTai(resSide)) R.string.tai else R.string.xiu)
+                if (!settledPick.isNullOrEmpty()) {
+                    val predSide = getString(if (isTai(settledPick)) R.string.tai else R.string.xiu)
+                    val verdict = getString(if (settledWin) R.string.panel_settled_correct else R.string.panel_settled_wrong)
+                    predText = if (showSum > 0) {
+                        getString(R.string.panel_settled_line, predSide, side, showSum, verdict)
+                    } else {
+                        getString(R.string.panel_settled_line_nosum, predSide, side, verdict)
+                    }
+                    predColor = ContextCompat.getColor(ctx, if (settledWin) R.color.panelGo else R.color.panelTai)
                 } else {
-                    getString(R.string.phase_result) + ": " + side
+                    predText = if (showSum > 0) {
+                        getString(R.string.panel_result_with_sum, side, showSum)
+                    } else {
+                        getString(R.string.phase_result) + ": " + side
+                    }
+                    predColor = ContextCompat.getColor(ctx, R.color.panelGo)
                 }
-                predColor = ContextCompat.getColor(ctx, R.color.panelGo)
+            }
+            isSkipFirst && phase != "reveal" -> {
+                predText = getString(R.string.panel_skip_first)
+                predColor = ContextCompat.getColor(ctx, R.color.panelWarn)
+            }
+            phase == "analyze" -> {
+                predText = getString(R.string.phase_analyze)
+                predColor = ContextCompat.getColor(ctx, R.color.panelAnalyze)
             }
             phase == "ready" && !pick.isNullOrEmpty() -> {
                 predText = if (confV > 0) {
@@ -878,7 +912,11 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                 countTxt = countdownTxt()
             }
             "ready" -> {
-                statusTxt = if (pick.isNullOrEmpty()) noDataTxt else ""
+                statusTxt = when {
+                    pick.isNullOrEmpty() -> noDataTxt
+                    roundN > 0 -> getString(R.string.panel_session, roundN)
+                    else -> ""
+                }
                 countTxt = countdownTxt()
             }
             "get_result" -> {
@@ -890,6 +928,11 @@ binding.predCard.setOnTouchListener(::onDragTouch)
 
         binding.tvPrediction.text = predText
         binding.tvPrediction.setTextColor(predColor)
+        if (phase == "analyze" && !isSkipFirst) {
+            startBlinkAnim()
+        } else {
+            stopBlinkAnim()
+        }
         binding.tvCountdown.text = countTxt
         binding.tvCountdown.setTextColor(phaseColor)
         binding.tvPercentage.text = statusTxt
@@ -909,9 +952,29 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         renderHistory(p)
     }
 
+    private fun startBlinkAnim() {
+        if (blinkAnimator != null && blinkAnimator!!.isStarted) return
+        val a = ValueAnimator.ofFloat(0.35f, 1f).apply {
+            duration = 900L
+            repeatMode = ValueAnimator.REVERSE
+            repeatCount = ValueAnimator.INFINITE
+            addUpdateListener { va ->
+                if (_binding != null) binding.tvPrediction.alpha = va.animatedValue as Float
+            }
+        }
+        blinkAnimator = a
+        a.start()
+    }
+
+    private fun stopBlinkAnim() {
+        blinkAnimator?.cancel()
+        blinkAnimator = null
+        if (_binding != null) binding.tvPrediction.alpha = 1f
+    }
+
     private fun startBarAnim() {
         if (barAnimator != null && barAnimator!!.isStarted) return
-        val a = ValueAnimator.ofFloat(3f, 97f).apply {
+        val a = ValueAnimator.ofFloat(3f, 85f).apply {
             duration = 1300L
             repeatMode = ValueAnimator.REVERSE
             repeatCount = ValueAnimator.INFINITE
@@ -931,7 +994,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
 
     private fun setBar(pT: Double, pX: Double) {
         if (_binding == null) return
-        val tW = pT.coerceIn(0.0, 100.0).roundToInt()
+        val tW = pT.coerceIn(0.0, 85.0).roundToInt()
         val xW = (100 - tW).coerceIn(0, 100)
         (binding.barTai.layoutParams as LinearLayout.LayoutParams).weight = tW.toFloat()
         (binding.barXiu.layoutParams as LinearLayout.LayoutParams).weight = xW.toFloat()

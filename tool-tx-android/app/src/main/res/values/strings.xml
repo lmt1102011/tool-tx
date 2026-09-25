@@ -57,6 +57,12 @@
     <string name="panel_pick_with_conf">%1$s %2$02.0f%%</string>
     <string name="panel_result_with_sum">KẾT QUẢ: %1$s (%2$d)</string>
     <string name="panel_new_round_in">Phiên mới sau %d giây</string>
+    <string name="panel_settled_correct">ĐÚNG</string>
+    <string name="panel_settled_wrong">SAI</string>
+    <string name="panel_settled_line">DỰ ĐOÁN %1$s → %2$s (%3$d) · %4$s</string>
+    <string name="panel_settled_line_nosum">DỰ ĐOÁN %1$s → %2$s · %3$s</string>
+    <string name="panel_skip_first">BỎ QUA PHIÊN ĐẦU</string>
+    <string name="panel_session">Phiên %1$d</string>
     <string name="prediction">Dự đoán</string>
     <string name="open_game">MỞ GAME</string>
     <string name="close_game">Đóng game</string>
