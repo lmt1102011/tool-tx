@@ -17,31 +17,25 @@
     <FrameLayout
         android:id="@+id/nav_wrap"
         android:layout_width="match_parent"
-        android:layout_height="@dimen/nav_height"
+        android:layout_height="@dimen/nav_total_height"
         android:layout_gravity="bottom"
         android:background="@drawable/bg_nav_bar"
         android:clipChildren="false"
         android:fitsSystemWindows="false">
 
         <View
-            android:id="@+id/nav_bump"
-            android:layout_width="74dp"
-            android:layout_height="74dp"
-            android:layout_gravity="top|center_horizontal"
-            android:background="@drawable/bg_nav_bump" />
-
-        <View
             android:id="@+id/nav_pill"
             android:layout_width="44dp"
             android:layout_height="28dp"
-            android:layout_gravity="start|top"
-            android:layout_marginTop="17dp"
+            android:layout_gravity="bottom"
+            android:layout_marginBottom="35dp"
             android:background="@drawable/bg_pill" />
 
         <LinearLayout
             android:id="@+id/nav_items"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="@dimen/nav_height"
+            android:layout_gravity="bottom"
             android:baselineAligned="false"
             android:clipChildren="false"
             android:orientation="horizontal">
@@ -119,7 +113,7 @@
                 <FrameLayout
                     android:layout_width="58dp"
                     android:layout_height="58dp"
-                    android:layout_marginTop="-26dp"
+                    android:layout_marginTop="-34dp"
                     android:background="@drawable/bg_tool_circle"
                     android:elevation="8dp">
 
@@ -136,6 +130,7 @@
                     android:id="@+id/nav_label_tool"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
                     android:maxLines="1"
                     android:text="@string/nav_tool"
                     android:textSize="10sp" />

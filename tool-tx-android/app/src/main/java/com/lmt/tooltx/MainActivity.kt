@@ -38,7 +38,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var navPill: View
     private lateinit var navWrap: View
-    private lateinit var navBump: View
     private lateinit var fragmentContainer: View
     private lateinit var navItems: List<View>
     private val pythonBridge by lazy { PythonBridge(this) }
@@ -82,7 +81,6 @@ class MainActivity : AppCompatActivity() {
         pythonBridge.setSessionPath(filesDir.absolutePath + "/session.json")
 
         navPill = findViewById(R.id.nav_pill)
-        navBump = findViewById(R.id.nav_bump)
         navWrap = findViewById(R.id.nav_wrap)
         fragmentContainer = findViewById(R.id.fragment_container)
         navItems = navItemIds.map { findViewById<View>(it) }
@@ -92,9 +90,6 @@ class MainActivity : AppCompatActivity() {
                 showFragment(fragmentClassFor(tag), tag)
             }
         }
-        navWrap.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> layoutNavBump() }
-        navItems.forEach { it.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> layoutNavBump() } }
-        navWrap.post { layoutNavBump() }
         setAdminVisible(false)
         setupImmersive()
 
@@ -285,18 +280,6 @@ class MainActivity : AppCompatActivity() {
         navWrap.visibility = if (show) View.VISIBLE else View.GONE
     }
 
-    private fun layoutNavBump() {
-        if (!::navBump.isInitialized) return
-        val tool = findViewById<View>(R.id.nav_item_tool) ?: return
-        if (tool.width == 0 || navBump.width == 0) {
-            tool.post { layoutNavBump() }
-            return
-        }
-        val dy = -20f * resources.displayMetrics.density
-        navBump.x = tool.left + tool.width / 2f - navBump.width / 2f
-        navBump.y = dy
-    }
-
     fun showAdmin(show: Boolean) {
         setAdminVisible(show)
     }
@@ -306,7 +289,6 @@ class MainActivity : AppCompatActivity() {
         adminItem.visibility = if (show) View.VISIBLE else View.INVISIBLE
         navPill.post {
             if (navPill.width > 0) navPill.translationX = pillTargetFor(activeIndex())
-            layoutNavBump()
         }
     }
 

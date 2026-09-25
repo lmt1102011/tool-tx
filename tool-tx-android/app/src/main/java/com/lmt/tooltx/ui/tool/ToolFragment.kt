@@ -45,8 +45,10 @@ class ToolFragment : Fragment() {
     private var countdownJob: Job? = null
     private var barAnimator: ValueAnimator? = null
     private var splashJob: Job? = null
+    private var pollJob: Job? = null
     private var openBtnReadyShown = false
     private var connectedReady = false
+    private var toolStarted = false
     private var missStreak = 0
 
     private var _binding: FragmentToolBinding? = null
@@ -79,7 +81,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         setupWebView()
 
         val bridge = (requireActivity() as MainActivity).getBridge()
-        if (bridge.isLoggedIn()) startTool() else binding.btnOpenTool.visibility = View.VISIBLE
+        if (bridge.isLoggedIn()) startTool() else setOpenBtnReady(false)
 
         backCallback = object : androidx.activity.OnBackPressedCallback(false) {
             override fun handleOnBackPressed() {
@@ -456,8 +458,10 @@ binding.predCard.setOnTouchListener(::onDragTouch)
 
     private fun startTool(forceRefresh: Boolean = false) {
         startJob?.cancel()
+        pollJob?.cancel()
         running = true
         missStreak = 0
+        if (_binding != null) binding.btnOpenTool.isEnabled = false
         if (forceRefresh && gameOpen) {
             gameOpen = false
             backCallback?.isEnabled = false
@@ -569,13 +573,14 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                     if (_binding == null) return@withContext
                     setCode("Mã liên kết: $code")
                     if (ok) {
+                        toolStarted = true
                         setStatus("Đã kết nối — bấm MỞ GAME để chơi.")
                         setAgent("Chờ game mở rồi chơi ngay trong app.")
                         binding.btnOpenTool.isEnabled = true
                         setOpenBtnReady(true)
                     } else {
                         setStatus("Không khởi động được agent.")
-                        setAgent("Thử bấm RESET MÃ lại.")
+                        setAgent("Thử bấm RESET MÃ rồi bấm MỞ CÔNG CỤ.")
                         stopToolButtons()
                     }
                 }
@@ -587,14 +592,15 @@ binding.predCard.setOnTouchListener(::onDragTouch)
     }
 
     private fun stopToolButtons() {
-        binding.btnOpenTool.isEnabled = false
+        toolStarted = false
         missStreak = 0
         connectedReady = false
+        binding.btnOpenTool.isEnabled = true
         setOpenBtnReady(false)
     }
 
-    // Nút lớn dưới tool: chưa kết nối → "MỞ CÔNG CỤ" (màu thường); đã kết nối xong, chỉ còn
-    // bước mở game để chơi → "MỞ GAME" màu xanh lá.
+    // Nút lớn dưới tool: luôn hiện — chưa chạy tool → "MỞ CÔNG CỤ" (màu thường),
+    // đã chạy → "MỞ GAME" màu xanh lá. Không bao giờ ẩn đi.
     private fun setOpenBtnReady(ready: Boolean) {
         openBtnReadyShown = ready
         binding.btnOpenTool.text = getString(if (ready) R.string.open_game else R.string.open_tool)
@@ -602,21 +608,17 @@ binding.predCard.setOnTouchListener(::onDragTouch)
             requireContext(),
             if (ready) R.color.panelGo else R.color.primary
         )
-        if (ready) {
-            if (binding.btnOpenTool.visibility != View.VISIBLE) {
-                binding.btnOpenTool.alpha = 0f
-                binding.btnOpenTool.visibility = View.VISIBLE
-                binding.btnOpenTool.animate().alpha(1f).setDuration(180).start()
-            }
-        } else {
-            binding.btnOpenTool.animate().cancel()
-            binding.btnOpenTool.visibility = View.GONE
+        if (binding.btnOpenTool.visibility != View.VISIBLE) {
+            binding.btnOpenTool.alpha = 0f
+            binding.btnOpenTool.visibility = View.VISIBLE
+            binding.btnOpenTool.animate().alpha(1f).setDuration(180).start()
         }
     }
 
     private fun pollAgentStatus(bridge: PythonBridge, gameOpenAtStart: Boolean) {
-        GlobalScope.launch(Dispatchers.IO) {
-            while (!Thread.currentThread().isInterrupted) {
+        pollJob?.cancel()
+        pollJob = GlobalScope.launch(Dispatchers.IO) {
+            while (isActive) {
                 if (_binding == null) return@launch
                 val st = bridge.agentStatus()
                 val msg = st["message"]?.toString()?.takeIf { it.isNotEmpty() } ?: ""
@@ -649,18 +651,26 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                             if (!openBtnReadyShown) setOpenBtnReady(true)
                             if (gameUrl != null) {
                                 setStatus("Đã kết nối — bấm MỞ GAME để chơi.")
-                                if (pendingOpen && !gameOpen) openGame()
+                                if (pendingOpen && !gameOpen) {
+                                    pendingOpen = false
+                                    openGame()
+                                }
                             } else {
                                 setStatus("Đã kết nối — đang chờ mã game...")
                             }
                         }
                     } else {
-                        // Chỉ ẩn nút sau nhiều lần mất kết nối liên tiếp, tránh nhấp nháy.
+                        // Không ẩn nút khi rớt kết nối, chỉ báo trạng thái và tự nối lại.
                         missStreak++
                         binding.btnOpenTool.isEnabled = true
-                        if (missStreak >= 3) {
-                            if (openBtnReadyShown) setOpenBtnReady(false)
-                            if (msg.isNotEmpty()) setStatus(msg)
+                        if (missStreak >= 3 && toolStarted && !gameOpen) {
+                            setStatus("Mất kết nối — đang kết nối lại...")
+                        } else if (msg.isNotEmpty()) {
+                            setStatus(msg)
+                        }
+                        if (missStreak >= 6 && toolStarted && !gameOpen) {
+                            missStreak = 0
+                            startTool()
                         }
                     }
                 }
@@ -707,6 +717,9 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         countdownJob = null
         splashJob?.cancel()
         splashJob = null
+        pollJob?.cancel()
+        pollJob = null
+        toolStarted = false
         stopBarAnim()
         lastPanel = emptyMap<String, Any?>()
         connectedReady = false
