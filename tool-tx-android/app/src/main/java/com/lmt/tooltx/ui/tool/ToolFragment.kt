@@ -44,6 +44,8 @@ class ToolFragment : Fragment() {
     private var countdownJob: Job? = null
     private var barAnimator: ValueAnimator? = null
     private var splashJob: Job? = null
+    private var openBtnReadyShown = false
+    private var missStreak = 0
 
     private var _binding: FragmentToolBinding? = null
     private val binding get() = _binding!!
@@ -360,6 +362,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
     private fun startTool(forceRefresh: Boolean = false) {
         startJob?.cancel()
         running = true
+        missStreak = 0
         if (forceRefresh && gameOpen) {
             gameOpen = false
             backCallback?.isEnabled = false
@@ -490,18 +493,29 @@ binding.predCard.setOnTouchListener(::onDragTouch)
 
     private fun stopToolButtons() {
         binding.btnOpenTool.isEnabled = false
+        missStreak = 0
         setOpenBtnReady(false)
     }
 
     // Nút lớn dưới tool: chưa kết nối → "MỞ CÔNG CỤ" (màu thường); đã kết nối xong, chỉ còn
     // bước mở game để chơi → "MỞ GAME" màu xanh lá.
     private fun setOpenBtnReady(ready: Boolean) {
+        openBtnReadyShown = ready
         binding.btnOpenTool.text = getString(if (ready) R.string.open_game else R.string.open_tool)
         binding.btnOpenTool.backgroundTintList = ContextCompat.getColorStateList(
             requireContext(),
             if (ready) R.color.panelGo else R.color.primary
         )
-        binding.btnOpenTool.visibility = if (ready) View.VISIBLE else View.GONE
+        if (ready) {
+            if (binding.btnOpenTool.visibility != View.VISIBLE) {
+                binding.btnOpenTool.alpha = 0f
+                binding.btnOpenTool.visibility = View.VISIBLE
+                binding.btnOpenTool.animate().alpha(1f).setDuration(180).start()
+            }
+        } else {
+            binding.btnOpenTool.animate().cancel()
+            binding.btnOpenTool.visibility = View.GONE
+        }
     }
 
     private fun pollAgentStatus(bridge: PythonBridge, gameOpenAtStart: Boolean) {
@@ -527,11 +541,15 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                     if (_binding == null) return@withContext
                     if (msg.isNotEmpty()) setAgent(msg)
                     if (connected) {
+                        missStreak = 0
                         binding.btnOpenTool.isEnabled = true
                         if (gameOpen) {
                             binding.btnOpenTool.text = getString(R.string.close_game)
+                            if (binding.btnOpenTool.visibility != View.VISIBLE) {
+                                binding.btnOpenTool.visibility = View.VISIBLE
+                            }
                         } else {
-                            setOpenBtnReady(true)
+                            if (!openBtnReadyShown) setOpenBtnReady(true)
                             if (gameUrl != null) {
                                 setStatus("Đã kết nối — bấm MỞ GAME để chơi.")
                                 if (pendingOpen && !gameOpen) openGame()
@@ -540,9 +558,13 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                             }
                         }
                     } else {
+                        // Chỉ ẩn nút sau nhiều lần mất kết nối liên tiếp, tránh nhấp nháy.
+                        missStreak++
                         binding.btnOpenTool.isEnabled = true
-                        setOpenBtnReady(false)
-                        if (msg.isNotEmpty()) setStatus(msg)
+                        if (missStreak >= 3) {
+                            if (openBtnReadyShown) setOpenBtnReady(false)
+                            if (msg.isNotEmpty()) setStatus(msg)
+                        }
                     }
                 }
                 delay(2000)
