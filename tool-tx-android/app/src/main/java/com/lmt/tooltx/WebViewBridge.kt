@@ -170,16 +170,18 @@ object WebViewBridge {
             "var a=node.d1,b=node.d2,c=node.d3;" +
             "if(a!==undefined&&b!==undefined&&c!==undefined&&(a|0)===a&&(b|0)===b&&(c|0)===c&&a>=1&&a<=6&&b>=1&&b<=6&&c>=1&&c<=6){" +
             "out.push(a+b+c+':'+(node.sid===undefined?(node.sidId===undefined?(node.tid===undefined?'':node.tid):node.sidId):node.sid));return;}" +
-            "var dc=node.dices||node.dice||node.diceValue;" +
+            "var dc=node.dices||node.dice||node.diceValue||node.d||node.D||node.d123||node.result||node.data;" +
             "if(Array.isArray(dc)&&dc.length>=3&&(dc[0]|0)===dc[0]&&(dc[1]|0)===dc[1]&&(dc[2]|0)===dc[2]&&dc[0]>=1&&dc[0]<=6&&dc[1]>=1&&dc[1]<=6&&dc[2]>=1&&dc[2]<=6){" +
             "out.push((dc[0]+dc[1]+dc[2])+':'+(node.sid===undefined?'':node.sid));return;}" +
             "if(typeof node.sum==='number'&&node.sum>=3&&node.sum<=18){out.push(node.sum+':'+(node.sid===undefined?'':node.sid));return;}" +
+            "if(typeof node.Sum==='number'&&node.Sum>=3&&node.Sum<=18){out.push(node.Sum+':'+(node.sid===undefined?'':node.sid));return;}" +
+            "if(typeof node.total==='number'&&node.total>=3&&node.total<=18){out.push(node.total+':'+(node.sid===undefined?'':node.sid));return;}" +
             "for(k in node){if(node[k]&&typeof node[k]==='object')scan(node[k],out,depth+1);}" +
             "}" +
             "function emit(obj){var out=[];scan(obj,out,0);for(var i=0;i<out.length;i++)push({t:Date.now(),k:'r',d:out[i]});return out.length;}" +
             "var b,pp;" +
             "function str(n){var s='';var st=pp;var en=pp+n;try{s=String.fromCharCode.apply(null,Array.prototype.slice.call(b.subarray(st,en)));}catch(_){}pp=en;return s;}" +
-            "function rd(){" +
+"function rd(){" +
             "var t=b[pp++],i,j,k,n,o,a,s,l,q,cc,kk;" +
             "if(t===undefined)throw 9;" +
             "if(t<0x80)return t;if(t>0xef)return t-256;" +
@@ -188,14 +190,25 @@ object WebViewBridge {
             "if(t>=0xa0&&t<=0xbf)return str(t&31);" +
             "if(t>=0xc0&&t<=0xdf){" +
             "if(t===0xc0)return null;if(t===0xc2)return false;if(t===0xc3)return true;" +
+            "if(t===0xca){var f=b[pp++]<<24|b[pp++]<<16|b[pp++]<<8|b[pp++];return (new DataView(new Uint8Array([f>>24,f>>16,f>>8,f]).buffer)).getFloat32(0);}" +
+            "if(t===0xcb){var f=b[pp++]<<24|b[pp++]<<16|b[pp++]<<8|b[pp++]<<0|b[pp++]<<24|b[pp++]<<16|b[pp++]<<8|b[pp++];return (new DataView(new Uint8Array([f>>24,f>>16,f>>8,f]).buffer)).getFloat64(0);}" +
             "if(t===0xcc)return b[pp++];if(t===0xcd)return (b[pp++]<<8)|b[pp++];if(t===0xce)return ((b[pp++]<<24)|(b[pp++]<<16)|(b[pp++]<<8)|b[pp++])>>>0;" +
+            "if(t===0xcf){q=0;for(j=0;j<8;j++)q=q*256+b[pp++];return q;}" +
             "if(t===0xd0)return b[pp++]-256;if(t===0xd1)return ((b[pp++]<<8)|b[pp++])-65536;if(t===0xd2)return ((b[pp++]<<24)|(b[pp++]<<16)|(b[pp++]<<8)|b[pp++])-4294967296;" +
-            "if(t===0xd9)return str(b[pp++]);if(t===0xda)l=(b[pp++]<<8)|b[pp++];else if(t===0xc4)l=b[pp++];else if(t===0xc5)l=(b[pp++]<<8)|b[pp++];else if(t===0xc6)l=b[pp++]|(b[pp++]<<8)|(b[pp++]<<16)|(b[pp++]<<24);" +
+            "if(t===0xd3){q=0;for(j=0;j<8;j++)q=q*256+b[pp++];return q;}" +
+            "if(t===0xd9)return str(b[pp++]);" +
+            "if(t===0xda){l=(b[pp++]<<8)|b[pp++];}" +
+            "else if(t===0xdb){l=(b[pp++]<<24)|(b[pp++]<<16)|(b[pp++]<<8)|b[pp++];}" +
             "if(l!==undefined){s=str(l);return s;}" +
-            "if(t===0xc7){l=(b[pp++]<<8)|b[pp++];pp+=1+l;return '';}" +
+            "if(t===0xc4)l=b[pp++];else if(t===0xc5)l=(b[pp++]<<8)|b[pp++];else if(t===0xc6)l=(b[pp++]<<24)|(b[pp++]<<16)|(b[pp++]<<8)|b[pp++];" +
+            "if(l!==undefined){pp+=l;return '';}" +
+            "if(t===0xc7){l=b[pp++];pp+=1+l;return '';}" +
             "if(t===0xc8){l=b[pp++]|(b[pp++]<<8)|(b[pp++]<<16)|(b[pp++]<<24);pp+=1+l;return '';}" +
-            "if(t===0xdb){q=0;for(j=0;j<4;j++)q=q*256+b[pp++];return str(q);}" +
-            "if(t>=0xc9&&t<=0xd8){var el=0;if(t===0xc9)el=b[pp++];else if(t===0xca)el=(b[pp++]<<8)|b[pp++];else if(t===0xcb)el=b[pp++]|(b[pp++]<<8)|(b[pp++]<<16)|(b[pp++]<<24);else if(t===0xd4)el=1;else if(t===0xd5)el=2;else if(t===0xd6)el=4;else if(t===0xd7)el=8;else if(t===0xd8)el=16;pp+=1+el;return '';}" +
+            "if(t===0xc9){l=b[pp++];pp+=1+l;return '';}" +
+            "if(t===0xdc){n=(b[pp++]<<8)|b[pp++];a=[];for(i=0;i<n;i++)a.push(rd());return a;}" +
+            "if(t===0xdd){q=0;for(j=0;j<4;j++)q=q*256+b[pp++];a=[];for(i=0;i<q;i++)a.push(rd());return a;}" +
+            "if(t===0xde){n=(b[pp++]<<8)|b[pp++];o={};for(i=0;i<n;i++){kk=rd();o[kk]=rd();}return o;}" +
+            "if(t===0xdf){q=0;for(j=0;j<4;j++)q=q*256+b[pp++];o={};for(i=0;i<q;i++){kk=rd();o[kk]=rd();}return o;}" +
             "throw 9;}" +
             "if(t===0xdc){n=(b[pp++]<<8)|b[pp++];a=[];for(i=0;i<n;i++)a.push(rd());return a;}" +
             "if(t===0xdd){q=0;for(j=0;j<4;j++)q=q*256+b[pp++];a=[];for(i=0;i<q;i++)a.push(rd());return a;}" +
