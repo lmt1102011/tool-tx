@@ -62,19 +62,23 @@ jobs:
           fi
 
       # Keystore PHAI la mot key co dinh dung chung moi lan build. Truoc day workflow
-      # chay keytool -genkeypair moi lan nen moi ban phat hanh co chu ky khac nhau,
-      # Android tu choi cai de khi chu ky khac, va tu cap nhat khong bao gio chay duoc.
-      # Key nam trong secret RELEASE_KEYSTORE_B64, khong commit vao repo.
+      # chay keytool -genkeypair moi lan, nen moi ban phat hanh co chu ky khac nhau,
+      # Android tu choi cai de khi chu ky khac va tu cap nhat khong bao gio chay duoc.
+      #
+      # GitHub Secret khong chiu duoc chuoi base64 cua keystore (chua + va /, dai
+      # ~3.6KB) nen key duoc luu trong repo duoi dang daemon keystore.enc, con
+      # passphrase KS_PASS moi nam trong Secret.
+      - name: Setup Node for decrypt
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Restore signing keystore
         working-directory: tool-tx-android
         env:
-          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.KS_PASS }}
         run: |
-          if [ -z "$KEYSTORE_B64" ]; then
-            echo "::error::Thieu secret RELEASE_KEYSTORE_B64."
-            exit 1
-          fi
-          printf '%s' "$KEYSTORE_B64" | base64 -d > app/release-keystore.jks
+          node ../tools/keystore-crypto.js unseal keystore.enc app/release-keystore.jks
           keytool -list -keystore app/release-keystore.jks -storepass tooltx2024 -alias tooltx
 
       - name: Build Debug APK
