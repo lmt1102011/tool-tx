@@ -3,6 +3,7 @@ package com.lmt.tooltx.ui.tool
 import android.animation.ValueAnimator
 import android.content.pm.ActivityInfo
 import android.os.Bundle
+import android.text.Spannable
 import android.text.SpannableStringBuilder
 import android.text.style.ForegroundColorSpan
 import android.view.LayoutInflater
@@ -1015,7 +1016,6 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         val taiC = ContextCompat.getColor(ctx, R.color.panelTai)
         val xiuC = ContextCompat.getColor(ctx, R.color.panelXiu)
         val dimC = ContextCompat.getColor(ctx, R.color.panelDim)
-        val sb = SpannableStringBuilder()
         // 14 cầu gần nhất, hiển thị dạng "TXTTXXT..." (mới nhất bên phải).
         val recent = hist.mapNotNull { sideChar(it?.toString()) }.takeLast(14)
         if (recent.isEmpty()) {
@@ -1023,12 +1023,12 @@ binding.predCard.setOnTouchListener(::onDragTouch)
             binding.tvHistory.setTextColor(dimC)
             return
         }
+        val sb = SpannableStringBuilder(recent.joinToString(" "))
         for ((i, ch) in recent.withIndex()) {
-            if (i > 0) sb.append(" ")
-            sb.append(
-                ch.toString(),
+            val start = i * 2
+            sb.setSpan(
                 ForegroundColorSpan(if (ch == 'T') taiC else xiuC),
-                0, 1
+                start, start + 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
             )
         }
         binding.tvHistory.text = sb
