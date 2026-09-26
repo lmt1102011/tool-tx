@@ -1,0 +1,15 @@
+name: Test S256
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/test-s256.yml'
+
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          V: `${{ secrets.KS_S256 }}`
+        run: echo "nhan duoc 256 byte"

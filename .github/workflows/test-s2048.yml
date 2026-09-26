@@ -1,0 +1,15 @@
+name: Test S2048
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/test-s2048.yml'
+
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          V: `${{ secrets.KS_S2048 }}`
+        run: echo "nhan duoc 2048 byte"
