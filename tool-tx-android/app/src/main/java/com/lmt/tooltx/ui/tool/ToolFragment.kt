@@ -660,6 +660,17 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                     } else {
                         // Không ẩn nút khi rớt kết nối, chỉ báo trạng thái và tự nối lại.
                         missStreak++
+                        // Xoá luôn dự đoán đang hiển thị. Server đã ngắt nên pick đó
+                        // là của ván đã xong; để nguyên trên màn hình sẽ bị hiểu là
+                        // tool dự đoán sai.
+                        stopBlinkAnim()
+                        stopBarAnim()
+                        binding.tvPrediction.text = getString(R.string.phase_lost_connection)
+                        binding.tvPrediction.setTextColor(
+                            ContextCompat.getColor(requireContext(), R.color.panelDim)
+                        )
+                        binding.tvLivePick.text = getString(R.string.phase_lost_connection)
+                        binding.tvAccuracy.visibility = View.GONE
                         binding.btnOpenTool.isEnabled = true
                         if (missStreak >= 3 && toolStarted && !gameOpen) {
                             setStatus("Mất kết nối — đang kết nối lại...")
@@ -830,6 +841,10 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         }
 
         val pickTai = pick != null && isTai(pick)
+        // Ván đã kết thúc quá một interGap mà vẫn chưa có kết quả -> pick là của ván
+        // cũ, không còn dùng được. Không đánh dấu thì user tưởng tool dự đoán sai.
+        val pickExpired = !pick.isNullOrEmpty() && rEnd > 0 &&
+            now > rEnd + (interGap * 1000.0) && settledPick.isNullOrEmpty()
         val hasData = !pick.isNullOrEmpty() || realSum > 0 || lastResult.isNotEmpty() || rStart > 0
         val noDataTxt: String = if (gameOpen) {
             getString(R.string.phase_wait_game_data)
@@ -868,6 +883,13 @@ binding.predCard.setOnTouchListener(::onDragTouch)
             isSkipFirst && phase != "reveal" -> {
                 predText = getString(R.string.panel_skip_first)
                 predColor = ContextCompat.getColor(ctx, R.color.panelWarn)
+            }
+            pickExpired && !pick.isNullOrEmpty() -> {
+                predText = getString(
+                    R.string.panel_pick_expired,
+                    getString(if (pickTai) R.string.tai else R.string.xiu)
+                )
+                predColor = ContextCompat.getColor(ctx, R.color.panelDim)
             }
             phase == "analyze" -> {
                 predText = getString(R.string.phase_analyze)
@@ -940,6 +962,30 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         binding.tvCountdown.setTextColor(phaseColor)
         binding.tvPercentage.text = statusTxt
         binding.tvPercentage.setTextColor(phaseColor)
+        // Accuracy tổng hợp: server đã gửi sẵn `acc`, web PC hiện ở accBig nhưng app
+        // bỏ trống. predCount = số ván đã chấm điểm (khác `total` = độ dài history).
+        val accV = num("acc")
+        val accN = num("predCount").toInt()
+        if (accV > 0 && accN > 0) {
+            binding.tvAccuracy.text = getString(
+                R.string.panel_accuracy,
+                String.format(Locale.US, "%.1f", accV),
+                accN
+            )
+            binding.tvAccuracy.setTextColor(
+                ContextCompat.getColor(
+                    ctx,
+                    when {
+                        accV >= 55.0 -> R.color.panelGo
+                        accV >= 48.0 -> R.color.panelWarn
+                        else -> R.color.panelTai
+                    }
+                )
+            )
+            binding.tvAccuracy.visibility = View.VISIBLE
+        } else {
+            binding.tvAccuracy.visibility = View.GONE
+        }
         val liveTxt = if (hasData) {
             if (predText.isNotEmpty()) predText else countTxt
         } else if (gameOpen) {
@@ -997,7 +1043,9 @@ binding.predCard.setOnTouchListener(::onDragTouch)
 
     private fun setBar(pT: Double, pX: Double) {
         if (_binding == null) return
-        val tW = pT.coerceIn(0.0, 85.0).roundToInt()
+        // Không cap cứng 85%: web PC hiện giá trị thật pT, cap lại làm app luôn trông
+        // ít tự tin hơn PC dù dự đoán giống hệt.
+        val tW = pT.coerceIn(0.0, 100.0).roundToInt()
         val xW = (100 - tW).coerceIn(0, 100)
         (binding.barTai.layoutParams as LinearLayout.LayoutParams).weight = tW.toFloat()
         (binding.barXiu.layoutParams as LinearLayout.LayoutParams).weight = xW.toFloat()

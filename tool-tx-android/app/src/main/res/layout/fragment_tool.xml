@@ -342,6 +342,16 @@
                     android:textSize="11sp" />
 
                 <TextView
+                    android:id="@+id/tv_accuracy"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="@dimen/spacing_2xs"
+                    android:textColor="@color/panelDim"
+                    android:textSize="11sp"
+                    android:visibility="gone" />
+
+                <TextView
                     android:id="@+id/tv_history"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"

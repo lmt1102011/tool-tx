@@ -66,6 +66,9 @@
     <string name="panel_settled_wrong">SAI</string>
     <string name="panel_settled_line">DỰ ĐOÁN %1$s → %2$s (%3$d) · %4$s</string>
     <string name="panel_settled_line_nosum">DỰ ĐOÁN %1$s → %2$s · %3$s</string>
+    <string name="panel_pick_expired">%1$s · VÁN ĐÃ QUA</string>
+    <string name="phase_lost_connection">Mất kết nối — chờ dữ liệu mới</string>
+    <string name="panel_accuracy">Trúng %1$s%% · %2$d ván</string>
     <string name="panel_skip_first">BỎ QUA PHIÊN ĐẦU</string>
     <string name="panel_session">Phiên %1$d</string>
     <string name="prediction">Dự đoán</string>

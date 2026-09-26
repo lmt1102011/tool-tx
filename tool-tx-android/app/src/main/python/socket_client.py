@@ -21,6 +21,9 @@ def connect(url, token):
         raise Exception("Thiếu địa chỉ server")
     _locking = True
     _connected = False
+    # Xoá panel cũ trước khi nối: nếu không, lúc mất mạng app vẫn vẽ dự đoán của
+    # ván đã kết thúc như thể còn hiệu lực, người dùng tưởng tool sai.
+    set_panel({})
     try:
         import applog
         applog.log("socket", "connect %s" % url)
@@ -79,6 +82,8 @@ def disconnect():
 def _on_disconnect(*_args):
     global _connected
     _connected = False
+    # Quan trọng: xoá panel cache. Giữ lại thì UI tiếp tục hiện pick của ván đã xong.
+    set_panel({})
 
 
 def _on_kick(data):
