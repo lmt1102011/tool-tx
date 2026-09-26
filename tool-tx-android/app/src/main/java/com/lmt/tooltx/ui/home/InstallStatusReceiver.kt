@@ -17,8 +17,7 @@ class InstallStatusReceiver : BroadcastReceiver() {
             Toast.makeText(context, "Cài đặt thành công", Toast.LENGTH_LONG).show()
         } else {
             val msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
-            val name = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_DEFAULT_ERROR_MESSAGE)
-            val detail = msg ?: name ?: ("mã $status")
+            val detail = msg ?: ("mã $status")
             Toast.makeText(context, "Cài đặt thất bại: $detail", Toast.LENGTH_LONG).show()
         }
     }
