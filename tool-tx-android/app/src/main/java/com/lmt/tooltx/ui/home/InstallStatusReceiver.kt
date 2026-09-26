@@ -13,12 +13,20 @@ import android.widget.Toast
 class InstallStatusReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, Int.MIN_VALUE)
-        if (status == PackageInstaller.STATUS_SUCCESS) {
-            Toast.makeText(context, "Cài đặt thành công", Toast.LENGTH_LONG).show()
-        } else {
-            val msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
-            val detail = msg ?: ("mã $status")
-            Toast.makeText(context, "Cài đặt thất bại: $detail", Toast.LENGTH_LONG).show()
+        when (status) {
+            // -1: hệ thống đã mở hộp thoại xác nhận và đang chờ người dùng bấm.
+            // Đây là trạng thái bình thường, KHÔNG phải lỗi.
+            PackageInstaller.STATUS_PENDING -> {
+                Toast.makeText(context, "Chờ bạn xác nhận trong hộp thoại của hệ thống", Toast.LENGTH_LONG).show()
+            }
+            PackageInstaller.STATUS_SUCCESS -> {
+                Toast.makeText(context, "Cài đặt thành công", Toast.LENGTH_LONG).show()
+            }
+            else -> {
+                val msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
+                val detail = msg ?: ("mã $status")
+                Toast.makeText(context, "Cài đặt thất bại: $detail", Toast.LENGTH_LONG).show()
+            }
         }
     }
 }
