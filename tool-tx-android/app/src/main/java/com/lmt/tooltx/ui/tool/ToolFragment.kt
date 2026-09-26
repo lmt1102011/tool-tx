@@ -55,6 +55,7 @@ class ToolFragment : Fragment() {
     private var toolStarted = false
     private var noDataTicks = 0
     private var missStreak = 0
+private var reconnecting = false
 
     private var _binding: FragmentToolBinding? = null
     private val binding get() = _binding!!
@@ -614,6 +615,34 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         }
     }
 
+    // Server disconnect ngay khi token Firebase hết hạn (verifyIdToken fail) nên mọi
+    // lần nối lại bằng token cũ đều thất bại. Mỗi lần thử phải ép lấy token mới.
+    // `reconnection=False` trong socket_client.py nên socket.io không tự đòi lại nữa.
+    private fun reconnectSocket(bridge: PythonBridge) {
+        if (reconnecting) return
+        reconnecting = true
+        try {
+            if (bridge.isSocketSuperseded()) {
+                bridge.writeBugLog("ui", "reconnect: bo qua, phien da bi thay the")
+                return
+            }
+            bridge.writeBugLog("ui", "reconnect: forceRefresh token")
+            val token = bridge.forceRefreshToken() ?: bridge.refreshToken()
+            if (token.isNullOrEmpty()) {
+                bridge.writeBugLog("ui", "reconnect: KHONG lay duoc token")
+                return
+            }
+            val url = bridge.discoverServer(force = true) ?: "http://localhost:8787"
+            bridge.disconnectSocket()
+            bridge.connectSocket(url, token)
+            bridge.writeBugLog("ui", "reconnect xong server=$url connected=${bridge.isSocketConnected()}")
+        } catch (e: Exception) {
+            bridge.writeBugLog("ui", "reconnect LOI: ${e.message}")
+        } finally {
+            reconnecting = false
+        }
+    }
+
     private fun pollAgentStatus(bridge: PythonBridge, gameOpenAtStart: Boolean) {
         pollJob?.cancel()
         pollJob = GlobalScope.launch(Dispatchers.IO) {
@@ -678,6 +707,10 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                             setStatus("Mất kết nối — đang kết nối lại...")
                         } else if (msg.isNotEmpty()) {
                             setStatus(msg)
+                        }
+                        // Thử nối lại mỗi ~20s (poll 2s). Mỗi lần đều ép lấy token mới.
+                        if (toolStarted && missStreak % 10 == 0) {
+                            reconnectSocket(bridge)
                         }
                     }
                     // Game đang mở: cài lại shim mỗi vòng (game có thể tự reload/navigation)

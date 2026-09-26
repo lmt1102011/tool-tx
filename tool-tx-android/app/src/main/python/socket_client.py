@@ -10,17 +10,19 @@ _connected = False
 _locking = False
 _kick = None
 _panel = {}
+_superseded = False
 
 
 def connect(url, token):
     """Kết nối server. Có watchdog 12s để chống treo mãi."""
-    global _sio, _connected, _locking
+    global _sio, _connected, _locking, _superseded
     if _locking:
         return
     if not url:
         raise Exception("Thiếu địa chỉ server")
     _locking = True
     _connected = False
+    _superseded = False
     # Xoá panel cũ trước khi nối: nếu không, lúc mất mạng app vẫn vẽ dự đoán của
     # ván đã kết thúc như thể còn hiệu lực, người dùng tưởng tool sai.
     set_panel({})
@@ -31,14 +33,19 @@ def connect(url, token):
         pass
     try:
         import socketio
+        # reconnection=False: socket.io tự reconnect bằng đúng token đã truyền lúc
+        # connect(). Token Firebase chỉ sống ~1h nên sau đó mọi lần tự reconnect
+        # đều bị server verifyIdToken fail rồi disconnect -> app kẹt "mất kết nối".
+        # Việc nối lại do ToolFragment điều khiển, mỗi lần ép lấy token mới.
         _sio = socketio.Client(
             logger=False, engineio_logger=False,
-            reconnection=True, reconnection_attempts=1, reconnection_delay=1,
+            reconnection=False,
             request_timeout=8,
         )
         _sio.on("kick", _on_kick)
         _sio.on("disconnect", _on_disconnect)
         _sio.on("panel-push", _on_panel)
+        _sio.on("session-replaced", _on_replaced)
 
         def _watchdog():
             time.sleep(12.0)
@@ -69,14 +76,38 @@ def connect(url, token):
 
 
 def disconnect():
-    global _sio, _connected
+    global _sio, _connected, _superseded
     try:
         if _sio:
             _sio.disconnect()
     except Exception:
         pass
     _connected = False
+    _superseded = False
     _sio = None
+
+
+def _on_replaced(*_args):
+    # Server đã đóng socket này vì có phiên mới cùng tài khoản. Nếu không dừng,
+    # app cũ tự reconnect và đẩy phiên mới -> hai app đẩy nhau vô hạn.
+    global _superseded, _connected
+    _superseded = True
+    _connected = False
+    set_panel({})
+    try:
+        import applog
+        applog.log("socket", "session-replaced: dung reconnect, cho phep ket noi moi")
+    except Exception:
+        pass
+    try:
+        if _sio:
+            _sio.disconnect()
+    except Exception:
+        pass
+
+
+def is_superseded():
+    return _superseded
 
 
 def _on_disconnect(*_args):

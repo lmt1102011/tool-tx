@@ -450,6 +450,13 @@ onAuthStateChanged(auth, async (u) => {
     }, 1200);
     return;
   }
+  // Token sống ~1h. Mọi lần nối lại phải lấy token MỚI, nếu không server sẽ
+  // verifyIdToken fail và disconnect ngay -> tool kẹt "mất kết nối" vĩnh viễn.
+  window.__TX_GET_TOKEN = async (force) => {
+    const cu = auth.currentUser;
+    if (!cu) return null;
+    return await cu.getIdToken(!!force);
+  };
   const token = await u.getIdToken();
   window.__TX_TOKEN = token;
   if (typeof initSocket === 'function') await initSocket(token);

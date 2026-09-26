@@ -145,6 +145,16 @@ class PythonBridge(private val context: Context) {
         }
     }
 
+    // true = phiên này đã bị kết nối mới cùng tài khoản thay thế. Khi đó tuyệt đối
+    // không được tự nối lại, nếu không hai app sẽ đẩy nhau vô hạn.
+    fun isSocketSuperseded(): Boolean {
+        return try {
+            py.getModule("socket_client").callAttr("is_superseded").toBoolean()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun discoverServer(force: Boolean = false): String? {
         return try {
             val url = py.getModule("config").callAttr("discover_server", null, force)

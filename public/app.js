@@ -31,6 +31,10 @@ async function loadDiscovery() {
 }
 loadDiscovery();
 setInterval(loadDiscovery, 30000);
+// socket.io da tat tu reconnect (reconnection:false) vi no giu lai token da het han.
+// Phai chu dong quet lai va noi lai bang token moi. retryConnect tu thoat som neu
+// ket noi con tot, nen vong nay khong gay ha noi gi.
+setInterval(function () { if (!(socket && socket.connected)) retryConnect(); }, 5000);
 
 // â”€â”€ Server URL: localStorage("tx_server") â†’ auto-discovery â†’ config.js â†’ same-origin â”€â”€
 function serverUrl() {
@@ -150,11 +154,25 @@ async function initSocket(authToken) {
   }
   const url = serverUrl();
   lastAttemptUrl = url || "";
-  socket = io(url || undefined, { auth: { token: lastToken }, transports: ['websocket', 'polling'] });
+  socket = io(url || undefined, { auth: { token: lastToken }, transports: ['websocket', 'polling'], reconnection: false });
   window.socket = socket;
   bindSocketEvents();
   socketBusy = false;
   return socket;
+}
+
+// Token ID Firebase chi song ~1 gio. Server verifyIdToken(token) neu het han se
+// disconnect socket ngay lap tuc, nen moi lan noi lai deu phai ep lay token moi.
+async function freshToken() {
+  try {
+    if (typeof window.__TX_GET_TOKEN === 'function') {
+      const t = await window.__TX_GET_TOKEN(true);
+      if (t) { lastToken = t; window.__TX_TOKEN = t; return t; }
+    }
+  } catch (e) {
+    try { log('Khong lay duoc token moi: ' + (e && e.message ? e.message : e), 'err'); } catch (_) {}
+  }
+  return lastToken;
 }
 
 // Tá»± ná»‘i láº¡i khi URL server Ä‘á»•i (vd: launcher vá»«a push link tunnel má»›i)
@@ -166,7 +184,7 @@ function retryConnect() {
   const dead = !(socket && socket.connected);
   if (!urlChanged && !dead) return;
   if (socket) { try { socket.disconnect(); } catch (_) {} socket = null; }
-  initSocket(lastToken);
+  freshToken().then((t) => initSocket(t));
 }
 
 function getSocket() { return socket; }
@@ -607,7 +625,7 @@ function bindSocketEvents() {
       setSockStatus('Lá»—i káº¿t ná»‘i "' + u + '" â€” Ä‘ang chuyá»ƒn vá» server tá»± Ä‘á»™ng "' + discoUrl + '"...');
       try { localStorage.removeItem('tx_server'); } catch (_) {}
       if (socket) { try { socket.disconnect(); } catch (_) {} socket = null; }
-      initSocket(lastToken);
+      freshToken().then((t) => initSocket(t));
       return;
     }
     setSockStatus('Lá»—i káº¿t ná»‘i "' + u + '" â€” ' + (err.message || 'kiá»ƒm tra server Ä‘Ã£ báº­t chÆ°a') + '. Äang tá»± tÃ¬m server...');
@@ -662,7 +680,7 @@ $('btnConnect').onclick = () => {
     launchOnReady = !!role;
     log(launchOnReady ? 'Äang káº¿t ná»‘i server â€” sáº½ tá»± má»Ÿ phiÃªn Chrome CDP cá»§a báº¡n...' : 'Äang káº¿t ná»‘i server...');
     setSockStatus('Äang káº¿t ná»‘i server...');
-    initSocket(window.__TX_TOKEN);
+    freshToken().then((t) => initSocket(t));
   }
 };
 const bol = $('btnOpenLive');
