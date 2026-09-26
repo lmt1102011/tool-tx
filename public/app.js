@@ -130,8 +130,11 @@ function ensureSocketIO() {
 
 let lastToken = null;
 let lastAttemptUrl = "";
+let socketBusy = false;
 async function initSocket(authToken) {
   if (socket) return socket;
+  if (socketBusy) return socket;
+  socketBusy = true;
   lastToken = authToken || lastToken;
   // Äá»£i discovery server-url.json tá»‘i Ä‘a 1.5s (thÆ°á»ng load xong trÆ°á»›c auth)
   if (!discoLoaded) await new Promise(r => setTimeout(r, 1500));
@@ -140,6 +143,7 @@ async function initSocket(authToken) {
   } catch (e) {
     log('Lá»—i náº¡p socket.io: ' + e.message, 'err');
     setSockStatus('Lá»—i káº¿t ná»‘i â€” khÃ´ng Ä‘á»c Ä‘Æ°á»£c socket.io tá»« "' + (serverUrl() || location.origin) + '". Báº¥m "Ä‘á»•i" á»Ÿ feed-note hoáº·c kiá»ƒm tra server.');
+    socketBusy = false;
     return null;
   }
   const url = serverUrl();
@@ -147,6 +151,7 @@ async function initSocket(authToken) {
   socket = io(url || undefined, { auth: { token: lastToken }, transports: ['websocket', 'polling'] });
   window.socket = socket;
   bindSocketEvents();
+  socketBusy = false;
   return socket;
 }
 
@@ -154,7 +159,9 @@ async function initSocket(authToken) {
 function retryConnect() {
   if (!lastToken) return;
   const want = serverUrl() || "";
-  if (want === lastAttemptUrl) return;
+  const urlChanged = want !== lastAttemptUrl;
+  const dead = !(socket && socket.connected);
+  if (!urlChanged && !dead) return;
   if (socket) { try { socket.disconnect(); } catch (_) {} socket = null; }
   initSocket(lastToken);
 }
@@ -608,7 +615,13 @@ function bindSocketEvents() {
     updateOwnUi();
   });
   socket.on('panel-push', (pay) => {
-    if (ownStatus && ownStatus.agent && pay) renderAgentPanel(pay);
+    // Không chặn theo ownStatus.agent: agent rớt tạm thời sẽ làm panel đứng hình,
+    // và lúc reconnect payload rỗng sẽ xoá sạch dải lịch sử. user-status chỉ lo statusLine.
+    if (pay) renderAgentPanel(pay);
+  });
+  socket.on('session-replaced', () => {
+    // Server đã đóng socket cũ vì có phiên mới đăng nhập. Ngắt im, không giành chỗ.
+    try { socket.disconnect(); } catch (_) {}
   });
   socket.on('screen', (buf) => {
     const now = Date.now();
