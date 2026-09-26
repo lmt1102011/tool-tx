@@ -11,5 +11,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - env:
-          V: `${{ secrets.KS_S256 }}`
-        run: echo "nhan duoc 256 byte"
+          V: ${{ secrets.KS_S256 }}
+        run: echo "nhan duoc ${#V} ky tu"
