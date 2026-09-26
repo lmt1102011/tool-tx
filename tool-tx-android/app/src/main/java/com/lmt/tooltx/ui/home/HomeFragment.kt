@@ -247,7 +247,7 @@ class HomeFragment : Fragment() {
             val pm = requireContext().packageManager
             val installer = pm.packageInstaller
             val sessionParams = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
-                .setAppPackageName(requireContext().packageName)
+            sessionParams.setAppPackageName(requireContext().packageName)
             
             val sessionId = installer.createSession(sessionParams)
             val session = installer.openSession(sessionId)
