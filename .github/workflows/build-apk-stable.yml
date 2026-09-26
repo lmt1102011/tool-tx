@@ -1,0 +1,99 @@
+name: Build APK (Chaquopy) Stable
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'tool-tx-android/**'
+      - '.github/workflows/build-apk-stable.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Install Android SDK
+        run: |
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          cd /tmp
+          curl -sL -o cmdtools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -qo cmdtools.zip
+          mv cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+          mkdir -p $ANDROID_HOME/licenses
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > $ANDROID_HOME/licenses/android-sdk-license
+          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> $ANDROID_HOME/licenses/android-sdk-license
+          echo "8933bad161af4178b1185d1a37fbf41ea5269c55" >> $ANDROID_HOME/licenses/android-sdk-license
+          echo "84831b9409646a918e30573bab4c9c91346d8abd" >> $ANDROID_HOME/licenses/android-sdk-license
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "platform-tools"
+
+      - name: Generate Gradle Wrapper
+        working-directory: tool-tx-android
+        run: |
+          if [ ! -f gradlew ]; then
+            gradle wrapper --gradle-version 8.9
+          fi
+
+      - name: Restore signing keystore
+        working-directory: tool-tx-android
+        env:
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::Thieu secret RELEASE_KEYSTORE_B64"
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_B64" | base64 -d > app/release-keystore.jks
+          keytool -list -keystore app/release-keystore.jks -storepass tooltx2024 -alias tooltx
+
+      - name: Build Debug APK
+        working-directory: tool-tx-android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --console=plain 2>&1
+
+      - name: Build Release APK
+        if: success()
+        working-directory: tool-tx-android
+        run: ./gradlew assembleRelease --no-daemon --console=plain 2>&1
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: tooltx-debug-apk
+          path: tool-tx-android/app/build/outputs/apk/debug/*.apk
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload Release APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tooltx-apk
+          path: tool-tx-android/app/build/outputs/apk/release/*.apk
+          retention-days: 14
+          if-no-files-found: warn
