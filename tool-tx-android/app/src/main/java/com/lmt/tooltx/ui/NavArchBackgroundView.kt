@@ -64,7 +64,7 @@ class NavArchBackgroundView @JvmOverloads constructor(
                     val f = l(flatRef)
                     val r = minOf(circle.width, circle.height) / 2f
                     val cy = c[1]
-                    val flat = f[1] + dp(1f)
+                    val flat = f[1] - flatRef.height / 2f - dp(3f)
                     lastValidFlatY = flat
                     val dyMax = (r - minClear).coerceAtLeast(1f)
                     val dy = (flat - cy).coerceIn(-dyMax, dyMax)
