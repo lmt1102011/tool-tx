@@ -2,6 +2,11 @@
 <resources>
     <string name="app_name">ToolTX</string>
 
+    <!-- Dải 14 cầu gần nhất ở đáy panel: ký tự T / X ngắn gọn -->
+    <string name="hist_t">T</string>
+    <string name="hist_x">X</string>
+    <string name="hist_empty">Chưa có dữ liệu cầu</string>
+
     <!-- Auth -->
     <string name="sign_in">Đăng nhập</string>
     <string name="sign_up">Đăng ký</string>

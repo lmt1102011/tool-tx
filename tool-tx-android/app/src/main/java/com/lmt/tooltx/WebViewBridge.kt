@@ -178,7 +178,26 @@ object WebViewBridge {
             "if(typeof node.total==='number'&&node.total>=3&&node.total<=18){out.push(node.total+':'+(node.sid===undefined?'':node.sid));return;}" +
             "for(k in node){if(node[k]&&typeof node[k]==='object')scan(node[k],out,depth+1);}" +
             "}" +
-            "function emit(obj){var out=[];scan(obj,out,0);for(var i=0;i<out.length;i++)push({t:Date.now(),k:'r',d:out[i]});return out.length;}" +
+            // Quét RIÊNG mệnh lệnh vòng (không phụ thuộc tìm xúc xắc): cmd 1002 = bắt đầu vòng,
+            // cmd 1008 = tick kèm tỉ lệ tiền. Nhờ vậy server neo được mốc thời gian THẬT
+            // của từng vòng thay vì tự đoán bằng hằng số 18s.
+            "function scanCmd(node,depth){" +
+            "if(depth>8||!node||typeof node!=='object')return;" +
+            "var i,k;" +
+            "if(Array.isArray(node)){for(i=0;i<node.length;i++)scanCmd(node[i],depth+1);return;}" +
+            "if(node.cmd===1002){window.__rsFlag=1;}" +
+            "else if(node.cmd===1008){var g=Array.isArray(node.gi)?node.gi[0]:null;" +
+            "if(g&&g.B&&g.S){var tb=Number(g.B.tB),sb=Number(g.S.tB);" +
+            "if(isFinite(tb)&&isFinite(sb)&&tb+sb>0)window.__mrFlag=tb/(tb+sb);}}" +
+            "for(k in node){if(node[k]&&typeof node[k]==='object')scanCmd(node[k],depth+1);}" +
+            "}" +
+            // Chống đẩy trùng: onBin thử tối đa 10 offset giải msgpack, mỗi lần gọi emit().
+            // Vòng cách nhau 50-90s nên cửa sổ 1s là đủ bỏ hết trùng mà không mất vòng thật.
+            "function emit(obj){var out=[],now=Date.now();" +
+            "window.__rsFlag=0;window.__mrFlag=0;scanCmd(obj,0);" +
+            "if(window.__rsFlag&&now-(window.__lastRsT||0)>1000){window.__lastRsT=now;push({t:now,k:'rs',d:''});}" +
+            "if(window.__mrFlag&&now-(window.__lastMrT||0)>1000){window.__lastMrT=now;push({t:now,k:'mr',d:''+window.__mrFlag});}" +
+            "scan(obj,out,0);for(var i=0;i<out.length;i++)push({t:now,k:'r',d:out[i]});return out.length;}" +
             "var b,pp;" +
             "function str(n){var s='';var st=pp;var en=pp+n;try{s=String.fromCharCode.apply(null,Array.prototype.slice.call(b.subarray(st,en)));}catch(_){}pp=en;return s;}" +
 "function rd(){" +

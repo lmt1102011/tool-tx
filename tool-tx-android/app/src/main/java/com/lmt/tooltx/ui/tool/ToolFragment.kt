@@ -842,7 +842,9 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         when {
             phase == "reveal" -> {
                 val resSide = settledResult ?: lastResult
-                val showSum = if (settledSum > 0) settledSum else realSum
+                // CHỈ hiện tổng của ĐÚNG vòng vừa sổ. Không fallback sang realSum
+                // (đó là tổng vòng trước → sinh ra "XỈU tổng 11" do lệch phiên).
+                val showSum = settledSum
                 val side = getString(if (isTai(resSide)) R.string.tai else R.string.xiu)
                 if (!settledPick.isNullOrEmpty()) {
                     val predSide = getString(if (isTai(settledPick)) R.string.tai else R.string.xiu)
@@ -1012,13 +1014,36 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         val ctx = requireContext()
         val taiC = ContextCompat.getColor(ctx, R.color.panelTai)
         val xiuC = ContextCompat.getColor(ctx, R.color.panelXiu)
+        val dimC = ContextCompat.getColor(ctx, R.color.panelDim)
         val sb = SpannableStringBuilder()
-        hist.takeLast(14).forEach { item ->
-            val ch = (item?.toString() ?: "").uppercase(Locale.ROOT)
-            if (isTai(ch)) sb.append(getString(R.string.tai) + "  ", ForegroundColorSpan(taiC), 0)
-            else if (ch.startsWith("X")) sb.append(getString(R.string.xiu) + "  ", ForegroundColorSpan(xiuC), 0)
+        // 14 cầu gần nhất, hiển thị dạng "TXTTXXT..." (mới nhất bên phải).
+        val recent = hist.mapNotNull { sideChar(it?.toString()) }.takeLast(14)
+        if (recent.isEmpty()) {
+            binding.tvHistory.text = getString(R.string.hist_empty)
+            binding.tvHistory.setTextColor(dimC)
+            return
+        }
+        for ((i, ch) in recent.withIndex()) {
+            if (i > 0) sb.append(" ")
+            sb.append(
+                ch.toString(),
+                ForegroundColorSpan(if (ch == 'T') taiC else xiuC),
+                0, 1
+            )
         }
         binding.tvHistory.text = sb
+    }
+
+    // Một ký hiệu cầu: 'T' hoặc 'X'. Chấp nhận cả dạng chữ ("T","XỈU") lẫn dạng
+    // tổng xúc xắc dạng số (3..18; >= 11 là TÀI) cho chắc chắn dải lịch sử không bị trống.
+    private fun sideChar(raw: String?): Char? {
+        val ch = (raw ?: "").trim().uppercase(Locale.ROOT)
+        if (ch.isEmpty()) return null
+        if (isTai(ch)) return 'T'
+        if (ch.startsWith("X")) return 'X'
+        val n = ch.toIntOrNull() ?: return null
+        if (n < 3 || n > 18) return null
+        return if (n >= 11) 'T' else 'X'
     }
 
     // Cập nhật countdown mỗi giây từ panel cuối (server ước lượng phiên).
