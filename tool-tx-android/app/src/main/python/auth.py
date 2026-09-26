@@ -138,16 +138,8 @@ def register(username, password, name):
     if "error" in data:
         raise Exception(_firebase_message(data, default="Đăng ký thất bại"))
     global _session
-    _session = {
-        "uid": data["localId"],
-        "idToken": data["idToken"],
-        "refreshToken": data["refreshToken"],
-        "displayName": name or username,
-    }
-    _save_session()
-    _cache_token(3600)
-    # Ghi user record vào Realtime DB để login sau này tìm thấy tài khoản
-    token = _session["idToken"]
+    uid = data["localId"]
+    token = data["idToken"]
     now = int(time.time() * 1000)
     user_data = {
         "username": username,
@@ -158,9 +150,30 @@ def register(username, password, name):
         "createdAt": now,
         "lastSeen": now,
     }
-    url = "%s/users/%s.json?auth=%s" % (FIREBASE_DB, _session["uid"], token)
-    _http_json("PUT", url, json=user_data)
-    return {"uid": data["localId"]}
+    # Ghi user record vào Realtime DB để login sau này tìm thấy tài khoản.
+    err = None
+    for _ in range(2):
+        try:
+            _http_json("PUT", "%s/users/%s.json?auth=%s" % (FIREBASE_DB, uid, token),
+                       json=user_data)
+            err = None
+            break
+        except Exception as e:
+            err = e
+    if err is not None:
+        _session = {}
+        raise Exception(
+            "Đã tạo tài khoản trên máy chủ nhưng không lưu được vào database (%s). "
+            "Vui lòng báo quản trị viên để được khôi phục." % err)
+    _session = {
+        "uid": uid,
+        "idToken": token,
+        "refreshToken": data["refreshToken"],
+        "displayName": name or username,
+    }
+    _save_session()
+    _cache_token(3600)
+    return {"uid": uid}
 
 def logout():
     global _session
