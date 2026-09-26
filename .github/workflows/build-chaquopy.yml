@@ -61,17 +61,17 @@ jobs:
             gradle wrapper --gradle-version 8.9
           fi
 
-      # Keystore PHẢI là một key cố định dùng chung mọi lần build. Trước đây workflow
-      # chạy keytool -genkeypair mỗi lần nên mỗi bản phát hành có một chữ ký khác
-      # nhau, Android từ chối cài đè và tự cập nhật không bao giờ chạy được.
-      # Key nằm trong secret RELEASE_KEYSTORE_B64, không commit vào repo.
+      # Keystore PHAI la mot key co dinh dung chung moi lan build. Truoc day workflow
+      # chay keytool -genkeypair moi lan nen moi ban phat hanh co chu ky khac nhau,
+      # Android tu choi cai de khi chu ky khac, va tu cap nhat khong bao gio chay duoc.
+      # Key nam trong secret RELEASE_KEYSTORE_B64, khong commit vao repo.
       - name: Restore signing keystore
         working-directory: tool-tx-android
         env:
           KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_B64 }}
         run: |
           if [ -z "$KEYSTORE_B64" ]; then
-            echo "::error::Thieu secret RELEASE_KEYSTORE_B64. Khong co key thi khong build duoc, vi moi ban se co chu ky khac nhau."
+            echo "::error::Thieu secret RELEASE_KEYSTORE_B64."
             exit 1
           fi
           printf '%s' "$KEYSTORE_B64" | base64 -d > app/release-keystore.jks
