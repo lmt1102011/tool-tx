@@ -1,0 +1,15 @@
+name: Test a32
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/test-a32.yml'
+
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          V: ${{ secrets.KS_A32 }}
+        run: echo "ascii 32 byte nhan duoc ${#V} ky tu"

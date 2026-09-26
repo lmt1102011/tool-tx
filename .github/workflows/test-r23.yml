@@ -1,0 +1,15 @@
+name: Test r23
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/test-r23.yml'
+
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          V: ${{ secrets.KS_R23 }}
+        run: echo "random 23 byte nhan duoc ${#V} ky tu"
