@@ -1,0 +1,15 @@
+name: Test t64
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/test-t64.yml'
+
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          V: ${{ secrets.KS_T64 }}
+        run: echo "label: random 64 byte nhan duoc ${#V} ky tu"
