@@ -18,6 +18,8 @@ firestore.rules
 *service*account*.json
 firebase*.json
 *.pem
+*.jks
+*.keystore
 server.js
 lib/
 package.json
