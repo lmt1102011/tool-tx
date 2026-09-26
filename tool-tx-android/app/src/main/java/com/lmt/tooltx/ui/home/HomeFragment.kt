@@ -4,6 +4,7 @@ import android.app.DownloadManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.IntentSender
 import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.database.Cursor
@@ -247,7 +248,6 @@ class HomeFragment : Fragment() {
             val installer = pm.packageInstaller
             val sessionParams = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
                 .setAppPackageName(requireContext().packageName)
-                .setSize(0) // 0 = auto-detect
             
             val sessionId = installer.createSession(sessionParams)
             val session = installer.openSession(sessionId)
