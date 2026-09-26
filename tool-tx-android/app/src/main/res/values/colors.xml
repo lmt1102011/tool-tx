@@ -67,4 +67,10 @@
     <color name="panelGo">#FF22C55E</color>
     <color name="panelWarn">#FFFACC15</color>
     <color name="panelAnalyze">#FF38BDF8</color>
+
+    <!-- Chip cầu T/X ở đáy panel (khớp .chip/.chip.T/.chip.X của web PC) -->
+    <color name="panelChipTai">#FFFCA5A5</color>
+    <color name="panelChipTaiBg">#2EFCA5A5</color>
+    <color name="panelChipXiu">#FF93C5FD</color>
+    <color name="panelChipXiuBg">#2E93C5FD</color>
 </resources>

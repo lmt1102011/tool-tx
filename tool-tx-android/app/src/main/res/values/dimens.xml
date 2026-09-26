@@ -19,5 +19,10 @@
     <dimen name="avatar_size">40dp</dimen>
     <dimen name="hero_height">200dp</dimen>
     <dimen name="chip_height">36dp</dimen>
+    <dimen name="panel_chip_height">16dp</dimen>
+    <dimen name="panel_chip_min_width">15dp</dimen>
+    <dimen name="panel_chip_gap">3dp</dimen>
+    <dimen name="panel_chip_radius">4dp</dimen>
+    <dimen name="panel_chip_pad_h">3dp</dimen>
     <dimen name="switch_width">52dp</dimen>
 </resources>

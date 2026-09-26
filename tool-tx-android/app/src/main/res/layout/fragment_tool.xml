@@ -357,9 +357,26 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_horizontal"
                     android:layout_marginTop="@dimen/spacing_2xs"
-                    android:maxLines="2"
                     android:textColor="@color/panelDim"
                     android:textSize="10sp" />
+
+                <HorizontalScrollView
+                    android:id="@+id/history_scroll"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_2xs"
+                    android:fillViewport="true"
+                    android:scrollbars="none"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:id="@+id/history_chips"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal" />
+
+                </HorizontalScrollView>
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

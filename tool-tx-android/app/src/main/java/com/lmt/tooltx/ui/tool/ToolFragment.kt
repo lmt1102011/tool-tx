@@ -3,15 +3,16 @@ package com.lmt.tooltx.ui.tool
 import android.animation.ValueAnimator
 import android.content.pm.ActivityInfo
 import android.os.Bundle
-import android.text.Spannable
-import android.text.SpannableStringBuilder
-import android.text.style.ForegroundColorSpan
+import android.graphics.Typeface
+import android.util.TypedValue
 import android.view.LayoutInflater
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.lmt.tooltx.AppUpdater
@@ -671,6 +672,7 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                         )
                         binding.tvLivePick.text = getString(R.string.phase_lost_connection)
                         binding.tvAccuracy.visibility = View.GONE
+                        clearHistoryChips()
                         binding.btnOpenTool.isEnabled = true
                         if (missStreak >= 3 && toolStarted && !gameOpen) {
                             setStatus("Mất kết nối — đang kết nối lại...")
@@ -1057,29 +1059,57 @@ binding.predCard.setOnTouchListener(::onDragTouch)
         if (_binding == null) return
         val hist = p["hist"] ?: p["history"]
         if (hist !is List<*>) {
-            binding.tvHistory.text = ""
+            clearHistoryChips()
+            return
+        }
+        // 14 cầu gần nhất, mới nhất bên phải (giống web PC).
+        val recent = hist.mapNotNull { sideChar(it?.toString()) }.takeLast(14)
+        if (recent.isEmpty()) {
+            binding.historyChips.removeAllViews()
+            binding.historyScroll.visibility = View.GONE
+            binding.tvHistory.text = getString(R.string.hist_empty)
+            binding.tvHistory.setTextColor(ContextCompat.getColor(requireContext(), R.color.panelDim))
             return
         }
         val ctx = requireContext()
-        val taiC = ContextCompat.getColor(ctx, R.color.panelTai)
-        val xiuC = ContextCompat.getColor(ctx, R.color.panelXiu)
-        val dimC = ContextCompat.getColor(ctx, R.color.panelDim)
-        // 14 cầu gần nhất, hiển thị dạng "TXTTXXT..." (mới nhất bên phải).
-        val recent = hist.mapNotNull { sideChar(it?.toString()) }.takeLast(14)
-        if (recent.isEmpty()) {
-            binding.tvHistory.text = getString(R.string.hist_empty)
-            binding.tvHistory.setTextColor(dimC)
-            return
-        }
-        val sb = SpannableStringBuilder(recent.joinToString(" "))
+        val box = binding.historyChips
+        box.removeAllViews()
+        val gap = resources.getDimensionPixelSize(R.dimen.panel_chip_gap)
+        val minW = resources.getDimensionPixelSize(R.dimen.panel_chip_min_width)
+        val hgt = resources.getDimensionPixelSize(R.dimen.panel_chip_height)
+        val padH = resources.getDimensionPixelSize(R.dimen.panel_chip_pad_h)
         for ((i, ch) in recent.withIndex()) {
-            val start = i * 2
-            sb.setSpan(
-                ForegroundColorSpan(if (ch == 'T') taiC else xiuC),
-                start, start + 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            val tai = ch == 'T'
+            val tv = TextView(ctx)
+            tv.text = ch.toString()
+            tv.gravity = Gravity.CENTER
+            tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+            tv.typeface = Typeface.DEFAULT_BOLD
+            tv.includeFontPadding = false
+            tv.minWidth = minW
+            tv.setPadding(padH, 0, padH, 0)
+            tv.setTextColor(
+                ContextCompat.getColor(ctx, if (tai) R.color.panelChipTai else R.color.panelChipXiu)
             )
+            tv.setBackgroundResource(if (tai) R.drawable.bg_panel_chip_tai else R.drawable.bg_panel_chip_xiu)
+            tv.layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, hgt
+            ).apply { if (i > 0) marginStart = gap }
+            box.addView(tv)
         }
-        binding.tvHistory.text = sb
+        binding.tvHistory.text = ""
+        binding.historyScroll.visibility = View.VISIBLE
+        // Luôn cuộn tới cầu mới nhất ở mép phải.
+        binding.historyScroll.post {
+            if (_binding != null) binding.historyScroll.fullScroll(View.FOCUS_RIGHT)
+        }
+    }
+
+    private fun clearHistoryChips() {
+        val b = _binding ?: return
+        b.historyChips.removeAllViews()
+        b.historyScroll.visibility = View.GONE
+        b.tvHistory.text = ""
     }
 
     // Một ký hiệu cầu: 'T' hoặc 'X'. Chấp nhận cả dạng chữ ("T","XỈU") lẫn dạng
