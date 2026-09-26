@@ -1,0 +1,29 @@
+name: Bisect
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/bisect.yml'
+
+jobs:
+  checkout-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo checkout-ok
+
+  secret-only:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ref secret
+        env:
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_B64 }}
+        run: echo "do dai = ${#KEYSTORE_B64}"
+
+  plain-run:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo dong1
+          echo dong2
