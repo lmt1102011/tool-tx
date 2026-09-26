@@ -11,12 +11,15 @@ import android.widget.Toast
  * manifest vì app có thể đã bị hệ thống dừng khi gói mới được thay thế.
  */
 class InstallStatusReceiver : BroadcastReceiver() {
+
+    // PackageInstaller.STATUS_PENDING bị @hide trong SDK nên phải khai báo tay.
+    // -1 = hệ thống đã mở hộp thoại xác nhận và đang chờ người dùng bấm.
+    private val statusPending = -1
+
     override fun onReceive(context: Context, intent: Intent) {
         val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, Int.MIN_VALUE)
         when (status) {
-            // -1: hệ thống đã mở hộp thoại xác nhận và đang chờ người dùng bấm.
-            // Đây là trạng thái bình thường, KHÔNG phải lỗi.
-            PackageInstaller.STATUS_PENDING -> {
+            statusPending -> {
                 Toast.makeText(context, "Chờ bạn xác nhận trong hộp thoại của hệ thống", Toast.LENGTH_LONG).show()
             }
             PackageInstaller.STATUS_SUCCESS -> {
