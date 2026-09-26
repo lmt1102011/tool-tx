@@ -188,11 +188,12 @@ class HomeFragment : Fragment() {
         b.btnUpdate.isEnabled = false
         b.btnUpdate.text = "ĐANG TẢI..."
 
-        // Poll download progress
+        // Poll download progress - track max bytes to avoid negative progress
         GlobalScope.launch(Dispatchers.Main) {
+            var maxBytes = 0L
             var lastProgress = -1
             while (true) {
-                delay(500)
+                delay(800)
                 val query = DownloadManager.Query().setFilterById(downloadId)
                 val cursor = dm.query(query)
                 if (cursor.moveToFirst()) {
@@ -200,12 +201,19 @@ class HomeFragment : Fragment() {
                     val bytesDownloaded = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
                     val totalSize = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
                     
-                    if (totalSize > 0) {
-                        val progress = (bytesDownloaded * 100 / totalSize).toInt()
+                    // Track max bytes seen (monotonic)
+                    if (bytesDownloaded > maxBytes) maxBytes = bytesDownloaded
+                    
+                    if (totalSize > 0 && maxBytes > 0) {
+                        val progress = (maxBytes * 100 / totalSize).toInt().coerceAtMost(100)
                         if (progress != lastProgress) {
                             b.btnUpdate.text = "ĐANG TẢI $progress%"
                             lastProgress = progress
                         }
+                    } else if (maxBytes > 0) {
+                        // Total size unknown yet, show bytes
+                        val mb = maxBytes / (1024 * 1024)
+                        b.btnUpdate.text = "ĐANG TẢI ${mb}MB"
                     }
                     
                     if (status == DownloadManager.STATUS_SUCCESSFUL) {

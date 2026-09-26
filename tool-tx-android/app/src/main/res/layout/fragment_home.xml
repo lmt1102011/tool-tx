@@ -228,14 +228,16 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_update"
-                        android:layout_width="wrap_content"
-                        android:layout_height="36dp"
+                        android:layout_width="140dp"
+                        android:layout_height="44dp"
                         android:text="CẬP NHẬT"
-                        android:textSize="12sp"
+                        android:textSize="14sp"
                         android:textStyle="bold"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
                         app:backgroundTint="@color/onPrimaryContainer"
                         android:textColor="@color/primaryContainer"
-                        app:cornerRadius="18dp" />
+                        app:cornerRadius="22dp" />
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
