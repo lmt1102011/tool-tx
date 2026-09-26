@@ -37,9 +37,5 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <receiver
-            android:name="com.lmt.tooltx.ui.home.InstallStatusReceiver"
-            android:exported="false" />
-
     </application>
 </manifest>

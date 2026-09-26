@@ -1,11 +1,8 @@
 package com.lmt.tooltx.ui.home
 
 import android.app.DownloadManager
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.IntentSender
-import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.database.Cursor
 import android.net.Uri
@@ -33,7 +30,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.IOException
 
 class HomeFragment : Fragment() {
 
@@ -256,43 +252,10 @@ class HomeFragment : Fragment() {
             return
         }
 
-        val installer = ctx.packageManager.packageInstaller
-        val sessionParams = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
-        sessionParams.setAppPackageName(ctx.packageName)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            sessionParams.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_REQUIRED)
-        }
-
-        var sessionId = -1
-        try {
-            sessionId = installer.createSession(sessionParams)
-            val session = installer.openSession(sessionId)
-            session.openWrite("tool-tx-update.apk", 0, -1).use { dest ->
-                val src = ctx.contentResolver.openInputStream(apkUri)
-                    ?: throw IOException("Không đọc được file APK")
-                src.use { it.copyTo(dest) }
-                session.fsync(dest)
-            }
-            session.commit(createInstallIntent())
-            Toast.makeText(ctx, "Đang cài, chờ hệ thống xác nhận…", Toast.LENGTH_LONG).show()
-        } catch (e: Exception) {
-            if (sessionId != -1) {
-                try { installer.abandonSession(sessionId) } catch (_: Exception) {}
-            }
-            installApkFallback(apkUri)
-        }
+        launchSystemInstaller(apkUri)
     }
 
-    private fun createInstallIntent(): IntentSender {
-        val intent = Intent(requireContext(), InstallStatusReceiver::class.java)
-        var flags = PendingIntent.FLAG_UPDATE_CURRENT
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            flags = flags or PendingIntent.FLAG_MUTABLE
-        }
-        return PendingIntent.getBroadcast(requireContext(), 0, intent, flags).intentSender
-    }
-
-    private fun installApkFallback(apkUri: Uri) {
+    private fun launchSystemInstaller(apkUri: Uri) {
         val ctx = requireContext()
         val apkFile = File(ctx.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "tool-tx-update.apk")
         val uri = try {
@@ -310,7 +273,7 @@ class HomeFragment : Fragment() {
         try {
             startActivity(intent)
         } catch (e: Exception) {
-            Toast.makeText(ctx, "Cài đặt thất bại: ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(ctx, "Không mở được trình cài: ${e.message}", Toast.LENGTH_LONG).show()
             resetUpdateButton()
         }
     }
