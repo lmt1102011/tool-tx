@@ -131,8 +131,10 @@ function ensureSocketIO() {
 let lastToken = null;
 let lastAttemptUrl = "";
 let socketBusy = false;
+let socketSuperseded = false;
 async function initSocket(authToken) {
   if (socket) return socket;
+  if (socketSuperseded) return socket;
   if (socketBusy) return socket;
   socketBusy = true;
   lastToken = authToken || lastToken;
@@ -158,6 +160,7 @@ async function initSocket(authToken) {
 // Tá»± ná»‘i láº¡i khi URL server Ä‘á»•i (vd: launcher vá»«a push link tunnel má»›i)
 function retryConnect() {
   if (!lastToken) return;
+  if (socketSuperseded) return;   // tab nay da bi ket noi moi day ra, dung tranh doi phiên
   const want = serverUrl() || "";
   const urlChanged = want !== lastAttemptUrl;
   const dead = !(socket && socket.connected);
@@ -620,8 +623,11 @@ function bindSocketEvents() {
     if (pay) renderAgentPanel(pay);
   });
   socket.on('session-replaced', () => {
-    // Server đã đóng socket cũ vì có phiên mới đăng nhập. Ngắt im, không giành chỗ.
+    // Server đã đóng socket cũ vì có phiên mới đăng nhập. Ngắt im và không giành lại,
+    // nếu không hai tab cùng tài khoản sẽ đẩy qua đẩy lại vô hạn.
+    socketSuperseded = true;
     try { socket.disconnect(); } catch (_) {}
+    setSockStatus('Phiên này đã được kết nối mới thay thế. Nếu bạn vẫn muốn dùng, hãy tải lại trang.');
   });
   socket.on('screen', (buf) => {
     const now = Date.now();
