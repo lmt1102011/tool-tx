@@ -189,7 +189,10 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                     binding.tvUpdateNotes.text = getString(R.string.update_failed, why)
                     binding.tvUpdateNotes.visibility = View.VISIBLE
                     binding.cardUpdate.visibility = View.VISIBLE
-                    bridge.writeBugLog("ui", "update LOI: $why")
+                    runCatching {
+                        (requireActivity() as? MainActivity)?.getBridge()
+                            ?.writeBugLog("ui", "update LOI: $why")
+                    }
                 }
             }
         }
