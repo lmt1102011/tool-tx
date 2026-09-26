@@ -182,7 +182,14 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                     binding.btnUpdateNow.isEnabled = true
                     binding.btnUpdateNow.text = getString(R.string.update_now)
                     binding.btnUpdateLater.visibility = View.VISIBLE
-                    setStatus(getString(R.string.update_failed, e.message ?: "lỗi mạng"))
+                    val why = e.message ?: "lỗi mạng"
+                    setStatus(getString(R.string.update_failed, why))
+                    // Ghi lý do ngay trên card cập nhật: dòng status rất dễ bị bỏ qua,
+                    // người dùng chỉ thấy nút bấm lại được thì không biết vì sao hỏng.
+                    binding.tvUpdateNotes.text = getString(R.string.update_failed, why)
+                    binding.tvUpdateNotes.visibility = View.VISIBLE
+                    binding.cardUpdate.visibility = View.VISIBLE
+                    bridge.writeBugLog("ui", "update LOI: $why")
                 }
             }
         }

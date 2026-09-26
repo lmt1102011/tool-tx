@@ -138,14 +138,26 @@ object AppUpdater {
             .edit().putString(KEY_SEEN, versionName).apply()
     }
 
-    suspend fun download(
-        context: Context,
+    private fun isValidApk(f: File): Boolean = try {
+        // APK là file ZIP: magic "PK\x03\x04". File bị cắt cụn sẽ không có magic này
+        // hoặc không đủ 4 byte.
+        f.length() > 4 && f.inputStream().use { input ->
+            val head = ByteArray(4)
+            input.read(head) == 4 &&
+                head[0] == 0x50.toByte() && head[1] == 0x4B.toByte() &&
+                head[2] == 0x03.toByte() && head[3] == 0x04.toByte()
+        }
+    } catch (_: Exception) {
+        false
+    }
+
+    private suspend fun fetchOnce(
         release: Release,
+        target: File,
+        tmp: File,
         onProgress: suspend (percent: Int, downloaded: Long, total: Long) -> Unit
-    ): File = withContext(Dispatchers.IO) {
-        val dir = File(context.cacheDir, "apk").apply { mkdirs() }
-        val target = File(dir, "tooltx-${release.versionName}.apk")
-        val tmp = File(dir, target.name + ".part")
+    ): Long {
+        if (tmp.exists()) tmp.delete()
         val conn = URL(release.assetUrl!!).openConnection() as HttpURLConnection
         conn.connectTimeout = 20000
         conn.readTimeout = 30000
@@ -173,15 +185,50 @@ object AppUpdater {
                             }
                         }
                     }
+                    out.flush()
                 }
             }
+            // Mạng yếu làm luồng ngắm giữa chừng mà read() trả -1 chứ không báo lỗi.
+            // Nếu không kiểm tra, file cắt cụn vẫn ra tới installer và mọi lần bấm
+            // cập nhật đều cài một APK hỏng, version không bao giờ lên.
+            if (total > 0 && done != total) {
+                throw RuntimeException("Tải thiếu dữ liệu ($done/$total byte)")
+            }
+            if (release.size > 0 && done != release.size) {
+                throw RuntimeException("Sai kích thước ($done/${release.size} byte)")
+            }
+            if (!isValidApk(tmp)) throw RuntimeException("File tải về không phải APK hợp lệ")
             if (target.exists()) target.delete()
             if (!tmp.renameTo(target)) throw RuntimeException("Không lưu được file APK")
-            onProgress(100, done, total)
-            target
+            return done
         } finally {
             conn.disconnect()
         }
+    }
+
+    suspend fun download(
+        context: Context,
+        release: Release,
+        onProgress: suspend (percent: Int, downloaded: Long, total: Long) -> Unit
+    ): File = withContext(Dispatchers.IO) {
+        val dir = File(context.cacheDir, "apk").apply { mkdirs() }
+        val target = File(dir, "tooltx-${release.versionName}.apk")
+        val tmp = File(dir, target.name + ".part")
+        var lastError: Exception? = null
+        // Thử 3 lần. Mỗi lần tải lại từ đầu cho tới khi file đủ byte và là APK hợp lệ.
+        for (attempt in 1..3) {
+            try {
+                val done = fetchOnce(release, target, tmp, onProgress)
+                onProgress(100, done, if (done > 0) done else release.size)
+                return@withContext target
+            } catch (e: Exception) {
+                lastError = e
+                if (tmp.exists()) tmp.delete()
+                if (target.exists()) target.delete()
+                if (attempt < 3) onProgress(0, 0, 0)
+            }
+        }
+        throw RuntimeException("Tải APK thất bại: " + (lastError?.message ?: "không rõ lý do"))
     }
 
     fun install(context: Context, apk: File) {
