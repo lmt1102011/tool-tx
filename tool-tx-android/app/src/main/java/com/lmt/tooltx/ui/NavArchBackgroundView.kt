@@ -123,6 +123,7 @@ class NavArchBackgroundView @JvmOverloads constructor(
         fillPath.lineTo(left, flat)
         fillPath.arcTo(archRect, 180f - start, sweep)
         fillPath.lineTo(right, flat)
+        fillPath.lineTo(w, flat)
         fillPath.lineTo(w, h)
         fillPath.lineTo(0f, h)
         fillPath.close()
@@ -133,6 +134,7 @@ class NavArchBackgroundView @JvmOverloads constructor(
         edgePath.lineTo(left, flat)
         edgePath.arcTo(archRect, 180f - start, sweep)
         edgePath.lineTo(right, flat)
+        edgePath.lineTo(w, flat)
         canvas.drawPath(edgePath, edgePaint)
     }
 
