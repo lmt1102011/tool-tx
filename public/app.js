@@ -235,7 +235,23 @@ const STRAT_NAMES = {
 };
 
 const state = { snapshot: null, lastNoteTs: 0 };
-let launchOnReady = false;
+// ?auto=1 -> chay tool luon, khong can bam "KET NOI TOOL".
+// Y do: tool.html goi await initSocket(token) o duong 462 TRUOC khi
+// handler btnConnect co the chay, nen getSocket() da tra ve socket.
+// Vay nhanh `if (!s && window.__TX_TOKEN ...` o duong 720 KHONG BAO GIO
+// chay, launchOnReady chuyen tu false -> auto-launch la code chet, van
+// phai bam tay. Bay gio role + socket la du de chay, va khoi dong sau.
+let launchOnReady = /[?&]auto=1\b/.test(location.search);
+window.__txAutoLaunch = function () {
+  if (!window.__TX_ROLE) return false;          // chua biet role -> cho
+  if (socket && socket.connected) {
+    launchOnReady = false;
+    socket.emit('launch-profile', {});
+    return true;
+  }
+  launchOnReady = true;                          // socket chua len -> handler 'connect' lo
+  return false;
+};
 
 function log(msg, kind) {
   const box = $('log');

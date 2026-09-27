@@ -390,7 +390,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   </div>
 </div>
 
-<script src="app.js?v=20260919c"></script>
+<script src="app.js?v=20260927b"></script>
 <script type="module">
 import { auth, db, doc, ref, get, getDoc, update, onValue, onAuthStateChanged, signOut, tryReauthSaved, formatPicks, migratePicks } from "./fbase.js?v=20260927";
 
@@ -478,6 +478,10 @@ onAuthStateChanged(auth, async (u) => {
   uid = u.uid;
   isAdmin = data.role === "admin";
   window.__TX_ROLE = data.role;
+  // ?auto=1: chay tool ngay, khai bao role xong la chay — khong can bam
+  // "KET NOI TOOL". Login Firebase da duoc khoi phuc tu profile Chrome,
+  // nen launcher chi can mo tab nay la tool tu chay.
+  if (typeof window.__txAutoLaunch === 'function') window.__txAutoLaunch();
   localPicks = migratePicks(data);
   who.textContent = data.username;
 
