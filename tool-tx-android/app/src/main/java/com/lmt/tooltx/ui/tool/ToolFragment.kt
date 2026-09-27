@@ -45,6 +45,10 @@ class ToolFragment : Fragment() {
 
     @Volatile
     private var lastPanel: Map<*, *> = emptyMap<String, Any?>()
+    // Ban goc cua panel vua nhan, de chi lam viec khi du lieu that su doi.
+    private var lastPanelSeen: String = ""
+    // Chu ky ve lai cua phase, de khong ve lai 1 lan/giay khi khong doi.
+    private var lastPhaseSig: String = ""
     private var countdownJob: Job? = null
     private var barAnimator: ValueAnimator? = null
     private var blinkAnimator: ValueAnimator? = null
@@ -665,7 +669,15 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                 if (url != null) gameUrl = url
 
                 val panel = bridge.getLastPanel()
-                if (panel.isNotEmpty()) {
+                // CHỈ xử lý khi panel THẬT SỰ đổi. Server đẩy panel mỗi giây,
+                // nếu không có chặn này thì cứ mỗi giây lại: ghi 1 dòng bug
+                // log (cộng dồn, không bao giờ xoá) + dựng lại toàn bộ thẻ dự
+                // đoán + dựng lại phase, tất cả trên Dispatchers.Main. Một
+                // giờ là 3600 lần dựng lại cộng dồn log — đó là nghẽn theo
+                // nhịp 1 giây (đơ rồi tự hồi, phiên không đổi) và nặng dần
+                // theo thời gian chạy.
+                if (panel.isNotEmpty() && panel != lastPanelSeen) {
+                    lastPanelSeen = panel
                     val pick = panel["pick"]?.toString()?.trim().orEmpty()
                     val hist = (panel["hist"] as? List<*>)?.size ?: 0
                     bridge.writeBugLog("ui", "panel: pick=$pick hist=$hist")
@@ -1171,15 +1183,22 @@ binding.predCard.setOnTouchListener(::onDragTouch)
     private fun startCountdownTicker() {
         countdownJob?.cancel()
         countdownJob = GlobalScope.launch(Dispatchers.IO) {
-            while (!Thread.currentThread().isInterrupted) {
-                val p = lastPanel
-                if (p.isNotEmpty() && _binding != null && gameOpen) {
+        while (!Thread.currentThread().isInterrupted) {
+            val p = lastPanel
+            // Chi ve lai khi phan phase that su doi. Dem nguoc can 1s mot lan de
+            // hien duoc, nhung khong vi ly do do duong loi 1 giay cho toan bo
+            // thu muc goc rung chuyen len UI thread.
+            if (p.isNotEmpty() && _binding != null && gameOpen) {
+                val sig = "${p["rStart"]}|${p["rEnd"]}|${p["roundN"]}|${p["lastSettle"]}|${p["roundDur"]}|${p["skip"]}|${p["pick"]}"
+                if (sig != lastPhaseSig) {
+                    lastPhaseSig = sig
                     withContext(Dispatchers.Main) {
                         if (_binding != null && gameOpen) renderPhase(p)
                     }
                 }
-                delay(1000)
             }
+            delay(1000)
+        }
         }
     }
 

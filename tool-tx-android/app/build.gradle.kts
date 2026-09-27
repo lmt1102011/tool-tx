@@ -12,8 +12,8 @@ android {
         applicationId = "com.lmt.tooltx"
         minSdk = 26
         targetSdk = 35
-    versionCode = 222
-    versionName = "2.2.2"
+    versionCode = 223
+    versionName = "2.2.3"
 
         ndk {
             abiFilters += listOf("arm64-v8a", "x86_64")
