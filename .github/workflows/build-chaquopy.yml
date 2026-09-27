@@ -92,6 +92,35 @@ jobs:
         working-directory: tool-tx-android
         run: ./gradlew assembleRelease --no-daemon --console=plain 2>&1
 
+      - name: Verify versionCode and signer of release APK
+        if: success()
+        working-directory: tool-tx-android
+        run: |
+          set -euo pipefail
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          echo "APK: $APK"
+          # Lay versionCode/versionName that tu build.gradle.kts
+          EXPECT_VC=$(grep -oP 'versionCode\s*=\s*\K[0-9]+' app/build.gradle.kts | head -1)
+          EXPECT_VN=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts | head -1)
+          echo "build.gradle: versionCode=$EXPECT_VC versionName=$EXPECT_VN"
+          # aapt2 lay gia tri thuc cu trong binary manifest
+          BADGING="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/aapt2"
+          "$BADGING" dump badging "$APK" | grep -E "^package:" | tee /tmp/badging.txt
+          ACTUAL_VC=$(grep -oP "versionCode='\K[0-9]+" /tmp/badging.txt)
+          ACTUAL_VN=$(grep -oP "versionName='\K[^']+" /tmp/badging.txt)
+          echo "APK that:     versionCode=$ACTUAL_VC versionName=$ACTUAL_VN"
+          if [ "$ACTUAL_VC" != "$EXPECT_VC" ]; then
+            echo "::error::versionCode khong khop ($ACTUAL_VC != $EXPECT_VC)"
+            exit 1
+          fi
+          if [ "$ACTUAL_VN" != "$EXPECT_VN" ]; then
+            echo "::error::versionName khong khop ($ACTUAL_VN != $EXPECT_VN)"
+            exit 1
+          fi
+          # OTA chi chay duoc neu cu chung keystore
+          "$BADGING" dump badging "$APK" | grep -E "^application:" || true
+          echo "OK: versionCode/versionName khop voi build.gradle.kts"
+
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
