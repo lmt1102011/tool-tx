@@ -242,19 +242,23 @@ object WebViewBridge {
             "function onBin(d){" +
             "try{b=new Uint8Array(d);}catch(_){return;}" +
             "var got=0,st;" +
-            // GIẢM 10 -> 4 offset, và DỪNG ngay khi giải được (break sau emit
-            // thành công, không chỉ khi tìm ra xúc xắc). Trước đây vòng lặp cứ
-            // thử đủ 10 offset cho mọi frame nhị phân — mỗi offset một lần giải
-            // msgpack đầy đủ + emit() quét cây. Frame bình thường (tick, số dư) vốn
-            // đã giải được ở offset 0 nên vẫn bị giải lại 10 lần. Chạy ngay trên
-            // main thread của trang game → chính là thứ làm game lag.
-            "for(st=0;st<4&&st<b.length;st++){" +
+            // 10 offset NHƯNG break ngay khi giải được. Frame hợp lệ giải ở offset 0
+            // nên tốn 1 lần; chỉ frame lỗi mới quét hết 10. Đây là điểm cân bằng:
+            // bản cũ luôn quét 10 (lag), bản 2.1.8 chỉ quét 4 thì BỎ SÓT frame
+            // có phần đầu dài hơn 4 byte — log [raw] cho thấy vẫn còn frame
+            // "(decode fail) map len", tức là đúng loại đó. Không được hạ dưới 10.
+            "for(st=0;st<10&&st<b.length;st++){" +
             "pp=st;" +
             "try{got=emit(rd());break;}catch(_){got=0;}" +
             "}" +
-            // Giu 400 byte dau de chan doan du payload (truoc chi 120 byte, cat ngan
-            // tai noi xuc xac nen server khong hinh dung cau truc game dang gui).
-            "try{var u8=b.length>400?b.subarray(0,400):b;var hex='';for(var i=0;i<u8.length;i++)hex+=('0'+u8[i].toString(16)).slice(-2);push({t:Date.now(),k:'b',d:hex});}catch(_){}" +
+            // Hex CHỈ dựng tối đa 6 frame mỗi giây. Trước đây MỌI frame hỏng đều
+            // dựng 400 byte -> 800 ký tự ngay trên thread của trang game; game gửi
+            // frame tần số cao nên đây là nguyên nhân "đơ" (đóng băng UI). Chỉ cần
+            // vài frame/giây để chẩn đoán là đủ.
+            "var nw=Date.now();" +
+            "if(nw-(window.__hexT||0)>1000){window.__hexT=nw;window.__hexN=6;}" +
+            "if(window.__hexN>0){window.__hexN--;" +
+            "try{var u8=b.length>400?b.subarray(0,400):b;var hex='';for(var i=0;i<u8.length;i++)hex+=('0'+u8[i].toString(16)).slice(-2);push({t:nw,k:'b',d:hex});}catch(_){}}" +
             "}" +
             "function onTxt(d){" +
             "var s=String(d);" +
