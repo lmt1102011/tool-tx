@@ -247,9 +247,20 @@ object WebViewBridge {
             // bản cũ luôn quét 10 (lag), bản 2.1.8 chỉ quét 4 thì BỎ SÓT frame
             // có phần đầu dài hơn 4 byte — log [raw] cho thấy vẫn còn frame
             // "(decode fail) map len", tức là đúng loại đó. Không được hạ dưới 10.
+            // Game dung cung mot khoang dau cho moi frame nen offset thang duoc
+            // o frame truoc la offset thang o frame sau. Thu no TRUOC: phan lon
+            // frame chi can 1 lan walk thay vi quet ca 10 offset. Chi quet day du
+            // khi offset do khong ra xuc xac.
+            "got=0;" +
+            "var fst=(window.__st|0);" +
+            "if(fst>0&&fst<b.length){pp=fst;try{got=emit(rd());}catch(_){got=0;}}" +
+            "if(got<=0){" +
             "for(st=0;st<10&&st<b.length;st++){" +
             "pp=st;" +
-            "try{got=emit(rd());break;}catch(_){got=0;}" +
+            // CHỈ dừng khi THẬT SỰ ra xúc xắc (got>0). `break` đặt ngay sau emit
+            // se bo qua xuc xac o offset sau khi decode trung object chat/tick.
+            "try{got=emit(rd());if(got>0){window.__st=st;break;}}catch(_){got=0;}" +
+            "}" +
             "}" +
             // Hex CHỈ dựng tối đa 6 frame mỗi giây. Trước đây MỌI frame hỏng đều
             // dựng 400 byte -> 800 ký tự ngay trên thread của trang game; game gửi

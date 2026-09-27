@@ -420,9 +420,13 @@ function render(snap) {
     lastEl.style.display = 'none';
   }
 
-  // History chips
-  renderChips(history ? history.slice(-30) : []);
-  renderChart(snap.recentSums || [], history || []);
+  // History chips — TU HAO chuoi rong. Snapshot toan cuc (predictor mac dinh) van
+  // den sau panel-push; o che do agent predictor mac dinh rong nen renderChips([])
+  // se xoa sach chip da ve dung va lam dem nguoc ve 0. Giu lai lan cuoi co du lieu.
+  if (history && history.length) window.__txChips = history.slice(-30);
+  if (snap.recentSums && snap.recentSums.length) window.__txSums = snap.recentSums;
+  renderChips(window.__txChips || []);
+  renderChart(window.__txSums || [], window.__txChips || []);
 
   // ========== STATS ==========
   if (stats) {
