@@ -32,3 +32,4 @@ tool-tx-kivy/bin/
 tool-tx-kivy/session.json
 tool-tx-kivy/**/__pycache__/
 tool-tx-kivy/.venv/
+downloads/
