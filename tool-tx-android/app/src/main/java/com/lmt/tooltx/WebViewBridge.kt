@@ -294,7 +294,20 @@ object WebViewBridge {
             "}" +
             "if(s&&s.length<=300)push({t:Date.now(),k:'t',d:s});" +
             "}" +
-            "var Orig=window.WebSocket;" +
+            // PHẢI cài idempotent. Shim chạy ở CẢ onPageStarted LẪN
+            // onPageFinished, và game hay tự reload trang. Nếu bọc lại mỗi
+            // lần thì lớp mới lấy chính lớp cũ làm gốc và xếp chồng:
+            //     Wrapped3 -> Wrapped2 -> Wrapped1 -> native
+            // Mỗi lớp lại addEventListener('message') nên MỌI frame bị parse
+            // N lần, và Wrapped.prototype = Orig.prototype khiến
+            // `socket instanceof WebSocket` trong code game sai ⇒ game hủy
+            // socket rồi mở lại (đó là "nháy mất kết nối"). Số lớp nhân dần
+            // theo số lần tải trang nên càng dùng càng nặng, cuối cùng crash.
+            "if(window.__wsShim){return;}" +
+            "window.__wsShim=1;" +
+            // Luôn bọc từ WebSocket GỐC đã lưu, không bao giờ bọc từ lớp trước.
+            "var Orig=window.__wsOrig||window.WebSocket;" +
+            "window.__wsOrig=Orig;" +
             "function Wrapped(url,protocols){" +
             "var w=new Orig(url,protocols);" +
             "try{w.binaryType='arraybuffer';}catch(_){}" +
@@ -308,6 +321,9 @@ object WebViewBridge {
             "Wrapped.prototype=Orig.prototype;" +
             "Wrapped.CONNECTING=Orig.CONNECTING;Wrapped.OPEN=Orig.OPEN;Wrapped.CLOSING=Orig.CLOSING;Wrapped.CLOSED=Orig.CLOSED;" +
             "window.WebSocket=Wrapped;" +
+            // Giữ cho `x instanceof WebSocket` đúng như WebSocket gốc, nếu
+            // không game sẽ tưởng socket của nó là loại lạ và ngắt kết nối.
+            "try{Object.defineProperty(Wrapped,Symbol.hasInstance,{value:function(x){return x instanceof Orig;},configurable:true});}catch(_){}" +
             "window.__wsDecode=1;" +
             "})();"
         // Gọi TRỰC TIẾP (đang ở UI thread trong onPageStarted/onPageFinished) —
