@@ -161,7 +161,7 @@ object WebViewBridge {
         val wv = webView ?: return
         val js = "(function(){" +
             "if(window.__wsCapShim)return;window.__wsCapShim=1;" +
-            "window.__wsLog=[];window.__wsLogMax=2000;" +
+            "window.__wsLog=[];window.__wsLogMax=400;" +
             // __wsSet: kênh RIÊNG chỉ chứa entry ĐÃ decode được (vòng mở, tỉ lệ tiền, tổng
             // xúc xắc). __wsLog là log frame thô, bị đầy rác nhanh: game gửi frame tần số
             // cao (heartbeat/tick/cập nhật số dư) không chứa xúc xắc, nên khi server chỉ đọc
@@ -170,41 +170,39 @@ object WebViewBridge {
             "window.__wsSet=[];window.__wsSetMax=600;" +
             "function push(e){if(!e)return;if(window.__wsLog.length>=window.__wsLogMax)window.__wsLog.shift();window.__wsLog.push(e);}" +
             "function feed(e){if(!e)return;if(window.__wsSet.length>=window.__wsSetMax)window.__wsSet.shift();window.__wsSet.push(e);}" +
-            "function scan(node,out,depth){" +
+            "function walk(node,out,depth){" +
+            // GOP scanCmd + scan vao MOT lan quet cay. Truoc day emit() quet cay
+            // 2 lan (scanCmd tim lenh 1002/1008 roi scan tim xuc xac), nhung goi
+            // trong vong lap 10 offset cua onBin → 20 lan quet de quy moi frame.
+            // Dung lai mot lan quet: quet nhe gap 10 lan.
             "if(depth>8||!node||typeof node!=='object')return;" +
             "var i,k;" +
-            "if(Array.isArray(node)){for(i=0;i<node.length;i++)scan(node[i],out,depth+1);return;}" +
-            "var a=node.d1,b=node.d2,c=node.d3;" +
-            "if(a!==undefined&&b!==undefined&&c!==undefined&&(a|0)===a&&(b|0)===b&&(c|0)===c&&a>=1&&a<=6&&b>=1&&b<=6&&c>=1&&c<=6){" +
-            "out.push(a+b+c+':'+(node.sid===undefined?(node.sidId===undefined?(node.tid===undefined?'':node.tid):node.sidId):node.sid));return;}" +
+            "if(Array.isArray(node)){for(i=0;i<node.length;i++)walk(node[i],out,depth+1);return;}" +
+            // Quét RIÊNG mệnh lệnh vòng: cmd 1002 = bắt đầu vòng, cmd 1008 = tick
+            // kèm tỉ lệ tiền. Nhờ vậy server neo được mốc THẬT của từng vòng.
+            "if(node.cmd===1002){window.__rsFlag=1;}" +
+            "else if(node.cmd===1008){var g=Array.isArray(node.gi)?node.gi[0]:null;" +
+            "if(g&&g.B&&g.S){var tb=Number(g.B.tB),sb=Number(g.S.tB);" +
+            "if(isFinite(tb)&&isFinite(sb)&&tb+sb>0)window.__mrFlag=tb/(tb+sb);}}" +
+            // ĐỔI TÊN v1/v2/v3: bản cũ dùng `var a=node.d1,b=node.d2` — `b` đang là
+            // buffer nhị phân toàn cục, bị che trong hàm (may mắn chưa hỏng vì emit()
+            // gọi sau khi rd() đã xong, nhưng rất dễ vỡ khi thêm code).
+            "var v1=node.d1,v2=node.d2,v3=node.d3;" +
+            "if(v1!==undefined&&v2!==undefined&&v3!==undefined&&(v1|0)===v1&&(v2|0)===v2&&(v3|0)===v3&&v1>=1&&v1<=6&&v2>=1&&v2<=6&&v3>=1&&v3<=6){" +
+            "out.push(v1+v2+v3+':'+(node.sid===undefined?(node.sidId===undefined?(node.tid===undefined?'':node.tid):node.sidId):node.sid));return;}" +
             "var dc=node.dices||node.dice||node.diceValue||node.d||node.D||node.d123||node.result||node.data;" +
             "if(Array.isArray(dc)&&dc.length>=3&&(dc[0]|0)===dc[0]&&(dc[1]|0)===dc[1]&&(dc[2]|0)===dc[2]&&dc[0]>=1&&dc[0]<=6&&dc[1]>=1&&dc[1]<=6&&dc[2]>=1&&dc[2]<=6){" +
             "out.push((dc[0]+dc[1]+dc[2])+':'+(node.sid===undefined?'':node.sid));return;}" +
             "if(typeof node.sum==='number'&&node.sum>=3&&node.sum<=18){out.push(node.sum+':'+(node.sid===undefined?'':node.sid));return;}" +
             "if(typeof node.Sum==='number'&&node.Sum>=3&&node.Sum<=18){out.push(node.Sum+':'+(node.sid===undefined?'':node.sid));return;}" +
             "if(typeof node.total==='number'&&node.total>=3&&node.total<=18){out.push(node.total+':'+(node.sid===undefined?'':node.sid));return;}" +
-            "for(k in node){if(node[k]&&typeof node[k]==='object')scan(node[k],out,depth+1);}" +
+            "for(k in node){if(node[k]&&typeof node[k]==='object')walk(node[k],out,depth+1);}" +
             "}" +
-            // Quét RIÊNG mệnh lệnh vòng (không phụ thuộc tìm xúc xắc): cmd 1002 = bắt đầu vòng,
-            // cmd 1008 = tick kèm tỉ lệ tiền. Nhờ vậy server neo được mốc thời gian THẬT
-            // của từng vòng thay vì tự đoán bằng hằng số 18s.
-            "function scanCmd(node,depth){" +
-            "if(depth>8||!node||typeof node!=='object')return;" +
-            "var i,k;" +
-            "if(Array.isArray(node)){for(i=0;i<node.length;i++)scanCmd(node[i],depth+1);return;}" +
-            "if(node.cmd===1002){window.__rsFlag=1;}" +
-            "else if(node.cmd===1008){var g=Array.isArray(node.gi)?node.gi[0]:null;" +
-            "if(g&&g.B&&g.S){var tb=Number(g.B.tB),sb=Number(g.S.tB);" +
-            "if(isFinite(tb)&&isFinite(sb)&&tb+sb>0)window.__mrFlag=tb/(tb+sb);}}" +
-            "for(k in node){if(node[k]&&typeof node[k]==='object')scanCmd(node[k],depth+1);}" +
-            "}" +
-            // Chống đẩy trùng: onBin thử tối đa 10 offset giải msgpack, mỗi lần gọi emit().
-            // Vòng cách nhau 50-90s nên cửa sổ 1s là đủ bỏ hết trùng mà không mất vòng thật.
             "function emit(obj){var out=[],now=Date.now();" +
-            "window.__rsFlag=0;window.__mrFlag=0;scanCmd(obj,0);" +
+            "window.__rsFlag=0;window.__mrFlag=0;walk(obj,out,0);" +
             "if(window.__rsFlag&&now-(window.__lastRsT||0)>1000){window.__lastRsT=now;push({t:now,k:'rs',d:''});feed({t:now,k:'rs',d:''});}" +
             "if(window.__mrFlag&&now-(window.__lastMrT||0)>1000){window.__lastMrT=now;push({t:now,k:'mr',d:''+window.__mrFlag});feed({t:now,k:'mr',d:''+window.__mrFlag});}" +
-            "scan(obj,out,0);for(var i=0;i<out.length;i++){push({t:now,k:'r',d:out[i]});feed({t:now,k:'r',d:out[i]});}return out.length;}" +
+            "for(var i=0;i<out.length;i++){push({t:now,k:'r',d:out[i]});feed({t:now,k:'r',d:out[i]});}return out.length;}" +
             "var b,pp;" +
             "function str(n){var s='';var st=pp;var en=pp+n;try{s=String.fromCharCode.apply(null,Array.prototype.slice.call(b.subarray(st,en)));}catch(_){}pp=en;return s;}" +
 "function rd(){" +
@@ -244,12 +242,19 @@ object WebViewBridge {
             "function onBin(d){" +
             "try{b=new Uint8Array(d);}catch(_){return;}" +
             "var got=0,st;" +
-            "for(st=0;st<10&&st<b.length;st++){" +
+            // GIẢM 10 -> 4 offset, và DỪNG ngay khi giải được (break sau emit
+            // thành công, không chỉ khi tìm ra xúc xắc). Trước đây vòng lặp cứ
+            // thử đủ 10 offset cho mọi frame nhị phân — mỗi offset một lần giải
+            // msgpack đầy đủ + emit() quét cây. Frame bình thường (tick, số dư) vốn
+            // đã giải được ở offset 0 nên vẫn bị giải lại 10 lần. Chạy ngay trên
+            // main thread của trang game → chính là thứ làm game lag.
+            "for(st=0;st<4&&st<b.length;st++){" +
             "pp=st;" +
-            "try{got=emit(rd());}catch(_){got=0;}" +
-            "if(got){return;}" +
+            "try{got=emit(rd());break;}catch(_){got=0;}" +
             "}" +
-            "try{var u8=b.length>120?b.subarray(0,120):b;var hex='';for(var i=0;i<u8.length;i++)hex+=('0'+u8[i].toString(16)).slice(-2);push({t:Date.now(),k:'b',d:hex});}catch(_){}" +
+            // Giu 400 byte dau de chan doan du payload (truoc chi 120 byte, cat ngan
+            // tai noi xuc xac nen server khong hinh dung cau truc game dang gui).
+            "try{var u8=b.length>400?b.subarray(0,400):b;var hex='';for(var i=0;i<u8.length;i++)hex+=('0'+u8[i].toString(16)).slice(-2);push({t:Date.now(),k:'b',d:hex});}catch(_){}" +
             "}" +
             "function onTxt(d){" +
             "var s=String(d);" +
