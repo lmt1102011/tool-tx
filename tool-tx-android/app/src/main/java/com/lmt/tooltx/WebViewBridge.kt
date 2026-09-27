@@ -371,7 +371,11 @@ object WebViewBridge {
 
     @JvmStatic
     fun unstickGame() {
-        if (!PAGE_JS) return
+        // KHONG chay duoc PAGE_JS. GAME_BOOT_JS khong doc du lieu gi ca — no chi
+        // an overlay + goi focus va dispatch touch/mousedown/click/keydown len
+        // GameCanvas. Nhieu game canvas CAN su kien tuong tac de chay vong lap.
+        // 2.2.2-2.2.5 tat nham nay cung PAGE_JS, va ket qua la WebView DONG NANG
+        // HON TRUOC. Day la phan doc lap nhat duoc giu lai.
         val wv = webView ?: return
         try {
             wv.evaluateJavascript(GAME_BOOT_JS, null)
