@@ -15,6 +15,13 @@ object AppUpdater {
     private const val REPO = "lmt1102011/tool-tx"
     private const val API_LATEST = "https://api.github.com/repos/$REPO/releases/latest"
     private const val API_RELEASES = "https://api.github.com/repos/$REPO/releases?per_page=10"
+    // Nguon TINH khong gioi han so luot (raw.githubusercontent khong dem
+    // 60 luot/gio nhu API). Dung nguon nay truoc, API chi la du phong.
+    private const val STATIC_LATEST =
+        "https://raw.githubusercontent.com/lmt1102011/tool-tx/main/public/latest.json"
+    private const val KEY_LAST_CHECK = "last_check_ms"
+    private const val KEY_LAST_ERROR = "last_check_error"
+    private const val THROTTLE_MS = 10L * 60L * 1000L
     const val PREFS_KEY = "tooltx_update"
     const val KEY_PENDING_KEY = "pending_version_code"
     const val KEY_SEEN = "seen_version"
@@ -120,9 +127,24 @@ object AppUpdater {
                     it.trim().toIntOrNull() ?: 0
                 }, current)) return null
         }
+        // GIAN NHAN: API GitHub khong token chi 60 luot/GIO, ma runCatching{}
+        // .getOrDefault() NUOT IM LANG loi. Het luot -> emptyList() -> app im
+        // khong bao gi co ban cap nhat va khong ghi gi ca vao bug log. Ban
+        // cap nhat dau tien con luot nen chay; tu ban sau app "khong cap nhat
+        // duoc" ma khong bao loi gi. Gio: chi hoi lai 1 lan/10 phut va luu
+        // loi de hien thi.
+        if (!force) {
+            val last = prefs.getLong(KEY_LAST_CHECK, 0L)
+            if (System.currentTimeMillis() - last < THROTTLE_MS) return null
+        }
         val objects = runCatching {
-            getJson(API_LATEST) + getJson(API_RELEASES)
-        }.getOrDefault(emptyList())
+            getJson(STATIC_LATEST) + getJson(API_LATEST) + getJson(API_RELEASES)
+        }.getOrElse { e ->
+            prefs.edit().putString(KEY_LAST_ERROR, "khong doc duoc: ${e.message ?: "loi mang"}").apply()
+            emptyList()
+        }
+        prefs.edit().putLong(KEY_LAST_CHECK, System.currentTimeMillis())
+            .remove(KEY_LAST_ERROR).apply()
         var best: Release? = null
         for (obj in objects) {
             val r = parseRelease(obj) ?: continue
@@ -132,6 +154,11 @@ object AppUpdater {
         }
         return best
     }
+
+    /** Loi cua lan kiem tra gan nhat, de UI hien thi thay vi im lang. */
+    fun lastCheckError(context: Context): String? =
+        context.getSharedPreferences(PREFS_KEY, Context.MODE_PRIVATE)
+            .getString(KEY_LAST_ERROR, null)
 
     fun markSeen(context: Context, versionName: String) {
         context.getSharedPreferences(PREFS_KEY, Context.MODE_PRIVATE)

@@ -1,0 +1,11 @@
+{
+  "tag_name": "v2.2.4",
+  "name": "v2.2.4",
+  "assets": [
+    {
+      "name": "tool-tx-2.2.4.apk",
+      "browser_download_url": "https://github.com/lmt1102011/tool-tx/releases/download/v2.2.4/tool-tx-2.2.4.apk",
+      "size": 0
+    }
+  ]
+}
