@@ -161,21 +161,23 @@ object WebViewBridge {
         val wv = webView ?: return
         val js = "(function(){" +
             "if(window.__wsCapShim)return;window.__wsCapShim=1;" +
-            "window.__wsLog=[];window.__wsLogMax=400;" +
+            "window.__wsLog=[];window.__wsLogMax=150;" +
             // __wsSet: kênh RIÊNG chỉ chứa entry ĐÃ decode được (vòng mở, tỉ lệ tiền, tổng
             // xúc xắc). __wsLog là log frame thô, bị đầy rác nhanh: game gửi frame tần số
             // cao (heartbeat/tick/cập nhật số dư) không chứa xúc xắc, nên khi server chỉ đọc
             // 400 entry cuối của __wsLog thì entry sổ thật bị đẩy ra ngoài và feed chết vĩnh
             // viễn (sums đứng yên 101, rs đứng yên 2). Kênh này nhỏ, chỉ có ~3 entry mỗi vòng.
-            "window.__wsSet=[];window.__wsSetMax=600;" +
+            "window.__wsSet=[];window.__wsSetMax=300;" +
             "function push(e){if(!e)return;if(window.__wsLog.length>=window.__wsLogMax)window.__wsLog.shift();window.__wsLog.push(e);}" +
             "function feed(e){if(!e)return;if(window.__wsSet.length>=window.__wsSetMax)window.__wsSet.shift();window.__wsSet.push(e);}" +
             "function walk(node,out,depth){" +
-            // GOP scanCmd + scan vao MOT lan quet cay. Truoc day emit() quet cay
-            // 2 lan (scanCmd tim lenh 1002/1008 roi scan tim xuc xac), nhung goi
-            // trong vong lap 10 offset cua onBin → 20 lan quet de quy moi frame.
-            // Dung lai mot lan quet: quet nhe gap 10 lan.
+            // NGAN SACH NODE: cap so node duoc dung tren thread trang game.
+            // Truoc day quet het cay khong gioi han; frame cmd 1008 mang mang `gi`
+            // (lich su van) nen mot frame co the ton hang nghin node, lap lai cho
+            // moi offset -> ngon main thread, WebView renderer bi crash. Dung xuc
+            // xac/cmd nam o tang sau nen 3000 node la du, va chan duoc tran.
             "if(depth>8||!node||typeof node!=='object')return;" +
+            "if(window.__nb<=0)return;window.__nb--;" +
             "var i,k;" +
             "if(Array.isArray(node)){for(i=0;i<node.length;i++)walk(node[i],out,depth+1);return;}" +
             // Quét RIÊNG mệnh lệnh vòng: cmd 1002 = bắt đầu vòng, cmd 1008 = tick
@@ -199,7 +201,7 @@ object WebViewBridge {
             "for(k in node){if(node[k]&&typeof node[k]==='object')walk(node[k],out,depth+1);}" +
             "}" +
             "function emit(obj){var out=[],now=Date.now();" +
-            "window.__rsFlag=0;window.__mrFlag=0;walk(obj,out,0);" +
+            "window.__nb=3000;window.__rsFlag=0;window.__mrFlag=0;walk(obj,out,0);" +
             "if(window.__rsFlag&&now-(window.__lastRsT||0)>1000){window.__lastRsT=now;push({t:now,k:'rs',d:''});feed({t:now,k:'rs',d:''});}" +
             "if(window.__mrFlag&&now-(window.__lastMrT||0)>1000){window.__lastMrT=now;push({t:now,k:'mr',d:''+window.__mrFlag});feed({t:now,k:'mr',d:''+window.__mrFlag});}" +
             "for(var i=0;i<out.length;i++){push({t:now,k:'r',d:out[i]});feed({t:now,k:'r',d:out[i]});}return out.length;}" +
@@ -269,7 +271,7 @@ object WebViewBridge {
             "var nw=Date.now();" +
             "if(nw-(window.__hexT||0)>1000){window.__hexT=nw;window.__hexN=6;}" +
             "if(window.__hexN>0){window.__hexN--;" +
-            "try{var u8=b.length>400?b.subarray(0,400):b;var hex='';for(var i=0;i<u8.length;i++)hex+=('0'+u8[i].toString(16)).slice(-2);push({t:nw,k:'b',d:hex});}catch(_){}}" +
+            "try{var u8=b.length>160?b.subarray(0,160):b;var hex='';for(var i=0;i<u8.length;i++)hex+=('0'+u8[i].toString(16)).slice(-2);push({t:nw,k:'b',d:hex});}catch(_){}}" +
             "}" +
             "function onTxt(d){" +
             "var s=String(d);" +
