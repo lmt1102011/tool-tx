@@ -6,6 +6,7 @@
     android:background="@color/surface">
 
     <LinearLayout
+        android:id="@+id/home_content"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@color/surface"
@@ -265,6 +266,7 @@
         android:layout_height="match_parent"
         android:layout_gravity="top"
         android:background="@color/surface"
+        android:translationZ="32dp"
         android:visibility="gone"
         app:shimmer_base_color="@color/skeletonBase"
         app:shimmer_duration="1200"
