@@ -676,8 +676,9 @@ binding.predCard.setOnTouchListener(::onDragTouch)
                 // giờ là 3600 lần dựng lại cộng dồn log — đó là nghẽn theo
                 // nhịp 1 giây (đơ rồi tự hồi, phiên không đổi) và nặng dần
                 // theo thời gian chạy.
-                if (panel.isNotEmpty() && panel != lastPanelSeen) {
-                    lastPanelSeen = panel
+                val psig = panel.entries.joinToString("|") { "${it.key}=${it.value}" }
+                if (panel.isNotEmpty() && psig != lastPanelSeen) {
+                    lastPanelSeen = psig
                     val pick = panel["pick"]?.toString()?.trim().orEmpty()
                     val hist = (panel["hist"] as? List<*>)?.size ?: 0
                     bridge.writeBugLog("ui", "panel: pick=$pick hist=$hist")
