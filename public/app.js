@@ -176,15 +176,25 @@ async function freshToken() {
 }
 
 // Tá»± ná»‘i láº¡i khi URL server Ä‘á»•i (vd: launcher vá»«a push link tunnel má»›i)
-function retryConnect() {
+let connectInFlight = false;
+async function retryConnect() {
   if (!lastToken) return;
   if (socketSuperseded) return;   // tab nay da bi ket noi moi day ra, dung tranh doi phiên
+  if (connectInFlight) return;
   const want = serverUrl() || "";
   const urlChanged = want !== lastAttemptUrl;
+  if (socket && socket.connecting) return;
   const dead = !(socket && socket.connected);
   if (!urlChanged && !dead) return;
-  if (socket) { try { socket.disconnect(); } catch (_) {} socket = null; }
-  freshToken().then((t) => initSocket(t));
+  connectInFlight = true;
+  try {
+    if (socket) { try { socket.disconnect(); } catch (_) {} socket = null; }
+    const t = await freshToken();
+    await initSocket(t);
+  } catch (_) {
+  } finally {
+    connectInFlight = false;
+  }
 }
 
 function getSocket() { return socket; }

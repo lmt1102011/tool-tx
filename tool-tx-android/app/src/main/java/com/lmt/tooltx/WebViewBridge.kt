@@ -162,7 +162,14 @@ object WebViewBridge {
         val js = "(function(){" +
             "if(window.__wsCapShim)return;window.__wsCapShim=1;" +
             "window.__wsLog=[];window.__wsLogMax=2000;" +
+            // __wsSet: kênh RIÊNG chỉ chứa entry ĐÃ decode được (vòng mở, tỉ lệ tiền, tổng
+            // xúc xắc). __wsLog là log frame thô, bị đầy rác nhanh: game gửi frame tần số
+            // cao (heartbeat/tick/cập nhật số dư) không chứa xúc xắc, nên khi server chỉ đọc
+            // 400 entry cuối của __wsLog thì entry sổ thật bị đẩy ra ngoài và feed chết vĩnh
+            // viễn (sums đứng yên 101, rs đứng yên 2). Kênh này nhỏ, chỉ có ~3 entry mỗi vòng.
+            "window.__wsSet=[];window.__wsSetMax=600;" +
             "function push(e){if(!e)return;if(window.__wsLog.length>=window.__wsLogMax)window.__wsLog.shift();window.__wsLog.push(e);}" +
+            "function feed(e){if(!e)return;if(window.__wsSet.length>=window.__wsSetMax)window.__wsSet.shift();window.__wsSet.push(e);}" +
             "function scan(node,out,depth){" +
             "if(depth>8||!node||typeof node!=='object')return;" +
             "var i,k;" +
@@ -195,9 +202,9 @@ object WebViewBridge {
             // Vòng cách nhau 50-90s nên cửa sổ 1s là đủ bỏ hết trùng mà không mất vòng thật.
             "function emit(obj){var out=[],now=Date.now();" +
             "window.__rsFlag=0;window.__mrFlag=0;scanCmd(obj,0);" +
-            "if(window.__rsFlag&&now-(window.__lastRsT||0)>1000){window.__lastRsT=now;push({t:now,k:'rs',d:''});}" +
-            "if(window.__mrFlag&&now-(window.__lastMrT||0)>1000){window.__lastMrT=now;push({t:now,k:'mr',d:''+window.__mrFlag});}" +
-            "scan(obj,out,0);for(var i=0;i<out.length;i++)push({t:now,k:'r',d:out[i]});return out.length;}" +
+            "if(window.__rsFlag&&now-(window.__lastRsT||0)>1000){window.__lastRsT=now;push({t:now,k:'rs',d:''});feed({t:now,k:'rs',d:''});}" +
+            "if(window.__mrFlag&&now-(window.__lastMrT||0)>1000){window.__lastMrT=now;push({t:now,k:'mr',d:''+window.__mrFlag});feed({t:now,k:'mr',d:''+window.__mrFlag});}" +
+            "scan(obj,out,0);for(var i=0;i<out.length;i++){push({t:now,k:'r',d:out[i]});feed({t:now,k:'r',d:out[i]});}return out.length;}" +
             "var b,pp;" +
             "function str(n){var s='';var st=pp;var en=pp+n;try{s=String.fromCharCode.apply(null,Array.prototype.slice.call(b.subarray(st,en)));}catch(_){}pp=en;return s;}" +
 "function rd(){" +
