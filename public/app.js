@@ -16,14 +16,36 @@ function syncAuthStorage() {
 setInterval(syncAuthStorage, 2000);
 
 // â”€â”€ Auto-discovery: launcher tá»± push link tunnel â†’ server-url.json â”€â”€â”€â”€â”€â”€
+// Nguon du phong: "./server-url.json" la DUONG DAN TUONG DOI, lay tu chinh
+// domain dang tro. Khi app tro nhung domain cu da chet (tunnel doi ten) no
+// fail, discoUrl rong, app lai ket noi vao domain chet -> that trong. GitHub
+// raw la dia chi co dinh, khong doi theo tunnel, nen la nguon du phong.
+const DISCO_SOURCES = [
+  "./server-url.json",
+  "https://raw.githubusercontent.com/lmt1102011/tool-tx/main/public/server-url.json",
+];
 let discoUrl = "";
 let discoLoaded = false;
 async function loadDiscovery() {
-  try {
-    const r = await fetch("./server-url.json?v=" + Date.now(), { cache: "no-store" });
-    const j = await r.json();
-    if (j && typeof j.url === "string" && j.url.trim()) discoUrl = j.url.trim();
-  } catch (_) {}
+  for (const src of DISCO_SOURCES) {
+    try {
+      const r = await fetch(src + (src.indexOf("?") >= 0 ? "&" : "?") + "v=" + Date.now(), { cache: "no-store" });
+      const j = await r.json();
+      if (j && typeof j.url === "string" && j.url.trim()) {
+        const nu = j.url.trim().replace(/\/+$/, "");
+        if (nu && nu !== discoUrl) {
+          discoUrl = nu;
+          // File da doi so voi override dang luu -> ghi de luon de serverUrl()
+          // dung domain moi ngay, khong doi lai cho nguoi dung.
+          try {
+            const ov = (localStorage.getItem("tx_server") || "").trim().replace(/\/+$/, "");
+            if (ov && ov !== nu) localStorage.setItem("tx_server", nu);
+          } catch (_) {}
+        }
+        break;
+      }
+    } catch (_) {}
+  }
   discoLoaded = true;
   updateServerHost();
   // Náº¿u vá»«a tÃ¬m tháº¥y URL má»›i mÃ  chÆ°a ná»‘i Ä‘Æ°á»£c â†’ tá»± káº¿t ná»‘i láº¡i
@@ -87,7 +109,9 @@ function renderAgentPanel(p) {
     const badge = $('phaseBadge');
     if (badge) badge.textContent = 'BÃ€N RIÃŠNG';
   }
-  if (Array.isArray(p.hist) && typeof renderChips === 'function') renderChips(p.hist.slice(-30));
+  // Khong ve chip rong: payload rong chua kip co vong moi, ve len se xoa sach
+  // chip dung dang co.
+  if (Array.isArray(p.hist) && p.hist.length && typeof renderChips === 'function') renderChips(p.hist.slice(-30));
   const lastEl = $('predLast');
   if (lastEl && p.lastResult) {
     lastEl.style.display = '';
@@ -633,6 +657,9 @@ function bindSocketEvents() {
     const u = serverUrl() || location.origin;
     log('Lá»—i káº¿t ná»‘i: ' + (err.message || err), 'err');
     updateServerHost();
+    // Discovery chua co ket qua (mat mang luc vua mo app) -> thu lai ngay thay
+    // vi chay vo trong vong 30s, dung domain chet trong thoi gian do.
+    if (!discoUrl) loadDiscovery();
     // Override tay Ä‘ang trá» URL cháº¿t mÃ  auto-discovery cÃ³ URL khÃ¡c â†’ tá»± quÃªn override vÃ  thá»­ láº¡i
     const ov = getServerOverride();
     if (ov && discoUrl && ov !== discoUrl) {

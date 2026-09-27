@@ -18,7 +18,7 @@ GITHUB_RELEASES_API = "https://api.github.com/repos/lmt1102011/tool-tx/releases/
 # khi launcher publish, không bị cache lâu).
 SERVER_URL_RAW = [
     "https://raw.githubusercontent.com/lmt1102011/tool-tx/gh-pages/server-url.json",
-    "https://raw.githubusercontent.com/lmt1102011/tool-tx/main/server-url.json",
+    "https://raw.githubusercontent.com/lmt1102011/tool-tx/main/public/server-url.json",
 ]
 
 # Cache địa chỉ server đã tìm được (tránh gọi mạng lại mỗi lần kết nối -> treo kéo dài).
@@ -67,10 +67,10 @@ def discover_server(cfg_path=None, force=False):
     import time
     global _CACHED_SERVER
     v = _read_config_files(cfg_path)
-    if v:
+    if v and _server_alive(v):
         _CACHED_SERVER = v
         return v
-    if not force and _CACHED_SERVER:
+    if not force and _CACHED_SERVER and _server_alive(_CACHED_SERVER):
         return _CACHED_SERVER
     try:
         import urllib.request
@@ -85,8 +85,30 @@ def discover_server(cfg_path=None, force=False):
             return v
     except Exception:
         pass
+    # Het ca duong dan. Gia tri cu (da kiem tra o tren) van dung lai duoc thi
+    # dung no, thay vi tra rong — mat tam thoi hon la bo trong trang chuong trinh.
+    if v:
+        return v
     _CACHED_SERVER = ""
     return ""
+
+
+def _server_alive(url, timeout=4):
+    """Kiem tra server con song khong.
+
+    Dia chi trong config.txt / cache la DU LIEU CU. Tunnel doi ten la chuyen
+    (quick tunnel moi lan chay lai), nen gia tri do chet ngay. Tin no thi app
+    ket noi vao mot domain khong ton tai va khong bao gio hoi lai."""
+    if not url:
+        return False
+    try:
+        import urllib.request
+        u = url.rstrip("/") + "/server-url.json"
+        req = urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.status == 200
+    except Exception:
+        return False
 
 
 def _fetch_server_json(src):
