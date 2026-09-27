@@ -237,7 +237,8 @@ object AppUpdater {
             PackageInstaller.SessionParams.MODE_FULL_INSTALL
         )
         params.setAppPackageName(context.packageName)
-        val session = installer.createSession(params)
+        // createSession() tra ve session ID, phai openSession() moi co object Session.
+        val session = installer.openSession(installer.createSession(params))
         try {
             val out = session.openWrite("base.apk", 0, -1)
             apk.inputStream().use { input -> input.copyTo(out) }
