@@ -1,10 +1,8 @@
 package com.lmt.tooltx
 
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
+import android.content.pm.PackageInstaller
 import android.os.Build
-import androidx.core.content.FileProvider
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -17,9 +15,11 @@ object AppUpdater {
     private const val REPO = "lmt1102011/tool-tx"
     private const val API_LATEST = "https://api.github.com/repos/$REPO/releases/latest"
     private const val API_RELEASES = "https://api.github.com/repos/$REPO/releases?per_page=10"
-    private const val PREFS = "tooltx_update"
-    private const val KEY_PENDING = "pending_version_code"
-    private const val KEY_SEEN = "seen_version"
+    const val PREFS_KEY = "tooltx_update"
+    const val KEY_PENDING_KEY = "pending_version_code"
+    const val KEY_SEEN = "seen_version"
+    const val KEY_RESULT = "last_update_result"
+    const val KEY_RESULT_DETAIL = "last_update_detail"
 
     data class Release(
         val tag: String,
@@ -113,7 +113,7 @@ object AppUpdater {
 
     suspend fun check(context: Context, force: Boolean = false): Release? {
         val current = currentParts(context)
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val prefs = context.getSharedPreferences(PREFS_KEY, Context.MODE_PRIVATE)
         if (!force) {
             val seen = prefs.getString(KEY_SEEN, null)
             if (seen != null && !newerThanCurrent(parseVersion(seen).split('.').map {
@@ -134,7 +134,7 @@ object AppUpdater {
     }
 
     fun markSeen(context: Context, versionName: String) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        context.getSharedPreferences(PREFS_KEY, Context.MODE_PRIVATE)
             .edit().putString(KEY_SEEN, versionName).apply()
     }
 
@@ -232,23 +232,47 @@ object AppUpdater {
     }
 
     fun install(context: Context, apk: File) {
-        val uri: Uri = FileProvider.getUriForFile(context, context.packageName + ".fileprovider", apk)
-        val intent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
-            setDataAndType(uri, "application/vnd.android.package-archive")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val installer = context.packageManager.packageInstaller
+        val params = PackageInstaller.SessionParams(
+            PackageInstaller.SessionParams.MODE_FULL_INSTALL
+        )
+        params.setAppPackageName(context.packageName)
+        val session = installer.createSession(params)
+        try {
+            val out = session.openWrite("base.apk", 0, -1)
+            apk.inputStream().use { input -> input.copyTo(out) }
+            // fsync truoc khi close: neu commit truoc, session co the doc
+            // file chua ghi het va bao loi parse.
+            session.fsync(out)
+            out.close()
+            context.getSharedPreferences(PREFS_KEY, Context.MODE_PRIVATE)
+                .edit()
+                .putLong(KEY_PENDING_KEY, versionCode(context) + 1)
+                .remove(KEY_RESULT)
+                .remove(KEY_RESULT_DETAIL)
+                .apply()
+            session.commit(UpdateResultReceiver.pendingIntent(context, 0).intentSender)
+        } catch (e: Exception) {
+            session.abandon()
+            throw RuntimeException("Khong mo duoc phien cai dat: " + (e.message ?: ""), e)
         }
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putLong(KEY_PENDING, versionCode(context) + 1).apply()
-        context.startActivity(intent)
+    }
+
+    /** Ket qua cua lan cai dat gan nhat, do UpdateResultReceiver ghi lai. */
+    fun takeResult(context: Context): String? {
+        val prefs = context.getSharedPreferences(PREFS_KEY, Context.MODE_PRIVATE)
+        val status = prefs.getString(KEY_RESULT, null) ?: return null
+        val detail = prefs.getString(KEY_RESULT_DETAIL, "") ?: ""
+        prefs.edit().remove(KEY_RESULT).remove(KEY_RESULT_DETAIL).apply()
+        return if (detail.isEmpty()) status else "$status - $detail"
     }
 
     fun pendingUpdateDone(context: Context): Boolean {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val pending = prefs.getLong(KEY_PENDING, 0L)
+        val prefs = context.getSharedPreferences(PREFS_KEY, Context.MODE_PRIVATE)
+        val pending = prefs.getLong(KEY_PENDING_KEY, 0L)
         if (pending <= 0L) return false
         if (versionCode(context) >= pending) {
-            prefs.edit().remove(KEY_PENDING).apply()
+            prefs.edit().remove(KEY_PENDING_KEY).apply()
             return true
         }
         return false

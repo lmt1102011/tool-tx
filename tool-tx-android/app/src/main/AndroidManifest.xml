@@ -37,5 +37,10 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- Nhan ket qua cai APK tu PackageInstaller, giu lai de hien sau khi app reset -->
+        <receiver
+            android:name=".UpdateResultReceiver"
+            android:exported="false" />
+
     </application>
 </manifest>

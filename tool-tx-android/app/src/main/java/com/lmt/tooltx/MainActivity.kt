@@ -79,6 +79,11 @@ class MainActivity : AppCompatActivity() {
         }
         setContentView(R.layout.activity_main)
 
+        // Ket qua lan cai APK vua roi duoc UpdateResultReceiver ghi lai. Phai hien
+        // o day (sau khi pendingUpdateDone da quyet dinh restart) thi thong tin
+        // moi con lai, truoc day loi bi xoa mat ngay luc app reset.
+        AppUpdater.takeResult(this)?.let { showUpdateResult(it) }
+
         pythonBridge.setSessionPath(filesDir.absolutePath + "/session.json")
 
         navPill = findViewById(R.id.nav_pill)
@@ -378,6 +383,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun getBridge(): PythonBridge = pythonBridge
+
+    private fun showUpdateResult(result: String) {
+        val ok = result.startsWith("OK")
+        pythonBridge.writeBugLog("ui", "ket qua cap nhat: $result")
+        // Dialog de user thay ngay ca khi app vua reset, khong bi dong status.
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(if (ok) "Cap nhat thanh cong" else "Cap nhat that bai")
+            .setMessage(
+                if (ok) "Phien ban moi: $result"
+                else "$result\n\nNeu la 'xung dot phien ban' hoac 'khong tuong thich', can go app roi cai lai file APK moi nhat."
+            )
+            .setPositiveButton("Dong", null)
+            .show()
+    }
 
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
