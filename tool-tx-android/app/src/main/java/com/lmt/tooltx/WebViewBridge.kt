@@ -201,7 +201,7 @@ object WebViewBridge {
             "for(k in node){if(node[k]&&typeof node[k]==='object')walk(node[k],out,depth+1);}" +
             "}" +
             "function emit(obj){var out=[],now=Date.now();" +
-            "window.__nb=3000;window.__rsFlag=0;window.__mrFlag=0;walk(obj,out,0);" +
+            "window.__nb=2000;window.__rsFlag=0;window.__mrFlag=0;walk(obj,out,0);" +
             "if(window.__rsFlag&&now-(window.__lastRsT||0)>1000){window.__lastRsT=now;push({t:now,k:'rs',d:''});feed({t:now,k:'rs',d:''});}" +
             "if(window.__mrFlag&&now-(window.__lastMrT||0)>1000){window.__lastMrT=now;push({t:now,k:'mr',d:''+window.__mrFlag});feed({t:now,k:'mr',d:''+window.__mrFlag});}" +
             "for(var i=0;i<out.length;i++){push({t:now,k:'r',d:out[i]});feed({t:now,k:'r',d:out[i]});}return out.length;}" +
@@ -249,19 +249,30 @@ object WebViewBridge {
             // bản cũ luôn quét 10 (lag), bản 2.1.8 chỉ quét 4 thì BỎ SÓT frame
             // có phần đầu dài hơn 4 byte — log [raw] cho thấy vẫn còn frame
             // "(decode fail) map len", tức là đúng loại đó. Không được hạ dưới 10.
-            // Game dung cung mot khoang dau cho moi frame nen offset thang duoc
-            // o frame truoc la offset thang o frame sau. Thu no TRUOC: phan lon
-            // frame chi can 1 lan walk thay vi quet ca 10 offset. Chi quet day du
-            // khi offset do khong ra xuc xac.
-            "got=0;" +
-            "var fst=(window.__st|0);" +
-            "if(fst>0&&fst<b.length){pp=fst;try{got=emit(rd());}catch(_){got=0;}}" +
-            "if(got<=0){" +
+            // Game dung cung mot khoang dau cho MOI LOAI frame nen phai nho
+            // nhieu offset, khong phai mot. Danh sach __offs giu toi da 4 offset
+            // da decode duoc; thu theo thu tu, dung ngay cai nao decode thanh
+            // cong. Thong thuong chi can 1 lan walk thay vi quet ca 10 offset.
+            //
+            // QUAN TRONG: khoa/offset phai ghi theo "DECODE THANH CONG", KHONG
+            // phai "co xuc xac". Truoc day chi nho offset khi ra xuc xac, ma xuc
+            // xac chi xuat hien 1 lan moi ~70 giay. moi frame khac (tick, chat,
+            // keepalive) deu khong co xuc xac -> gia tri got luon 0 -> quet lai
+            // ca 10 offset, moi offset toi 3000 node = 30.000 node/frame. O
+            // frame tan suat cao, thoi gian chay JS cua trang game het -> trang
+            // game dong, dong ho phien cua no dung, trong khi tool van chay
+            // (tool o renderer rieng). Dung "co xuc xac" lam dieu kien cache la
+            // nguyen nhan "WebView đơ".
+            "var offs=window.__offs||(window.__offs=[]);" +
+            "ok=0;got=0;" +
+            "for(var oi=0;oi<offs.length;oi++){" +
+            "st=offs[oi];if(st>=b.length)continue;" +
+            "pp=st;try{emit(rd());ok=1;got=1;break;}catch(_){ok=0;}" +
+            "}" +
+            "if(!ok){" +
             "for(st=0;st<10&&st<b.length;st++){" +
             "pp=st;" +
-            // CHỈ dừng khi THẬT SỰ ra xúc xắc (got>0). `break` đặt ngay sau emit
-            // se bo qua xuc xac o offset sau khi decode trung object chat/tick.
-            "try{got=emit(rd());if(got>0){window.__st=st;break;}}catch(_){got=0;}" +
+            "try{emit(rd());ok=1;if(offs.indexOf(st)<0){offs.push(st);if(offs.length>4)offs.shift();}break;}catch(_){ok=0;}" +
             "}" +
             "}" +
             // Hex CHỈ dựng tối đa 6 frame mỗi giây. Trước đây MỌI frame hỏng đều
@@ -269,7 +280,7 @@ object WebViewBridge {
             // frame tần số cao nên đây là nguyên nhân "đơ" (đóng băng UI). Chỉ cần
             // vài frame/giây để chẩn đoán là đủ.
             "var nw=Date.now();" +
-            "if(nw-(window.__hexT||0)>1000){window.__hexT=nw;window.__hexN=6;}" +
+            "if(nw-(window.__hexT||0)>1000){window.__hexT=nw;window.__hexN=3;}" +
             "if(window.__hexN>0){window.__hexN--;" +
             "try{var u8=b.length>160?b.subarray(0,160):b;var hex='';for(var i=0;i<u8.length;i++)hex+=('0'+u8[i].toString(16)).slice(-2);push({t:nw,k:'b',d:hex});}catch(_){}}" +
             "}" +
