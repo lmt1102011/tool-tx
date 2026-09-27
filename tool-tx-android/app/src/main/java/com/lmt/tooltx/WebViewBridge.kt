@@ -74,6 +74,7 @@ object WebViewBridge {
     @JvmStatic
     fun setMuted(mute: Boolean) {
         muted = mute
+        if (!PAGE_JS) return
         val wv = webView ?: return
         val js = if (mute) MUTE_JS else UNMUTE_JS
         main.post {
@@ -113,6 +114,7 @@ object WebViewBridge {
 
     @JvmStatic
     fun armMute() {
+        if (!PAGE_JS) return
         if (!muted) return
         val wv = webView ?: return
         main.postDelayed({
@@ -156,8 +158,23 @@ object WebViewBridge {
         return null
     }
 
+    /**
+     * CO NGAT THU NGHIEM: tat toan bo JS tien vao trang game.
+     *
+     * Bon ban sua lien tiep ma trieu chung "WebView đơ + nhay mat ket noi" KHONG
+     * doi mot chut nao. Do do van de KHONG nam o JS cua app tieu; hoac no do
+     * JS tien vao trang, hoac no nam o chuyen khac hoan toan.
+     *
+     * Dat false de loai het mot surface lon: khong con gi chay tren thread cua
+     * trang game. Neu van con đơ -> thuach hoan toan, phai sang WebView config
+     * / MainActivity / server. Neu het đơ -> bi loai dung, gio thu lai tung
+     * thuoc mot (shim, hay observer cua mute) de tim thu pham that.
+     */
+    private const val PAGE_JS = false
+
     @JvmStatic
     fun installWsShim() {
+        if (!PAGE_JS) return
         val wv = webView ?: return
         val js = "(function(){" +
             "if(window.__wsCapShim)return;window.__wsCapShim=1;" +
@@ -354,6 +371,7 @@ object WebViewBridge {
 
     @JvmStatic
     fun unstickGame() {
+        if (!PAGE_JS) return
         val wv = webView ?: return
         try {
             wv.evaluateJavascript(GAME_BOOT_JS, null)
@@ -392,6 +410,12 @@ object WebViewBridge {
     fun hardReloadGame() {
         unstickGame()
         val wv = webView ?: return
+        if (!PAGE_JS) {
+            // Khong inject gi: reload thang, giu chuc nang "reload manh" cho
+            // nguoi dung.
+            main.postDelayed({ try { wv.reload() } catch (_: Throwable) {} }, 500)
+            return
+        }
         try {
             wv.evaluateJavascript(SW_RESET_JS) {
                 main.postDelayed({
